@@ -278,11 +278,8 @@ are priced as plain input, so the estimate comes out low when most calls write
 to the cache rather than read from it. `estimated_cost()` takes the same
 keyword.
 
-Always pass an explicit `cached_token_rate`. Omitting it is deprecated since
-v0.27 and the argument becomes required in 1.0. Until then an omitted rate falls
-back to `CachedTokenRates.GEMINI` (10%) and warns: a `UserWarning` when cached
-tokens are present, since the Gemini rate is wrong for OpenAI, and a
-`DeprecationWarning` otherwise.
+`cached_token_rate` is required: there is no default rate, because each provider
+discounts cached tokens differently. Pass `CachedTokenRates.OPENAI` for OpenAI.
 
 ### Getting cache hits
 

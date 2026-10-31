@@ -305,8 +305,7 @@ def grounding_metadata_extractor(response: Any) -> dict[str, Any] | None:
     **by default** whenever the response carries grounding metadata, so
     passing this extractor to ``GeminiModel``/``GeminiCachedModel`` is
     redundant (harmless — it re-emits the same key with the same value).
-    Importing it from ``async_batch_llm`` is deprecated since v0.27; it leaves
-    the public API in 1.0.
+    It left the public API in 1.0 and is kept here only as a private helper.
 
     Returns ``{"grounding": {...}}`` with ``sources`` (``[{"uri",
     "title"}]``), ``queries`` (the ``web_search_queries`` the model issued),

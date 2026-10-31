@@ -109,10 +109,22 @@ def test_processor_config_keyword_typos_still_get_suggestions():
         ProcessorConfig(max_worker=3)  # type: ignore[call-arg]
 
 
-@pytest.mark.parametrize("keyword", ["max_workers", "timeout_per_item", "rate_limit_cooldown"])
-def test_legacy_processor_parameters_are_removed(keyword):
-    with pytest.raises(TypeError, match=keyword):
+@pytest.mark.parametrize(
+    ("keyword", "hint"),
+    [
+        ("max_workers", r"ProcessorConfig\(max_workers=\.\.\.\)"),
+        ("timeout_per_item", r"ProcessorConfig\(attempt_timeout=\.\.\.\)"),
+        ("rate_limit_cooldown", r"RateLimitConfig\(cooldown_seconds=\.\.\.\)"),
+    ],
+)
+def test_legacy_processor_parameters_point_to_the_config(keyword, hint):
+    with pytest.raises(TypeError, match=rf"Unexpected processor keyword '{keyword}'.*{hint}"):
         ParallelBatchProcessor(**{keyword: 1})
+
+
+def test_processor_keyword_typos_still_get_suggestions():
+    with pytest.raises(TypeError, match="Did you mean 'post_processor'"):
+        ParallelBatchProcessor(postprocessor=None)  # type: ignore[call-arg]
 
 
 def test_processor_arguments_are_keyword_only():

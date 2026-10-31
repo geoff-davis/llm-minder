@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import functools
 import logging
 import time
 from dataclasses import dataclass, field
@@ -29,6 +30,7 @@ from ._internal.guardrails import (
     BatchAdmissionStopped,
     await_with_guardrails,
 )
+from ._internal.input_validation import REMOVED_PROCESSOR_KEYWORDS, suggest_keyword_errors
 from ._internal.item_executor import ItemExecutor, _detach_traceback
 from ._internal.rate_limit_coordinator import RateLimitCoordinator
 from ._internal.strategy_lifecycle import StrategyLifecycle
@@ -145,6 +147,7 @@ class ParallelBatchProcessor(
     - Configuration objects for easier setup
     """
 
+    @functools.partial(suggest_keyword_errors, removed=REMOVED_PROCESSOR_KEYWORDS)
     def __init__(
         self,
         *,
@@ -165,8 +168,11 @@ class ParallelBatchProcessor(
             post_processor: Optional async function called after each successful item
             config: Processor configuration; ``ProcessorConfig()`` defaults when
                 omitted. All arguments are keyword-only since 1.0, which also
-                removed the ``max_workers``, ``timeout_per_item`` and
-                ``rate_limit_cooldown`` parameters (set them on the config).
+                removed three parameters: use ``ProcessorConfig(max_workers=...)``,
+                ``ProcessorConfig(attempt_timeout=...)`` and
+                ``ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=...))``
+                instead of ``max_workers``, ``timeout_per_item`` and
+                ``rate_limit_cooldown``.
             error_classifier: Optional global classifier override. When omitted,
                 each strategy's recommendation is resolved independently.
             rate_limit_strategy: Strategy for handling rate limits

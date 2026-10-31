@@ -30,8 +30,25 @@ _REMOVED_KEYWORDS = {
     ),
 }
 
+# ParallelBatchProcessor parameters removed in 1.0; they live on its config.
+REMOVED_PROCESSOR_KEYWORDS = {
+    "max_workers": (
+        "It was removed from ParallelBatchProcessor in 1.0; "
+        "use config=ProcessorConfig(max_workers=...)."
+    ),
+    "timeout_per_item": ("It was removed in 1.0; use config=ProcessorConfig(attempt_timeout=...)."),
+    "rate_limit_cooldown": (
+        "It was removed in 1.0; use "
+        "config=ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=...))."
+    ),
+}
 
-def validate_keywords(kwargs: Mapping[str, object], allowed: Iterable[str]) -> None:
+
+def validate_keywords(
+    kwargs: Mapping[str, object],
+    allowed: Iterable[str],
+    removed: Mapping[str, str] = _REMOVED_KEYWORDS,
+) -> None:
     choices = set(allowed)
     unknown = set(kwargs) - choices
     if not unknown:
@@ -40,8 +57,8 @@ def validate_keywords(kwargs: Mapping[str, object], allowed: Iterable[str]) -> N
     for name in sorted(unknown):
         if name == "timeout":
             hint = "Use config=ProcessorConfig(attempt_timeout=...) for per-attempt timeouts."
-        elif name in _REMOVED_KEYWORDS:
-            hint = _REMOVED_KEYWORDS[name]
+        elif name in removed:
+            hint = removed[name]
         else:
             matches = get_close_matches(name, sorted(choices), n=1)
             hint = f"Did you mean {matches[0]!r}?" if matches else "Check the processor arguments."
@@ -49,8 +66,10 @@ def validate_keywords(kwargs: Mapping[str, object], allowed: Iterable[str]) -> N
     raise TypeError(" ".join(messages))
 
 
-def suggest_keyword_errors(function: Callable[_P, _R]) -> Callable[_P, _R]:
-    """Keep a generated constructor's signature while validating its keywords."""
+def suggest_keyword_errors(
+    function: Callable[_P, _R], removed: Mapping[str, str] = _REMOVED_KEYWORDS
+) -> Callable[_P, _R]:
+    """Keep a constructor's signature while validating its keywords."""
     import inspect
     from functools import wraps
 
@@ -58,7 +77,7 @@ def suggest_keyword_errors(function: Callable[_P, _R]) -> Callable[_P, _R]:
 
     @wraps(function)
     def checked(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-        validate_keywords(kwargs, names)
+        validate_keywords(kwargs, names, removed)
         return function(*args, **kwargs)
 
     return checked

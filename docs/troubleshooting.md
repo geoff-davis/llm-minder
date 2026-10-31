@@ -163,8 +163,7 @@ backoff, and later attempts are outside that single-attempt budget.
 time and admission/cooldown/backoff fields, and check `timing.timeout_category`
 (for example `admission_timeout` when a deadline hit during the provider-capacity
 wait). Distinguish the SDK/httpx timeout
-from ABL's attempt timeout. On Python 3.10 ABL uses its compatibility timeout
-path, but the semantics are the same.
+from ABL's attempt timeout.
 
 **Fix.** Set the HTTP client timeout for network phases, `attempt_timeout` for
 one provider attempt, `GuardrailConfig.total_timeout_per_item` for the whole

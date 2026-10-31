@@ -15,16 +15,26 @@ contract. Verifies:
 from __future__ import annotations
 
 import dataclasses
+from collections import UserDict
+from collections.abc import Callable, Mapping
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
 from async_batch_llm import (
+    ArtifactIdentity,
+    JsonlArtifactStore,
     LLMWorkItem,
     OpenAIStrategy,
     OpenRouterStrategy,
     ParallelBatchProcessor,
     ProcessorConfig,
+    ResumePolicy,
+    SqliteArtifactStore,
+    process_prompts,
 )
 from async_batch_llm.base import (
     LLMResponse,
@@ -165,6 +175,33 @@ class _TwoTupleLegacyStrategy(LLMCallStrategy[str]):
         )
 
 
+_BILLED_USAGE = {
+    "input_tokens": 7,
+    "output_tokens": 3,
+    "total_tokens": 10,
+    "cached_input_tokens": 2,
+    "cache_write_input_tokens": 1,
+}
+
+
+class _TwoTupleMappingStrategy(LLMCallStrategy[str]):
+    """Returns the pre-1.0 2-tuple with token usage in any Mapping type."""
+
+    def __init__(self, usage_type: Callable[[dict[str, int]], Mapping[str, int]]) -> None:
+        self.usage_type = usage_type
+        self.calls = 0
+
+    async def execute(
+        self,
+        prompt: str,
+        attempt: int,
+        timeout: float,
+        state: RetryState | None = None,
+    ) -> Any:
+        self.calls += 1
+        return f"legacy:{prompt}", self.usage_type(dict(_BILLED_USAGE))
+
+
 class TestWorkItemResultMetadata:
     @pytest.mark.asyncio
     async def test_three_tuple_strategy_populates_workitem_metadata(self):
@@ -195,6 +232,45 @@ class TestWorkItemResultMetadata:
         assert "_TwoTupleLegacyStrategy.execute() returned a 2-tuple" in (item.error or "")
         assert strategy.calls == 1
         assert item.token_usage["total_tokens"] == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "usage_type",
+        [dict, MappingProxyType, UserDict],
+        ids=["dict", "mappingproxy", "userdict"],
+    )
+    @pytest.mark.parametrize(
+        ("store_type", "suffix"),
+        [(JsonlArtifactStore, ".jsonl"), (SqliteArtifactStore, ".sqlite")],
+        ids=["jsonl", "sqlite"],
+    )
+    async def test_two_tuple_usage_in_any_mapping_is_counted_and_replayed(
+        self, tmp_path: Path, usage_type: Any, store_type: Any, suffix: str
+    ):
+        """Every Mapping keeps the billed usage, and both stores replay it as stored."""
+        path = tmp_path / f"two-tuple{suffix}"
+        identity = ArtifactIdentity(provider="test", model="m", prompt_version="v1")
+        strategy = _TwoTupleMappingStrategy(usage_type)
+        first = await process_prompts(
+            strategy, [("x", "hi")], artifact_store=store_type(path, identity=identity)
+        )
+        item = first.results[0]
+        assert item.error_category == "logic_error"
+        assert strategy.calls == 1
+        assert {k: item.token_usage.get(k) for k in _BILLED_USAGE} == _BILLED_USAGE
+
+        rerun = _TwoTupleMappingStrategy(usage_type)
+        replayed = await process_prompts(
+            rerun,
+            [("x", "hi")],
+            artifact_store=store_type(path, identity=identity),
+            resume=ResumePolicy.REUSE_ALL,
+        )
+        again = replayed.results[0]
+        assert rerun.calls == 0
+        assert again.replayed_from_artifact
+        assert again.error_category == "logic_error"
+        assert {k: again.token_usage.get(k) for k in _BILLED_USAGE} == _BILLED_USAGE
 
     @pytest.mark.asyncio
     async def test_three_tuple_with_none_metadata(self):

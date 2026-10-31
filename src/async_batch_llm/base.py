@@ -1014,8 +1014,9 @@ def _unpack_strategy_result(
             f"{name}.execute() returned a 2-tuple (output, tokens). Since 1.0 it must "
             "return (output, tokens, metadata); use None for metadata."
         )
-        if isinstance(result[1], dict):
-            error.__dict__["_failed_token_usage"] = result[1]
+        if isinstance(result[1], Mapping):
+            # Snapshot: the strategy may reuse or mutate its usage mapping.
+            error.__dict__["_failed_token_usage"] = dict(result[1])
         raise error
     raise ValueError(
         f"Strategy.execute() must return a 3-tuple (output, tokens, metadata); "
