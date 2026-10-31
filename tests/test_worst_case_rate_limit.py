@@ -62,7 +62,11 @@ async def test_all_workers_hit_rate_limit_simultaneously():
                 raise Exception("429 Resource Exhausted: Rate limit exceeded")
 
             # Second call (after the coordinated cooldown) succeeds
-            return f"Result: {prompt}", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+            return (
+                f"Result: {prompt}",
+                {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+                None,
+            )
 
     config = ProcessorConfig(
         max_workers=num_workers,
@@ -145,11 +149,15 @@ async def test_cascading_rate_limits_under_high_load():
                 raise Exception(f"429 Resource Exhausted (wave {rate_limit_wave})")
 
             # Third call succeeds
-            return f"Result after {self.calls} calls: {prompt}", {
-                "input_tokens": 10,
-                "output_tokens": 5,
-                "total_tokens": 15,
-            }
+            return (
+                f"Result after {self.calls} calls: {prompt}",
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 5,
+                    "total_tokens": 15,
+                },
+                None,
+            )
 
     config = ProcessorConfig(
         max_workers=5,
@@ -216,7 +224,11 @@ async def test_rate_limit_with_mixed_success_and_failures():
                 raise Exception("429 Resource Exhausted")
 
             successful_items += 1
-            return f"Result: {prompt}", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+            return (
+                f"Result: {prompt}",
+                {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+                None,
+            )
 
     config = ProcessorConfig(
         max_workers=5,

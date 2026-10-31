@@ -37,7 +37,7 @@ class Strategy(LLMCallStrategy):
             raise ConnectionError("temporary")
         if prompt in {"deadline", "timeout", "batch_timeout"}:
             await asyncio.sleep(10)
-        return "ok", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+        return "ok", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}, None
 
 
 class Middleware(BaseMiddleware):
@@ -311,7 +311,7 @@ async def test_serialization_fallback_emits_final_failure_before_abort(
 ):
     class Unserializable(Strategy):
         async def execute(self, prompt, attempt, timeout, state=None):
-            return object(), {"total_tokens": 2}
+            return object(), {"total_tokens": 2}, None
 
     metrics, recorder = MetricsObserver(), Recorder()
     config = ProcessorConfig(

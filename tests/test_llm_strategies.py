@@ -51,11 +51,15 @@ class MockStrategy(LLMCallStrategy[TestOutput]):
         self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
     ) -> tuple[TestOutput, dict[str, int]]:
         self.execute_calls.append((prompt, attempt, timeout, state))
-        return TestOutput(text=f"Response for {prompt}"), {
-            "input_tokens": 10,
-            "output_tokens": 20,
-            "total_tokens": 30,
-        }
+        return (
+            TestOutput(text=f"Response for {prompt}"),
+            {
+                "input_tokens": 10,
+                "output_tokens": 20,
+                "total_tokens": 30,
+            },
+            None,
+        )
 
     async def on_error(
         self, exception: Exception, attempt: int, state: RetryState | None = None
@@ -107,11 +111,15 @@ async def test_strategy_with_retries():
             self.attempt_count += 1
             if self.attempt_count < self.fail_count:
                 raise Exception("Simulated transient failure")
-            return TestOutput(text="Success"), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(text="Success"),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
     strategy = FailingStrategy(fail_count=3)
     config = ProcessorConfig(
@@ -380,11 +388,15 @@ async def test_on_error_callback_called():
         ) -> tuple[TestOutput, dict[str, int]]:
             if attempt < 3:
                 raise Exception(f"Transient error on attempt {attempt}")
-            return TestOutput(text="Success"), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(text="Success"),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
     strategy = ErrorTrackingStrategy()
     config = ProcessorConfig(
@@ -481,11 +493,15 @@ async def test_on_error_callback_with_state():
             if prompt == "rate-limit" and call == 1:
                 raise Exception("429 Too Many Requests")
 
-            return TestOutput(text=f"{prompt}|model={model}|feedback={feedback}"), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(text=f"{prompt}|model={model}|feedback={feedback}"),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
     strategy = SmartRetryStrategy()
     config = ProcessorConfig(
@@ -554,11 +570,15 @@ async def test_on_error_callback_exception_handling():
             self.execute_count += 1
             if attempt < 2:
                 raise Exception("First attempt fails")  # Generic exception (retryable)
-            return TestOutput(text="Success"), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(text="Success"),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
     strategy = BuggyCallbackStrategy()
     config = ProcessorConfig(
@@ -600,11 +620,15 @@ async def test_on_error_not_called_on_success():
             self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
         ) -> tuple[TestOutput, dict[str, int]]:
             # Always succeed
-            return TestOutput(text="Success"), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(text="Success"),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
     strategy = CallbackTrackingStrategy()
     config = ProcessorConfig(

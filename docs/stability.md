@@ -70,8 +70,8 @@ explicitly instead. On Python 3.14 an installed `google-genai` also emits its ow
 ## Classification of the current API
 
 **Stable** names are covered by the promise above. **Provisional** names can still
-change in a minor release. **Deprecated** names warn now and leave the public API in
-1.0.
+change in a minor release. The names and behaviors deprecated in 0.27 and 0.28 were
+removed in 1.0; see [Removed in 1.0](#removed-in-10).
 
 ### Entry points and configuration
 
@@ -90,9 +90,6 @@ change in a minor release. **Deprecated** names warn now and leave the public AP
 | `ErrorCategory`, `TimeoutCategory` | Stable |
 | `AttemptUsage` | Provisional (new in 0.27, with the token and cost budget) |
 | `CacheGroupTracker`, `CacheFloorBreach` | Provisional (new in 0.30, with the cache-group statistics) |
-| `LLMGateway` | Deprecated (use `LLMCallPool`) |
-| `BatchProcessor` | Deprecated (use `ParallelBatchProcessor`) |
-| `ProcessingStats` | Deprecated (use the dict from `get_stats()`) |
 
 ### Strategies, models and classifiers
 
@@ -109,7 +106,6 @@ change in a minor release. **Deprecated** names warn now and leave the public AP
 | `pydantic_json_parser`, `strip_code_fences` | Stable |
 | `provider_call`, `attach_token_usage` | Provisional (new in 0.32, for custom `execute()` overrides) |
 | `Grounding`, `GroundingSource`, `ToolCall` | Provisional (typed provider-output views) |
-| `grounding_metadata_extractor` | Deprecated (built-in Gemini models already emit grounding) |
 
 Provider metadata keys and the typed provider-output views (`.grounding`,
 `.reasoning`, `.tool_calls`, `.logprobs`) are provisional. They may be promoted to
@@ -152,25 +148,31 @@ is provisional (below).
 `async_batch_llm.testing` (they aren't in the top-level `__all__`), and expect
 possible changes in a minor release, announced in the changelog.
 
-### Deprecated members
+### Removed in 1.0
 
-These parameters and behaviors of stable names already warn, and all of them are
-removed in 1.0.
+Everything deprecated in 0.27 and 0.28 is gone. Removed top-level names raise
+`AttributeError` with a hint naming the replacement, and removed keyword arguments
+raise `TypeError` with one.
 
-| Deprecated | Replacement |
+| Removed | Replacement |
 | --- | --- |
+| `LLMGateway` (also from `async_batch_llm.gateway`) | `LLMCallPool` |
+| `BatchProcessor` | `ParallelBatchProcessor` |
+| `ProcessingStats` | The dict from `get_stats()` |
+| `grounding_metadata_extractor` | Nothing: built-in Gemini models already emit grounding |
 | `ParallelBatchProcessor(max_workers=..., timeout_per_item=..., rate_limit_cooldown=...)` | `ParallelBatchProcessor(config=ProcessorConfig(...))` |
 | `ProcessorConfig(timeout_per_item=...)` and `ProcessorConfig.timeout_per_item` | `attempt_timeout` |
 | `WorkItemResult.gemini_safety_ratings` | `result.metadata["safety_ratings"]` |
 | `BatchResult.cache_hit_rate()` (called) | `BatchResult.cache_hit_rate` (property) |
 | Integer prompts in `process_prompts` / `process_stream` | String prompts |
-| 2-tuple return from `LLMCallStrategy.execute()` | `(output, tokens, metadata)` |
+| 2-tuple return from `LLMCallStrategy.execute()` | `(output, tokens, metadata)`; it now fails the item |
 | `effective_input_tokens()` / `estimated_cost()` with no cached-token rate | Pass a `CachedTokenRates` constant as `cached_token_rate` |
-| Positional arguments to `ProcessorConfig`, `RetryConfig`, `RateLimitConfig`, `StartupRampConfig`, `GuardrailConfig` (since 0.28) | Keyword arguments |
-| `ProcessorConfig(enable_detailed_logging=True)` (since 0.28; it never had an effect) | Set the `async_batch_llm` logger's level ([Logging](logging.md)) |
+| Positional arguments to `ProcessorConfig`, `RetryConfig`, `RateLimitConfig`, `StartupRampConfig`, `GuardrailConfig` | Keyword arguments |
+| `ProcessorConfig(enable_detailed_logging=True)` (it never had an effect) | Set the `async_batch_llm` logger's level ([Logging](logging.md)) |
 
-The legacy parameters come first in `ParallelBatchProcessor`'s signature, so pass
-`config=`, `post_processor=` and the other arguments by keyword.
+`ParallelBatchProcessor` takes keyword arguments only. Removing
+`gemini_safety_ratings` shifts the positional order of the `WorkItemResult` fields
+after it; build results by keyword.
 
 ## Provisional through 1.0
 

@@ -94,11 +94,7 @@ shared `ItemExecutor` under a semaphore; there is no background dispatcher,
 network service, or provider-routing layer. The strategy beneath it may use a
 direct SDK, `CallableStrategy`, or a real third-party gateway client.
 
-`LLMGateway`, the pre-v0.20 name, still resolves to `LLMCallPool` but is deprecated
-since v0.27: importing or accessing it emits a `DeprecationWarning`, and it will be
-removed in 1.0. Replace it with `LLMCallPool`; nothing else changes.
-`from async_batch_llm import *` also warns, once for each deprecated name, even if you
-never use it (see [API stability](../stability.md#deprecation-policy)).
+`LLMGateway`, the pre-v0.20 name, was removed in 1.0; use `LLMCallPool`, the same class.
 
 ## call
 

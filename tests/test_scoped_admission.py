@@ -1144,7 +1144,7 @@ async def test_adm1_preempted_start_refunds_without_consuming_attempt(pause_at, 
         async def execute(self, prompt, attempt, timeout, state=None):
             calls.append((attempt, state))
             assert not scope.cooldown._in_cooldown
-            return "ok", {"total_tokens": 1}
+            return "ok", {"total_tokens": 1}, None
 
     class Observer(BaseObserver):
         fired = False
@@ -1251,7 +1251,7 @@ async def test_adm2_old_attempt_does_not_start_another_cooldown():
                 else:
                     await first_started.wait()
                 raise RuntimeError("429 rate limit")
-            return "ok", {}
+            return "ok", {}, None
 
     strategy = Strategy()
     async with ParallelBatchProcessor(

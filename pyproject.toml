@@ -7,7 +7,7 @@ name = "async-batch-llm"
 version = "0.32.0"
 description = "Provider-neutral asyncio toolkit for concurrent LLM calls with retries, scoped RPM/TPM admission, bounded streaming, resumable checkpoints, and deadlines."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Geoff Davis", email = "geoff@keksi.ai"}
@@ -47,7 +47,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -99,11 +98,9 @@ docs = [
     # to print a "switch to ProperDocs" banner; 1.2.2 redirects the same way.
     "mkdocs-redirects>=1.2.0,<1.2.3",
     # pymdown-extensions 12.2 changed Highlight's constructor; mkdocstrings handles it
-    # from 1.0.7, which needs Python 3.11, so 3.10 stays on the older pymdown.
-    "mkdocstrings[python]>=1.0.7; python_version >= '3.11'",
-    "mkdocstrings[python]>=0.24.0; python_version < '3.11'",
+    # from 1.0.7.
+    "mkdocstrings[python]>=1.0.7",
     "pymdown-extensions>=10.0",
-    "pymdown-extensions<12.2; python_version < '3.11'",
     "matplotlib>=3.8",  # generate_benchmark_charts.py (docs/benchmarks.md figures)
 ]
 dev = [
@@ -161,17 +158,16 @@ exclude = [
 
 [tool.uv]
 # Lock-only floors for patched releases of transitive development/extra dependencies;
-# they don't change the published package metadata. Pillow 13 and dnspython 2.9 need
-# Python 3.11, so the 3.10 fork keeps the older releases until 1.0 drops 3.10.
+# they don't change the published package metadata.
 constraint-dependencies = [
     "authlib>=1.9.1",
-    "dnspython>=2.9.0; python_version >= '3.11'",
-    "pillow>=13.0.0; python_version >= '3.11'",
+    "dnspython>=2.9.0",
+    "pillow>=13.0.0",
 ]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
@@ -186,13 +182,14 @@ select = [
 ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
+    "UP042",  # StrEnum changes str() and format() of the public str enums
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["async_batch_llm"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -212,7 +209,7 @@ disable_error_code = ["assignment"]  # TypedDict default_factory limitation
 
 # numpy arrives only with the docs extra (matplotlib) and is reached through
 # tiktoken/openai. numpy >= 2.5 needs Python 3.12 and its stubs use the `type`
-# statement, which mypy rejects at python_version 3.10. We never use numpy.
+# statement, which mypy rejects at python_version 3.11. We never use numpy.
 [[tool.mypy.overrides]]
 module = ["numpy", "numpy.*"]
 follow_imports = "skip"

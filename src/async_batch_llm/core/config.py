@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import dataclasses
 import logging
 import math
-import sys
-import warnings
 from collections.abc import Callable
-from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
-from .._internal.input_validation import deprecate_positional_arguments, suggest_keyword_errors
+from .._internal.input_validation import suggest_keyword_errors
 
 if TYPE_CHECKING:
     from ..budget import AttemptUsage
@@ -34,7 +30,7 @@ def _validate_number(value: object, *, name: str, integer: bool = False) -> None
         raise ValueError(f"{name} must be a finite number (got {value!r})")
 
 
-@dataclass
+@dataclass(kw_only=True)
 class RetryConfig:
     """Configuration for retry behavior.
 
@@ -101,7 +97,7 @@ class RetryConfig:
 _DEFAULT_MAX_COOLDOWN_SECONDS = 600.0
 
 
-@dataclass
+@dataclass(kw_only=True)
 class RateLimitConfig:
     """Configuration for rate limit handling."""
 
@@ -180,7 +176,7 @@ class RateLimitConfig:
             )
 
 
-@dataclass
+@dataclass(kw_only=True)
 class StartupRampConfig:
     """Optional concurrency ramp applied when an execution host starts."""
 
@@ -220,7 +216,7 @@ class AbortMode(str, Enum):
     CANCEL_ACTIVE = "cancel_active"
 
 
-@dataclass
+@dataclass(kw_only=True)
 class GuardrailConfig:
     """Optional deadlines, fail-fast policy, and a total token/cost budget.
 
@@ -322,7 +318,7 @@ class GuardrailConfig:
         )
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ProcessorConfig:
     """Complete configuration for batch processor."""
 
@@ -330,13 +326,6 @@ class ProcessorConfig:
     # `concurrency` when that knob is set, else the historical default of 5 —
     # always an int afterwards. An explicit value overrides the derived one.
     max_workers: int | None = None
-    # Deprecated alias for attempt_timeout — kept in this position
-    # so positional construction keeps working. The property attached below
-    # the class routes reads to attempt_timeout (with a DeprecationWarning)
-    # and normalizes the stored slot to None after __post_init__ resolution,
-    # so dataclasses.replace() round-trips without re-triggering the alias
-    # path. repr/compare are off: attempt_timeout is the canonical field.
-    timeout_per_item: float | None = field(default=None, repr=False, compare=False)
     # Timeout for user-supplied post-processor functions (seconds).
     # Post-processors may do database/IO work; leave generous but bounded.
     # This is the single source of truth — it is threaded into
@@ -359,10 +348,6 @@ class ProcessorConfig:
     progress_interval: int = 10  # Log every N items
     progress_callback_timeout: float | None = 5.0  # Timeout for progress callback (seconds)
 
-    # Deprecated since 0.28 and removed in 1.0: never read by the library.
-    # Passing True warns (the value is kept).
-    enable_detailed_logging: bool = False
-
     # Queue management.
     # 0 = unlimited (recommended). A positive bound must be >= the total number
     # of items you add_work() before process_all(): workers only start in
@@ -374,18 +359,16 @@ class ProcessorConfig:
     # Dry-run mode (for testing configuration without making API calls)
     dry_run: bool = False
 
-    # Optional explicit provider/client capacity. Kept last to preserve the
-    # positional ordering of every pre-existing dataclass field. Attempts above
-    # this limit wait before strategy.execute() and timeout_per_item; when the
+    # Optional explicit provider/client capacity. Attempts above this limit
+    # wait before strategy.execute() and its attempt_timeout; when the
     # strategy advertises max_concurrency, the lower limit applies.
     max_provider_concurrency: int | None = None
 
-    # Optional cold-start ramp. Kept after all prior fields for positional
-    # compatibility; None preserves immediate full concurrency.
+    # Optional cold-start ramp; None preserves immediate full concurrency.
     startup_ramp: StartupRampConfig | None = None
 
-    # End-to-end item/batch deadlines and opt-in fail-fast behavior. Appended
-    # for positional compatibility; defaults preserve pre-guardrail semantics.
+    # End-to-end item/batch deadlines and opt-in fail-fast behavior; defaults
+    # preserve pre-guardrail semantics.
     guardrails: GuardrailConfig = field(default_factory=GuardrailConfig)
 
     # Timeout applied to EACH execute() attempt (seconds), enforced via
@@ -395,10 +378,9 @@ class ProcessorConfig:
     # backoff waits between attempts). Size it for one slow call, not the whole
     # retry chain; for a whole-item budget use
     # GuardrailConfig.total_timeout_per_item. Renamed from timeout_per_item in
-    # v0.20.0 (the old name remains a deprecated constructor alias and
-    # attribute); None means "not passed" and resolves to the 120.0 default in
-    # __post_init__, so it is always a float afterwards. Appended after all
-    # prior fields for positional compatibility.
+    # v0.20.0 (the old name was removed in 1.0); None means "not passed" and
+    # resolves to the 120.0 default in __post_init__, so it is always a float
+    # afterwards.
     attempt_timeout: float | None = None
 
     # Single concurrency knob (issue #97). When set, coherently sizes
@@ -416,57 +398,26 @@ class ProcessorConfig:
     concurrency: int | None = None
 
     # Maximum completed WorkItemResult objects waiting for a streaming
-    # consumer. Appended for positional compatibility. 0 preserves the
+    # consumer. 0 preserves the
     # historical unbounded handoff; a positive value applies backpressure to
     # workers after execution, checkpointing, and terminal bookkeeping.
     max_result_queue_size: int = 0
 
     # Minimum time between terminal renders for the bundled ``progress=True``
     # reporter. Custom progress callbacks remain per-item and are unaffected.
-    # Appended for positional compatibility.
     progress_refresh_interval_seconds: float = 0.1
 
-    # Per-quota-scope proactive token admission. Appended for positional
-    # compatibility. TPM is disabled unless a positive integer is supplied.
+    # Per-quota-scope proactive token admission. TPM is disabled unless a
+    # positive integer is supplied.
     max_tokens_per_minute: int | None = None
     token_estimator: TokenEstimator | None = None
     # None preserves the historical full-minute token bucket.
     quota_burst_seconds: float | None = None
 
     def __post_init__(self) -> None:
-        """Resolve the deprecated timeout alias, then validate."""
-        # Raw constructor value — the alias property's setter stores writes in
-        # __dict__ directly, and its getter is bypassed here on purpose.
-        alias_value = self.__dict__.get("timeout_per_item")
-        if alias_value is not None:
-            if self.attempt_timeout is not None:
-                raise ValueError(
-                    "Pass attempt_timeout only — timeout_per_item is a deprecated "
-                    f"alias for it (got attempt_timeout={self.attempt_timeout}, "
-                    f"timeout_per_item={alias_value})."
-                )
-            warnings.warn(
-                "ProcessorConfig(timeout_per_item=...) is deprecated; use "
-                "attempt_timeout=... (same per-attempt semantics). "
-                "timeout_per_item will be removed in 1.0.",
-                DeprecationWarning,
-                # caller -> keyword-checking wrapper -> __init__ -> __post_init__
-                stacklevel=4,
-            )
-            self.attempt_timeout = alias_value
+        """Resolve defaults and derived knobs, then validate."""
         if self.attempt_timeout is None:
             self.attempt_timeout = 120.0
-        if self.enable_detailed_logging and not _COPYING_USER_CONFIG.get():
-            warnings.warn(
-                "ProcessorConfig(enable_detailed_logging=True) has no effect and is "
-                "deprecated; it will be removed in 1.0. Set the level of the "
-                "'async_batch_llm' logger instead.",
-                DeprecationWarning,
-                stacklevel=4,
-            )
-        # Normalize the alias slot so dataclasses.replace() re-passes None and
-        # the resolved value travels via attempt_timeout alone.
-        self.__dict__["timeout_per_item"] = None
         # Derive unset knobs from the single concurrency knob (explicit values
         # win; see the concurrency field comment).
         if self.concurrency is not None:
@@ -617,86 +568,7 @@ class ProcessorConfig:
         # gate will pace workers as configured (issue #147).
 
 
-# Set while the library copies a user's config, so the copy doesn't repeat a
-# deprecation warning the user already got when building it. A ContextVar, not
-# a warnings filter: filters are process-global and not task-safe.
-_COPYING_USER_CONFIG: ContextVar[bool] = ContextVar("_COPYING_USER_CONFIG", default=False)
-
-
-def replace_user_config(config: ProcessorConfig, **changes: Any) -> ProcessorConfig:
-    """``dataclasses.replace`` for a caller's config, without repeat warnings."""
-    token = _COPYING_USER_CONFIG.set(True)
-    try:
-        return dataclasses.replace(config, **changes)
-    finally:
-        _COPYING_USER_CONFIG.reset(token)
-
-
-def _get_timeout_per_item(self: ProcessorConfig) -> float | None:
-    # dataclasses.replace() reads every init field via getattr; give it the
-    # normalized raw slot (None after __post_init__) so replacing a config
-    # doesn't re-trigger the alias path or the warning. Same frame check as
-    # WorkItemResult.gemini_safety_ratings in base.py.
-    if sys._getframe(1).f_globals.get("__name__") == "dataclasses":
-        return self.__dict__.get("timeout_per_item")
-    warnings.warn(
-        "ProcessorConfig.timeout_per_item is deprecated and will be removed in 1.0; "
-        "read config.attempt_timeout instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    # Always a float after __post_init__ resolution.
-    return cast(float, self.attempt_timeout)
-
-
-def _set_timeout_per_item(self: ProcessorConfig, value: float | None) -> None:
-    if "attempt_timeout" not in self.__dict__:
-        # Mid-__init__: the generated constructor assigns fields in order and
-        # attempt_timeout comes last, so stash the raw alias value for
-        # __post_init__ to resolve (a redirect here would be clobbered by the
-        # later attempt_timeout default assignment).
-        self.__dict__["timeout_per_item"] = value
-        return
-    warnings.warn(
-        "ProcessorConfig.timeout_per_item is deprecated and will be removed in 1.0; "
-        "set config.attempt_timeout instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    self.attempt_timeout = value
-
-
-# Replace the plain dataclass attribute with a property AFTER the decorator
-# has generated __init__, preserving attribute access for existing user code
-# with a deprecation nudge toward attempt_timeout. (Same pattern as
-# WorkItemResult.gemini_safety_ratings in base.py.)
-ProcessorConfig.timeout_per_item = property(  # type: ignore[assignment,method-assign]  # ty:ignore[invalid-assignment]
-    _get_timeout_per_item, _set_timeout_per_item
-)
-
-
-def _positional_deprecation(cls: type, first_field: str) -> str:
-    name = cls.__name__
-    return (
-        f"Passing positional arguments to {name}() is deprecated; from 1.0 its fields "
-        f"are keyword-only. Pass each field by name, for example {name}({first_field}=...)."
-    )
-
-
-# Keyword-only from 1.0 (design decision D3): warn on positional arguments now.
+# Keyword-checking wrapper: unknown or removed keywords get a suggestion.
 ProcessorConfig.__init__ = suggest_keyword_errors(  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
-    ProcessorConfig.__init__,
-    positional_deprecation=_positional_deprecation(ProcessorConfig, "max_workers"),
-)
-RetryConfig.__init__ = deprecate_positional_arguments(  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
-    RetryConfig.__init__, _positional_deprecation(RetryConfig, "max_attempts")
-)
-RateLimitConfig.__init__ = deprecate_positional_arguments(  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
-    RateLimitConfig.__init__, _positional_deprecation(RateLimitConfig, "cooldown_seconds")
-)
-StartupRampConfig.__init__ = deprecate_positional_arguments(  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
-    StartupRampConfig.__init__, _positional_deprecation(StartupRampConfig, "initial_concurrency")
-)
-GuardrailConfig.__init__ = deprecate_positional_arguments(  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
-    GuardrailConfig.__init__, _positional_deprecation(GuardrailConfig, "total_timeout_per_item")
+    ProcessorConfig.__init__
 )

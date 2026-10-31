@@ -420,7 +420,7 @@ frequent for an external metrics backend.
 **Symptom.** Code expects `LLMCallPool` to provide an HTTP endpoint, credential
 store, provider routing, model catalog, or centralized policy plane.
 
-**Likely cause.** Its former name, `LLMGateway` (deprecated since v0.27),
+**Likely cause.** Its former name, `LLMGateway` (removed in 1.0),
 suggested a network gateway. It is an in-process shared executor.
 
 **How to confirm.** Calls use the shared executor directly and there is no
@@ -433,28 +433,23 @@ recovery, deadlines, and artifacts.
 **Related guide.** [Single Call and Shared Call Pool](api/single-call-pool.md) and
 [Choosing Between ABL and Alternatives](comparison.md#litellm-and-other-ai-gateways).
 
-## Deprecation warnings after upgrading
+## `AttributeError` or `TypeError` after upgrading to 1.0
 
-**Symptom.** Code raises a `DeprecationWarning` or `UserWarning` after upgrading.
+**Symptom.** Code that ran on 0.x raises `AttributeError` for a top-level name,
+`TypeError` for a keyword argument, or fails items whose `execute()` returns two
+values.
 
-**Likely cause.** A compatibility shim is still in use:
+**Likely cause.** It uses a name or behavior that 0.27 or 0.28 deprecated and 1.0
+removed: `LLMGateway`, `BatchProcessor`, `ProcessingStats`,
+`grounding_metadata_extractor`, `timeout_per_item`, `enable_detailed_logging`,
+positional configuration arguments, the legacy `ParallelBatchProcessor` parameters,
+`gemini_safety_ratings`, calling `cache_hit_rate()`, omitting `cached_token_rate`,
+integer prompts, or a 2-tuple from `execute()`.
 
-- v0.20: `timeout_per_item` (now `attempt_timeout`) and calling
-  `cache_hit_rate()` (now a property).
-- v0.27: `LLMGateway`, `execute()` returning a 2-tuple,
-  `effective_input_tokens()`/`estimated_cost()` without `cached_token_rate`,
-  `BatchProcessor`, `ProcessingStats`, and `grounding_metadata_extractor`.
-
-**How to confirm.** Run tests with `-W error::DeprecationWarning`, or read
-pytest's warnings summary, and locate the deprecated names. On Python 3.14 with
-google-genai installed, add `-W "ignore::DeprecationWarning:google.genai.types"` after
-the error filter; google-genai emits its own warning at import.
+**How to confirm.** The error message names the replacement. On v0.31, run your
+tests with `-W error::DeprecationWarning` to find every use before upgrading.
 
 **Fix.** Use the replacements in the
-[v0.27 deprecations table](migration/v0.27.md#deprecations); for the v0.20 names,
-use `ProcessorConfig(attempt_timeout=...)` and `.cache_hit_rate`. The v0.27 names
-are removed in 1.0; the v0.20 forms are slated for removal in the next major
-release.
+[removed-in-1.0 table](stability.md#removed-in-10).
 
-**Related guide.** [Migrating to v0.27](migration/v0.27.md) and
-[Migrating from v0.18.x to v0.20.0](MIGRATION_V0_20.md).
+**Related guide.** [API stability](stability.md).

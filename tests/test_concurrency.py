@@ -209,7 +209,7 @@ async def test_process_item_retries_propagate_cancellation():
         ) -> tuple[str, dict[str, int]]:
             start_event.set()
             await asyncio.sleep(10)
-            return "unreachable", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+            return "unreachable", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}, None
 
     config = ProcessorConfig(max_workers=1, attempt_timeout=30.0)
     processor = ParallelBatchProcessor[str, str, None](config=config)

@@ -1,6 +1,5 @@
 """Comprehensive tests for Gemini strategies and models to improve coverage."""
 
-import sys
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -57,7 +56,7 @@ class TestLLMCallStrategyBase:
             async def execute(
                 self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
             ):
-                return "result", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+                return "result", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}, None
 
         strategy = SimpleStrategy()
         output, tokens = await strategy.dry_run("Test prompt here")
@@ -76,7 +75,7 @@ class TestLLMCallStrategyBase:
             async def execute(
                 self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
             ):
-                return "result", {}
+                return "result", {}, None
 
         strategy = SimpleStrategy()
         await strategy.prepare()  # Should not raise
@@ -89,7 +88,7 @@ class TestLLMCallStrategyBase:
             async def execute(
                 self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
             ):
-                return "result", {}
+                return "result", {}, None
 
         strategy = SimpleStrategy()
         await strategy.cleanup()  # Should not raise
@@ -102,7 +101,7 @@ class TestLLMCallStrategyBase:
             async def execute(
                 self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
             ):
-                return "result", {}
+                return "result", {}, None
 
         strategy = SimpleStrategy()
         await strategy.on_error(ValueError("test"), 1, None)  # Should not raise
@@ -331,14 +330,6 @@ class TestGeminiStrategy:
         assert output == "plain text output"
         assert tokens["total_tokens"] == 30
 
-    @pytest.mark.skipif(
-        sys.version_info < (3, 11),
-        reason=(
-            "typing.get_overloads was added in 3.11; on 3.10 typing.overload does "
-            "not register at runtime, so the structural check can't see them. The "
-            "static-analysis guarantee still holds on 3.10 via mypy."
-        ),
-    )
     def test_default_parser_is_restricted_to_str_via_overloads(self):
         """The default (no response_parser) path should only type-check when
         TOutput is str, so GeminiStrategy[SomeModel](model=m) — which at runtime

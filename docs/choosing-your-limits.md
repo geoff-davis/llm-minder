@@ -212,7 +212,7 @@ config = ProcessorConfig(
 `attempt_timeout` bounds one `execute()` call (default 120s), not its quota or
 provider-capacity wait. Size it for one slow response: p99 provider latency
 plus margin. Long-output or reasoning models may need more than the common 30s
-starting point. `timeout_per_item` is its deprecated pre-v0.20 alias.
+starting point.
 
 `GuardrailConfig.total_timeout_per_item` bounds one logical item end to end:
 cooldown, estimation, RPM/TPM wait, provider admission, every call, and retry

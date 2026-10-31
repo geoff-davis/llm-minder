@@ -2,6 +2,7 @@
 
 import importlib.util
 import time
+from datetime import UTC
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -261,7 +262,7 @@ async def test_create_cache_without_user_tags_includes_content_tag():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", ["same", "different", "legacy", "different_model"])
 async def test_prov2_cache_requires_exact_content_identity(case):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from google.genai.types import CachedContent, Content, Part
 
@@ -275,8 +276,8 @@ async def test_prov2_cache_requires_exact_content_identity(case):
             name=f"cachedContents/{len(stored)}",
             model=f"models/{model}",
             display_name=config.display_name,
-            create_time=datetime.now(timezone.utc),
-            expire_time=datetime.now(timezone.utc) + timedelta(hours=1),
+            create_time=datetime.now(UTC),
+            expire_time=datetime.now(UTC) + timedelta(hours=1),
         )
         stored.append(cache)
         return cache

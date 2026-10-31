@@ -29,7 +29,11 @@ class CountingStrategy(LLMCallStrategy[str]):
     ) -> tuple[str, TokenUsage]:
         """Track execute() calls."""
         self.execute_count += 1
-        return f"Response: {prompt}", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+        return (
+            f"Response: {prompt}",
+            {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+            None,
+        )
 
 
 @pytest.mark.asyncio
@@ -142,7 +146,7 @@ async def test_prepare_failure_propagates():
         async def execute(
             self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
         ) -> tuple[str, TokenUsage]:
-            return "Should not reach here", {"input_tokens": 0}
+            return "Should not reach here", {"input_tokens": 0}, None
 
     strategy = FailingPrepareStrategy()
     config = ProcessorConfig(max_workers=2, attempt_timeout=10.0)
@@ -173,7 +177,7 @@ async def test_mixed_shared_and_unique_strategies():
         async def execute(
             self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
         ) -> tuple[str, TokenUsage]:
-            return f"{self.name}: {prompt}", {"input_tokens": 10}
+            return f"{self.name}: {prompt}", {"input_tokens": 10}, None
 
     # Shared strategies
     shared_strategy_a = Strategy("SharedA")
@@ -238,7 +242,7 @@ async def test_strategy_prepare_idempotency():
         async def execute(
             self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
         ) -> tuple[str, TokenUsage]:
-            return "Response", {"input_tokens": 10}
+            return "Response", {"input_tokens": 10}, None
 
     strategy = Strategy()
     config = ProcessorConfig(max_workers=1, attempt_timeout=10.0)

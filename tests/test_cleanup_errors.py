@@ -42,11 +42,15 @@ class _OkStrategy(LLMCallStrategy[str]):
     async def execute(
         self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
     ) -> tuple[str, TokenUsage]:
-        return f"ok-{self.name}:{prompt}", {
-            "input_tokens": 1,
-            "output_tokens": 1,
-            "total_tokens": 2,
-        }
+        return (
+            f"ok-{self.name}:{prompt}",
+            {
+                "input_tokens": 1,
+                "output_tokens": 1,
+                "total_tokens": 2,
+            },
+            None,
+        )
 
 
 class _BadCleanupStrategy(_OkStrategy):

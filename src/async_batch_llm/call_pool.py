@@ -224,7 +224,7 @@ class LLMCallPool(Generic[TOutput]):
             # unwinds through __aexit__, releasing the slot.
             try:
                 return await asyncio.wait_for(run, effective_timeout)
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 return WorkItemResult(
                     item_id=item_id, success=False, error="submit timed out", context=None
                 )

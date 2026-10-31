@@ -264,7 +264,7 @@ class MyStrategy(LLMCallStrategy[str]):
             "output_tokens": response.usage.output_tokens,
             "total_tokens": response.usage.total_tokens,
         }
-        return response.text, tokens
+        return response.text, tokens, None  # (output, tokens, metadata)
 ```
 
 ### Post-processing results
@@ -422,7 +422,7 @@ the project's release-prep flow.
 ### CI workflows
 
 - `test.yml` — on every push/PR:
-  - `test` (Python 3.10–3.15; all six legs are required checks) and
+  - `test` (Python 3.11–3.15; all five legs are required checks) and
     `test-macos`;
   - `quality` (ruff lint and format, mypy, ty, `make package-check`; markdownlint
     runs only in the prek hook and `make ci`, not in CI);
@@ -468,7 +468,7 @@ missing skill. The v0.23.1 working version was never published.
   or lookup changes; `JsonlArtifactStore` and `SqliteArtifactStore` have
   drifted apart more than once.
 - Don't re-run the full suite on both interpreters by routine; the
-  implementing side already runs `make ci`. Reserve the 3.10/3.13 pair
+  implementing side already runs `make ci`. Reserve the 3.11/3.13 pair
   for cancellation and asyncio-semantics changes, where they diverge.
 
 **Changing a shared policy.** Most round-N fixes in that lifecycle work
@@ -526,8 +526,8 @@ Key test files:
 - `test_legacy_fixtures.py` — artifacts written by v0.18, v0.21, v0.24.1, v0.26,
   v0.27, v0.28, v0.29, v0.30, v0.31, and v0.32 still read and replay (fixtures in `tests/fixtures/`; add one
   per release via `scripts/write_legacy_fixtures.py`, see `/release-prep`).
-- `test_deprecations.py`, `test_stability_page.py`, `test_categories.py` —
-  deprecation warnings, every `__all__` name classified on `docs/stability.md`,
+- `test_removed_in_1_0.py`, `test_stability_page.py`, `test_categories.py` —
+  the 1.0 removals and their hints, every `__all__` name classified on `docs/stability.md`,
   and every produced error/timeout category in `ErrorCategory`/`TimeoutCategory`.
 - `test_release_docs.py` — README/onboarding invariants and the pinned release
   version (updated by each release PR).
@@ -552,7 +552,7 @@ src/async_batch_llm/
 ├── single.py             # call / call_result (one-shot convenience API)
 ├── call_pool.py          # LLMCallPool (queue-less shared-cooldown service)
 ├── gateway.py            # old path: re-exports LLMCallPool (through 1.x) and
-│                         # the deprecated LLMGateway alias (removed in 1.0)
+│                         # a hint for the removed LLMGateway alias
 ├── factory.py            # llm("provider:model")
 ├── callable_strategy.py  # CallableStrategy / CallOutcome
 ├── categories.py         # ErrorCategory, TimeoutCategory
@@ -744,7 +744,7 @@ assert result.total_items == result.succeeded + result.failed
 5. **Prometheus metrics** — built-in metrics export (we have
    `MetricsObserver`; this is about a Prometheus-format exporter on top).
 6. **Dynamic worker scaling** — adjust workers based on load.
-7. **1.0 removals.** Everything v0.27 deprecates is removed in 1.0: the 2-tuple
+7. **1.0 removals (done on `main` for 1.0.0rc1).** Everything v0.27 deprecated is removed: the 2-tuple
    `execute()` shim, omitted `cached_token_rate`, `LLMGateway`,
    `BatchProcessor`/`ProcessingStats`/`grounding_metadata_extractor` as public
    names, `gemini_safety_ratings`, `timeout_per_item`, the legacy positional

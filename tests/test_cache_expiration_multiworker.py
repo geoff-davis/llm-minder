@@ -1,7 +1,7 @@
 """Tests for cache expiration with multiple workers."""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -36,16 +36,16 @@ async def test_cache_expiration_only_one_new_cache_created():
     # Create two fake cache objects with different names
     old_cache = MagicMock()
     old_cache.name = "old-cache-123"
-    old_cache.expire_time = datetime.now(timezone.utc) - timedelta(hours=1)  # Already expired
+    old_cache.expire_time = datetime.now(UTC) - timedelta(hours=1)  # Already expired
     old_cache.model = "models/gemini-2.0-flash"  # Full path format
 
     new_cache = MagicMock()
     new_cache.name = "new-cache-456"
-    new_cache.expire_time = datetime.now(timezone.utc) + timedelta(hours=1)  # Fresh
+    new_cache.expire_time = datetime.now(UTC) + timedelta(hours=1)  # Fresh
     new_cache.model = "models/gemini-2.0-flash"  # Full path format
     new_cache.create_time = MagicMock()
     new_cache.expire_time = None
-    new_cache.create_time.timestamp = MagicMock(return_value=datetime.now(timezone.utc).timestamp())
+    new_cache.create_time.timestamp = MagicMock(return_value=datetime.now(UTC).timestamp())
 
     async def mock_create_cache(*args, **kwargs):
         """Mock cache creation - track how many times it's called."""
@@ -93,9 +93,7 @@ async def test_cache_expiration_only_one_new_cache_created():
     # Manually set the cache to an expired one to simulate the scenario
     cached_model._cache = old_cache
     cached_model._cache_lock = asyncio.Lock()
-    cached_model._cache_created_at = (
-        datetime.now(timezone.utc).timestamp() - 7200
-    )  # Created 2 hours ago
+    cached_model._cache_created_at = datetime.now(UTC).timestamp() - 7200  # Created 2 hours ago
     cached_model._prepared = True
 
     strategy = GeminiStrategy(
@@ -162,21 +160,19 @@ async def test_cache_expiration_during_processing():
     # Cache starts valid but will "expire" after 3 items
     current_cache = MagicMock()
     current_cache.name = "initial-cache"
-    current_cache.expire_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    current_cache.expire_time = datetime.now(UTC) + timedelta(hours=1)
     current_cache.model = "models/gemini-2.0-flash"
     current_cache.create_time = MagicMock()
     current_cache.expire_time = None
-    current_cache.create_time.timestamp = MagicMock(
-        return_value=datetime.now(timezone.utc).timestamp()
-    )
+    current_cache.create_time.timestamp = MagicMock(return_value=datetime.now(UTC).timestamp())
 
     new_cache = MagicMock()
     new_cache.name = "renewed-cache"
-    new_cache.expire_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    new_cache.expire_time = datetime.now(UTC) + timedelta(hours=1)
     new_cache.model = "models/gemini-2.0-flash"
     new_cache.create_time = MagicMock()
     new_cache.expire_time = None
-    new_cache.create_time.timestamp = MagicMock(return_value=datetime.now(timezone.utc).timestamp())
+    new_cache.create_time.timestamp = MagicMock(return_value=datetime.now(UTC).timestamp())
 
     async def mock_create_cache(*args, **kwargs):
         """Track cache creation."""
@@ -205,9 +201,7 @@ async def test_cache_expiration_during_processing():
         # After processing 3 items, make the cache "expire" by backdating
         # _cache_created_at so that remaining TTL < renewal buffer
         if items_processed == 3:
-            cached_model._cache_created_at = (
-                datetime.now(timezone.utc) - timedelta(hours=2)
-            ).timestamp()
+            cached_model._cache_created_at = (datetime.now(UTC) - timedelta(hours=2)).timestamp()
 
         response = MagicMock()
         response.text = "Response"
@@ -225,7 +219,7 @@ async def test_cache_expiration_during_processing():
     # Set initial cache
     cached_model._cache = current_cache
     cached_model._cache_lock = asyncio.Lock()
-    cached_model._cache_created_at = datetime.now(timezone.utc).timestamp()
+    cached_model._cache_created_at = datetime.now(UTC).timestamp()
     cached_model._prepared = True
 
     strategy = GeminiStrategy(
@@ -273,21 +267,21 @@ async def test_cache_check_is_thread_safe():
 
     cache = MagicMock()
     cache.name = "test-cache"
-    cache.expire_time = datetime.now(timezone.utc) - timedelta(hours=1)  # Expired
+    cache.expire_time = datetime.now(UTC) - timedelta(hours=1)  # Expired
     cache.model = "models/gemini-2.0-flash"
     cache.create_time = MagicMock()
     cache.expire_time = None
     cache.create_time.timestamp = MagicMock(
-        return_value=(datetime.now(timezone.utc) - timedelta(hours=2)).timestamp()
+        return_value=(datetime.now(UTC) - timedelta(hours=2)).timestamp()
     )
 
     new_cache = MagicMock()
     new_cache.name = "new-cache"
-    new_cache.expire_time = datetime.now(timezone.utc) + timedelta(hours=1)
+    new_cache.expire_time = datetime.now(UTC) + timedelta(hours=1)
     new_cache.model = "models/gemini-2.0-flash"
     new_cache.create_time = MagicMock()
     new_cache.expire_time = None
-    new_cache.create_time.timestamp = MagicMock(return_value=datetime.now(timezone.utc).timestamp())
+    new_cache.create_time.timestamp = MagicMock(return_value=datetime.now(UTC).timestamp())
 
     async def mock_create(*args, **kwargs):
         nonlocal create_count
@@ -325,7 +319,7 @@ async def test_cache_check_is_thread_safe():
 
     cached_model._cache = cache
     cached_model._cache_lock = asyncio.Lock()
-    cached_model._cache_created_at = (datetime.now(timezone.utc) - timedelta(hours=2)).timestamp()
+    cached_model._cache_created_at = (datetime.now(UTC) - timedelta(hours=2)).timestamp()
     cached_model._prepared = True
 
     strategy = GeminiStrategy(

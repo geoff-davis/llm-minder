@@ -11,7 +11,7 @@ import hashlib
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, TypeAlias
 
 from ..base import LLMWorkItem, WorkItemResult
@@ -79,7 +79,7 @@ class PreparedArtifactItem:
 
 def utc_now() -> str:
     """Return a stable UTC timestamp spelling for persisted records."""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def canonical_json(value: JSONValue) -> str:

@@ -11,7 +11,7 @@ from async_batch_llm.middleware import BaseMiddleware
 
 class Echo(LLMCallStrategy):
     async def execute(self, prompt, attempt, timeout, state=None):
-        return prompt, {"total_tokens": 1}
+        return prompt, {"total_tokens": 1}, None
 
 
 def item(name="x"):

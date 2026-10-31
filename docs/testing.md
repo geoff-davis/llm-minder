@@ -81,26 +81,18 @@ assert result.succeeded == len(test_items)
 Real API calls in the framework's own suite live behind the `integration`
 pytest marker and are skipped by default.
 
-## 4. Preparing for 1.0
+## 4. Catching deprecations early
 
-v0.27 deprecates names and behaviors that 1.0 removes. Each emits a
-`DeprecationWarning`, which Python hides outside `__main__`, so turn them into
-errors in your test run:
+After 1.0, a name or behavior is deprecated for at least one minor release before a
+major release removes it. Each deprecation emits a `DeprecationWarning`, which Python
+hides outside `__main__`, so turn them into errors in your test run:
 
 ```bash
 pytest -W error::DeprecationWarning
 ```
 
-This fails on, among others:
-
-- a custom `execute()` that returns the `(output, tokens)` 2-tuple;
-- `effective_input_tokens()` or `estimated_cost()` called without `cached_token_rate`;
-- `LLMGateway`, `BatchProcessor`, `ProcessingStats`, and `grounding_metadata_extractor`.
-
-`from async_batch_llm import *` warns once for each deprecated name, so it also fails
-under this filter; import the names you use explicitly. Other packages can emit their
-own `DeprecationWarning`s (google-genai does at import on Python 3.14); add an
-`ignore` filter for those modules, for example
-`-W "ignore::DeprecationWarning:google.genai.types"`. The
-[v0.27 migration guide](migration/v0.27.md#deprecations) lists every deprecation and
+Other packages can emit their own `DeprecationWarning`s (google-genai does at import
+on Python 3.14); add an `ignore` filter for those modules, for example
+`-W "ignore::DeprecationWarning:google.genai.types"`. Upgrading from 0.x? The
+[removed-in-1.0 table](stability.md#removed-in-10) lists every name 1.0 removed and
 its replacement.

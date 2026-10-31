@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import inspect
 import logging
 import time
@@ -46,7 +47,6 @@ from .base import (
     _ProcessorState,
 )
 from .core import ProcessorConfig
-from .core.config import replace_user_config
 from .parallel import ParallelBatchProcessor
 
 if TYPE_CHECKING:
@@ -105,12 +105,13 @@ def _to_work_item(
             "prompt tuple must be (item_id, prompt) or (item_id, prompt, context); "
             f"got a tuple of length {len(parts)} at index {index}."
         )
-    if not isinstance(entry, (str, int)) or isinstance(entry, bool):
+    if not isinstance(entry, str):
+        # Integer prompts were accepted (and converted) before 1.0.
         raise TypeError(
             f"Prompt at index {index} must be a string or a 2- or 3-tuple; "
             f"got {type(entry).__name__}."
         )
-    return LLMWorkItem(item_id=f"item_{index}", strategy=strategy, prompt=str(entry))
+    return LLMWorkItem(item_id=f"item_{index}", strategy=strategy, prompt=entry)
 
 
 class _ProgressReporter:
@@ -274,7 +275,7 @@ def _apply_concurrency_shorthand(
     if config.max_workers == 5:
         # The historical default — treat as unset so derivation applies.
         overrides["max_workers"] = None
-    return replace_user_config(config, **overrides)
+    return dataclasses.replace(config, **overrides)
 
 
 async def _process_stream_impl(
@@ -351,16 +352,7 @@ async def _process_stream_impl(
     async def _feed() -> None:
         try:
             index = 0
-            warned_integer = False
             async for entry in _aiter(prompts):
-                if isinstance(entry, int) and not isinstance(entry, bool) and not warned_integer:
-                    warnings.warn(
-                        f"Integer prompt at index {index} is deprecated and will be removed in 1.0; "
-                        "pass a string instead.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                    warned_integer = True
                 await processor.add_work(_to_work_item(entry, index, strategy))  # backpressure here
                 index += 1
         except asyncio.CancelledError:

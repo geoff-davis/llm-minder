@@ -59,7 +59,7 @@ class _ClearThenBlock(LLMCallStrategy[str]):
             await asyncio.Event().wait()
         finally:
             self.second_cancelled.set()
-        return "unreachable", _TOKENS
+        return "unreachable", _TOKENS, None
 
     async def on_error(
         self, exception: Exception, attempt: int, state: RetryState | None = None
@@ -76,7 +76,7 @@ class _SuccessfulStrategy(LLMCallStrategy[str]):
         self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
     ) -> tuple[str, TokenUsage]:
         del attempt, timeout, state
-        return prompt, _TOKENS
+        return prompt, _TOKENS, None
 
 
 async def test_retry_state_clear_cannot_remove_total_item_deadline() -> None:
@@ -192,7 +192,7 @@ async def test_concurrent_retry_states_have_distinct_private_runtime() -> None:
             assert state is not None
             seen.append((id(state), id(runtime_state(state))))
             await asyncio.sleep(0)
-            return prompt, _TOKENS
+            return prompt, _TOKENS, None
 
     processor = ParallelBatchProcessor(config=ProcessorConfig(max_workers=2))
     strategy = Capture()
@@ -272,7 +272,7 @@ async def test_nested_and_concurrent_execution_preserves_prepared_context():
                     )
                     assert result.success
                     assert host.executor._current_prepared() is prepared
-            return prompt, _TOKENS
+            return prompt, _TOKENS, None
 
     strategy = NestedStrategy()
     config = ProcessorConfig()

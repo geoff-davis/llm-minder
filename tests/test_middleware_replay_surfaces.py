@@ -50,7 +50,7 @@ class CountingStrategy(LLMCallStrategy[str]):
     ) -> tuple[str, dict[str, int]]:
         del attempt, timeout, state
         self.calls += 1
-        return f"out:{prompt}", _TOKENS
+        return f"out:{prompt}", _TOKENS, None
 
 
 class Upper(BaseMiddleware):
