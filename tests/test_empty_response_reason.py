@@ -14,6 +14,7 @@ from async_batch_llm import (
     DefaultErrorClassifier,
     EmptyResponseError,
     ErrorInfo,
+    GeminiCachedModel,
     GeminiErrorClassifier,
     GeminiModel,
     LLMResponse,
@@ -93,10 +94,44 @@ def test_truncation_keeps_the_non_retryable_empty_response_category(classifier):
 # ── Gemini ───────────────────────────────────────────────────────────────────
 
 
+class _AsyncIterList:
+    def __init__(self, items: list[Any]) -> None:
+        self._items = items
+
+    def __aiter__(self) -> _AsyncIterList:
+        return self
+
+    async def __anext__(self) -> Any:
+        if not self._items:
+            raise StopAsyncIteration
+        return self._items.pop(0)
+
+
 def _gemini_client(response: Any) -> MagicMock:
     client = MagicMock()
     client.aio.models.generate_content = AsyncMock(return_value=response)
+    client.aio.caches.list = AsyncMock(return_value=_AsyncIterList([]))
+    cache = MagicMock()
+    cache.name = "test-cache"
+    cache.expire_time = None
+    cache.create_time = None
+    client.aio.caches.create = AsyncMock(return_value=cache)
     return client
+
+
+@pytest.fixture(params=["plain", "cached"])
+def gemini_generate(request):
+    """Run one generate() on GeminiModel or GeminiCachedModel against a canned response."""
+
+    async def run(response: Any) -> LLMResponse:
+        client = _gemini_client(response)
+        if request.param == "plain":
+            return await GeminiModel("gemini-test", client).generate("q")
+        model = GeminiCachedModel(model="gemini-test", client=client, cached_content=[])
+        await model.prepare()
+        return await model.generate("q")
+
+    return run
 
 
 def _gemini_usage(types: Any) -> Any:
@@ -117,38 +152,75 @@ def _gemini_usage(types: Any) -> Any:
         ("OTHER", "unknown"),
     ],
 )
-async def test_gemini_finish_reasons(finish_reason, reason):
+async def test_gemini_finish_reasons(gemini_generate, finish_reason, reason):
     types = pytest.importorskip("google.genai.types")
     response = types.GenerateContentResponse(
         candidates=[types.Candidate(finish_reason=finish_reason)],
         usage_metadata=_gemini_usage(types),
     )
     with pytest.raises(EmptyResponseError, match=finish_reason) as caught:
-        await GeminiModel("gemini-test", _gemini_client(response)).generate("q")
+        await gemini_generate(response)
     assert caught.value.reason == reason
     assert caught.value.provider_reason == finish_reason
     assert isinstance(caught.value, TruncatedResponseError) == (reason == "max_tokens")
 
 
-async def test_gemini_blocked_prompt_uses_the_block_reason():
+async def test_gemini_blocked_prompt_uses_the_block_reason(gemini_generate):
     types = pytest.importorskip("google.genai.types")
     response = types.GenerateContentResponse(
         prompt_feedback=types.GenerateContentResponsePromptFeedback(block_reason="SAFETY"),
         usage_metadata=_gemini_usage(types),
     )
     with pytest.raises(EmptyResponseError, match="finish_reason=unknown") as caught:
-        await GeminiModel("gemini-test", _gemini_client(response)).generate("q")
+        await gemini_generate(response)
     assert caught.value.reason == "content_filter"
     assert caught.value.provider_reason == "SAFETY"
 
 
-async def test_gemini_without_any_reason_is_unknown():
+async def test_gemini_without_any_reason_is_unknown(gemini_generate):
     types = pytest.importorskip("google.genai.types")
     response = types.GenerateContentResponse(usage_metadata=_gemini_usage(types))
     with pytest.raises(EmptyResponseError) as caught:
-        await GeminiModel("gemini-test", _gemini_client(response)).generate("q")
+        await gemini_generate(response)
     assert caught.value.reason == "unknown"
     assert caught.value.provider_reason is None
+
+
+def _function_call_candidate(types: Any, finish_reason: str) -> Any:
+    part = types.Part(function_call=types.FunctionCall(name="lookup", args={}))
+    return types.Candidate(
+        finish_reason=finish_reason, content=types.Content(role="model", parts=[part])
+    )
+
+
+async def test_gemini_function_call_reply_is_tool_call(gemini_generate):
+    # Gemini ends a function call with a plain STOP; the parts tell it apart.
+    types = pytest.importorskip("google.genai.types")
+    response = types.GenerateContentResponse(
+        candidates=[_function_call_candidate(types, "STOP")],
+        usage_metadata=_gemini_usage(types),
+    )
+    with pytest.raises(EmptyResponseError, match="finish_reason=STOP") as caught:
+        await gemini_generate(response)
+    assert caught.value.reason == "tool_call"
+    assert caught.value.provider_reason == "STOP"
+
+
+@pytest.mark.parametrize(
+    ("finish_reason", "reason"), [("MAX_TOKENS", "max_tokens"), ("SAFETY", "content_filter")]
+)
+async def test_gemini_truncation_and_blocks_win_over_a_function_call_part(
+    gemini_generate, finish_reason, reason
+):
+    types = pytest.importorskip("google.genai.types")
+    response = types.GenerateContentResponse(
+        candidates=[_function_call_candidate(types, finish_reason)],
+        usage_metadata=_gemini_usage(types),
+    )
+    with pytest.raises(EmptyResponseError) as caught:
+        await gemini_generate(response)
+    assert caught.value.reason == reason
+    assert caught.value.provider_reason == finish_reason
 
 
 # ── Chat Completions (OpenAI, OpenRouter, DeepSeek) ──────────────────────────

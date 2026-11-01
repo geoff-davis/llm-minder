@@ -407,13 +407,35 @@ def _raise_empty_response(
     )
 
 
-def _gemini_empty_reason(response: Any, metadata: dict[str, Any] | None) -> str | None:
-    """The candidate's finish reason, or the prompt's block reason when no candidate came back."""
-    finish_reason = _reason_text((metadata or {}).get("finish_reason"))
-    if finish_reason is not None:
-        return finish_reason
-    feedback = getattr(response, "prompt_feedback", None)
-    return _reason_text(getattr(feedback, "block_reason", None))
+def _gemini_empty_reason(
+    response: Any, metadata: dict[str, Any] | None
+) -> tuple[str | None, EmptyResponseReason]:
+    """``(provider_reason, reason)`` for a textless Gemini response.
+
+    The provider reason is the candidate's finish reason, or the prompt's block
+    reason when no candidate came back. A function call ends with a plain
+    ``STOP``, so the candidate's parts decide ``tool_call`` unless the finish
+    reason already names a truncation or a block.
+    """
+    provider_reason = _reason_text((metadata or {}).get("finish_reason"))
+    if provider_reason is None:
+        feedback = getattr(response, "prompt_feedback", None)
+        provider_reason = _reason_text(getattr(feedback, "block_reason", None))
+    reason = _empty_response_reason(provider_reason)
+    if reason in ("no_content", "unknown") and _gemini_has_function_call(response):
+        reason = "tool_call"
+    return provider_reason, reason
+
+
+def _gemini_has_function_call(response: Any) -> bool:
+    """Whether the first candidate's content includes a function-call part."""
+    candidates = getattr(response, "candidates", None)
+    if not isinstance(candidates, list) or not candidates:
+        return False
+    parts = getattr(getattr(candidates[0], "content", None), "parts", None)
+    if not isinstance(parts, list):
+        return False
+    return any(getattr(part, "function_call", None) is not None for part in parts)
 
 
 def _openai_cache_write_tokens(response: Any) -> int:
@@ -616,6 +638,7 @@ class GeminiModel:
         text = response.text
         if text is None:
             metadata = _extract_metadata(response)
+            provider_reason, reason = _gemini_empty_reason(response, metadata)
             safety_info = ""
             if metadata and "safety_ratings" in metadata:
                 safety_info = f" Safety ratings: {metadata['safety_ratings']}"
@@ -623,7 +646,8 @@ class GeminiModel:
                 f"Empty response from model (finish_reason="
                 f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
                 tokens,
-                provider_reason=_gemini_empty_reason(response, metadata),
+                provider_reason=provider_reason,
+                reason=reason,
             )
 
         return _with_cache_group(
@@ -964,6 +988,7 @@ class GeminiCachedModel:
         text = response.text
         if text is None:
             metadata = _extract_metadata(response)
+            provider_reason, reason = _gemini_empty_reason(response, metadata)
             safety_info = ""
             if metadata and "safety_ratings" in metadata:
                 safety_info = f" Safety ratings: {metadata['safety_ratings']}"
@@ -971,7 +996,8 @@ class GeminiCachedModel:
                 f"Empty response from model (finish_reason="
                 f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
                 tokens,
-                provider_reason=_gemini_empty_reason(response, metadata),
+                provider_reason=provider_reason,
+                reason=reason,
             )
 
         return _with_cache_group(
