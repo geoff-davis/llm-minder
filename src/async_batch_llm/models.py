@@ -365,6 +365,13 @@ _EMPTY_RESPONSE_REASONS: dict[str, EmptyResponseReason] = {
 }
 
 
+# An empty-string reply ("" rather than no text at all) is still a valid answer,
+# except when the provider says it was cut off, blocked or refused.
+_EMPTY_TEXT_FAILURES: frozenset[EmptyResponseReason] = frozenset(
+    {"max_tokens", "content_filter", "refusal"}
+)
+
+
 def _empty_response_reason(provider_reason: str | None) -> EmptyResponseReason:
     """Normalize a provider's stop reason; unrecognized values are ``"unknown"``."""
     if provider_reason is None:
@@ -636,19 +643,20 @@ class GeminiModel:
 
         # Extract text (may be None if safety-blocked)
         text = response.text
-        if text is None:
+        if not text:
             metadata = _extract_metadata(response)
             provider_reason, reason = _gemini_empty_reason(response, metadata)
-            safety_info = ""
-            if metadata and "safety_ratings" in metadata:
-                safety_info = f" Safety ratings: {metadata['safety_ratings']}"
-            _raise_empty_response(
-                f"Empty response from model (finish_reason="
-                f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
-                tokens,
-                provider_reason=provider_reason,
-                reason=reason,
-            )
+            if text is None or reason in _EMPTY_TEXT_FAILURES:
+                safety_info = ""
+                if metadata and "safety_ratings" in metadata:
+                    safety_info = f" Safety ratings: {metadata['safety_ratings']}"
+                _raise_empty_response(
+                    f"Empty response from model (finish_reason="
+                    f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
+                    tokens,
+                    provider_reason=provider_reason,
+                    reason=reason,
+                )
 
         return _with_cache_group(
             LLMResponse(
@@ -986,19 +994,20 @@ class GeminiCachedModel:
         input_tokens, output_tokens, total_tokens, cached_tokens = tokens
 
         text = response.text
-        if text is None:
+        if not text:
             metadata = _extract_metadata(response)
             provider_reason, reason = _gemini_empty_reason(response, metadata)
-            safety_info = ""
-            if metadata and "safety_ratings" in metadata:
-                safety_info = f" Safety ratings: {metadata['safety_ratings']}"
-            _raise_empty_response(
-                f"Empty response from model (finish_reason="
-                f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
-                tokens,
-                provider_reason=provider_reason,
-                reason=reason,
-            )
+            if text is None or reason in _EMPTY_TEXT_FAILURES:
+                safety_info = ""
+                if metadata and "safety_ratings" in metadata:
+                    safety_info = f" Safety ratings: {metadata['safety_ratings']}"
+                _raise_empty_response(
+                    f"Empty response from model (finish_reason="
+                    f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
+                    tokens,
+                    provider_reason=provider_reason,
+                    reason=reason,
+                )
 
         return _with_cache_group(
             LLMResponse(
@@ -1384,20 +1393,22 @@ class OpenAICompatibleModel:
             )
         message = response.choices[0].message
         text = getattr(message, "content", None)
-        if text is None:
+        if text is None or text == "":
             finish_reason = getattr(response.choices[0], "finish_reason", "unknown")
             provider_reason = _reason_text(finish_reason)
             refused = _reason_text(getattr(message, "refusal", None)) is not None
-            _raise_empty_response(
-                f"Empty response content from model "
-                f"(finish_reason={finish_reason!r}). "
-                "This typically indicates a tool call, content filter, "
-                "or token limit was reached.",
-                tokens,
-                cache_writes,
-                provider_reason=provider_reason,
-                reason="refusal" if refused else None,
-            )
+            reason = "refusal" if refused else _empty_response_reason(provider_reason)
+            if text is None or reason in _EMPTY_TEXT_FAILURES:
+                _raise_empty_response(
+                    f"Empty response content from model "
+                    f"(finish_reason={finish_reason!r}). "
+                    "This typically indicates a tool call, content filter, "
+                    "or token limit was reached.",
+                    tokens,
+                    cache_writes,
+                    provider_reason=provider_reason,
+                    reason=reason,
+                )
 
         return _with_cache_group(
             LLMResponse(

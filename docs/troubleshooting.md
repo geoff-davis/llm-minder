@@ -193,7 +193,8 @@ exception's `reason` names the cause the same way for every built-in model
 not on the message.
 
 **Fix.** Adjust the prompt or safety configuration where policy permits,
-increase the output limit for length termination (a `TruncatedResponseError`;
+increase the output limit for length termination (a `TruncatedResponseError`, category
+`response_truncated`;
 see [Per-attempt config](api/strategies.md#per-attempt-config) to raise it on retry), or use a strategy/parser
 that intentionally handles tool calls. Do not retry a policy block blindly.
 Use `TokenTrackingError` in a custom callable when a billed response fails

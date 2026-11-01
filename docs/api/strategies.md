@@ -256,8 +256,8 @@ class GrowingOutputBound(DeepSeekStrategy):
 ```
 
 A truncated response raises `TruncatedResponseError`, which the built-in
-classifiers treat as non-retryable `empty_response`, so the item would fail on its
-first attempt. To retry a truncation with the larger bound, and nothing else, mark
+classifiers treat as non-retryable `response_truncated`, so the item would fail on
+its first attempt. To retry a truncation with the larger bound, and nothing else, mark
 it retryable in a classifier (new in 1.0 and provisional):
 
 ```python
@@ -276,7 +276,7 @@ class RetryTruncations(DefaultErrorClassifier):
                 is_retryable=True,
                 is_rate_limit=False,
                 is_timeout=False,
-                error_category="empty_response",
+                error_category="response_truncated",
             )
         return super().classify(exception)
 
@@ -500,8 +500,9 @@ All built-in classifiers handle framework deadlines, aborts and framework
 timeouts before provider matching, along with named middleware-contract and
 quota-scope errors. Terminal rate-limit retry exhaustion uses
 `rate_limit_retries_exceeded` with `is_rate_limit=False`. Empty provider
-responses use non-retryable `empty_response`; the exception remains a
-`ValueError` subclass. Structured-output schema rejection is non-retryable
+responses use non-retryable `empty_response`, and truncated ones
+(`TruncatedResponseError`) non-retryable `response_truncated`; both exceptions
+remain `ValueError` subclasses. Structured-output schema rejection is non-retryable
 `structured_output_schema_rejected`; local output validation is retryable
 `structured_output_validation_error`.
 

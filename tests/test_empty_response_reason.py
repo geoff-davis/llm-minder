@@ -13,6 +13,7 @@ from async_batch_llm import (
     DeepSeekModel,
     DefaultErrorClassifier,
     EmptyResponseError,
+    ErrorCategory,
     ErrorInfo,
     GeminiCachedModel,
     GeminiErrorClassifier,
@@ -84,11 +85,14 @@ def test_reason_survives_copy_and_pickle(exc):
     ],
     ids=lambda c: type(c).__name__,
 )
-def test_truncation_keeps_the_non_retryable_empty_response_category(classifier):
+def test_truncation_has_its_own_non_retryable_category(classifier):
     info = classifier.classify(TruncatedResponseError("cut off"))
-    assert info.error_category == "empty_response"
+    assert info.error_category == ErrorCategory.RESPONSE_TRUNCATED == "response_truncated"
     assert not info.is_retryable
     assert not info.is_rate_limit
+    other = classifier.classify(EmptyResponseError("blocked", reason="content_filter"))
+    assert other.error_category == "empty_response"
+    assert not other.is_retryable
 
 
 # ── Gemini ───────────────────────────────────────────────────────────────────
@@ -223,6 +227,39 @@ async def test_gemini_truncation_and_blocks_win_over_a_function_call_part(
     assert caught.value.provider_reason == finish_reason
 
 
+def _empty_text_candidate(types: Any, finish_reason: str) -> Any:
+    return types.Candidate(
+        finish_reason=finish_reason,
+        content=types.Content(role="model", parts=[types.Part(text="")]),
+    )
+
+
+@pytest.mark.parametrize(
+    ("finish_reason", "reason"), [("MAX_TOKENS", "max_tokens"), ("SAFETY", "content_filter")]
+)
+async def test_gemini_empty_string_fails_when_cut_off_or_blocked(
+    gemini_generate, finish_reason, reason
+):
+    types = pytest.importorskip("google.genai.types")
+    response = types.GenerateContentResponse(
+        candidates=[_empty_text_candidate(types, finish_reason)],
+        usage_metadata=_gemini_usage(types),
+    )
+    assert response.text == ""
+    with pytest.raises(EmptyResponseError) as caught:
+        await gemini_generate(response)
+    assert caught.value.reason == reason
+
+
+async def test_gemini_empty_string_after_a_normal_stop_is_a_valid_answer(gemini_generate):
+    types = pytest.importorskip("google.genai.types")
+    response = types.GenerateContentResponse(
+        candidates=[_empty_text_candidate(types, "STOP")],
+        usage_metadata=_gemini_usage(types),
+    )
+    assert (await gemini_generate(response)).text == ""
+
+
 # ── Chat Completions (OpenAI, OpenRouter, DeepSeek) ──────────────────────────
 
 
@@ -291,6 +328,48 @@ async def test_chat_finish_reasons(model_factory, finish_reason, message, reason
     assert caught.value.provider_reason == finish_reason
     assert isinstance(caught.value, TruncatedResponseError) == (reason == "max_tokens")
     assert caught.value._failed_token_usage["output_tokens"] == 5
+
+
+@pytest.mark.parametrize("model_factory", _CHAT_MODELS)
+@pytest.mark.parametrize(
+    ("finish_reason", "message", "reason"),
+    [
+        ("length", {"role": "assistant", "content": ""}, "max_tokens"),
+        ("content_filter", {"role": "assistant", "content": ""}, "content_filter"),
+        ("stop", {"role": "assistant", "content": "", "refusal": "I can't."}, "refusal"),
+    ],
+    ids=["length", "content_filter", "refusal"],
+)
+async def test_chat_empty_string_fails_when_cut_off_blocked_or_refused(
+    model_factory, finish_reason, message, reason
+):
+    model = model_factory(
+        _chat_client(_chat_completion(finish_reason=finish_reason, message=message))
+    )
+    with pytest.raises(EmptyResponseError) as caught:
+        await model.generate("hello")
+    assert caught.value.reason == reason
+    assert caught.value.provider_reason == finish_reason
+    assert caught.value._failed_token_usage["output_tokens"] == 5
+
+
+@pytest.mark.parametrize("model_factory", _CHAT_MODELS)
+@pytest.mark.parametrize(
+    ("finish_reason", "message"),
+    [
+        ("stop", {"role": "assistant", "content": ""}),
+        ("tool_calls", {"role": "assistant", "content": "", "tool_calls": [_TOOL_CALL]}),
+    ],
+    ids=["stop", "tool_calls"],
+)
+async def test_chat_empty_string_is_still_a_valid_answer_otherwise(
+    model_factory, finish_reason, message
+):
+    model = model_factory(
+        _chat_client(_chat_completion(finish_reason=finish_reason, message=message))
+    )
+    response = await model.generate("hello")
+    assert response.text == ""
 
 
 @pytest.mark.parametrize("model_factory", _CHAT_MODELS)
@@ -393,7 +472,7 @@ async def test_openai_responses_refusal():
 class _RetryTruncations(DefaultErrorClassifier):
     def classify(self, exception: Exception) -> ErrorInfo:
         if isinstance(exception, TruncatedResponseError):
-            return ErrorInfo(True, False, False, "empty_response")
+            return ErrorInfo(True, False, False, "response_truncated")
         return super().classify(exception)
 
 

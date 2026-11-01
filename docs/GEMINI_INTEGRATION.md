@@ -890,4 +890,6 @@ Gemini output tokens include candidate and thinking tokens; input tokens include
 prompt and tool-use prompt tokens. Positive thinking usage is also available as
 `metadata["reasoning_tokens"]`. Empty responses include the provider finish
 reason (or, for a blocked prompt, its block reason) in `provider_reason`, a normalized
-`reason`, and use the non-retryable `empty_response` category.
+`reason`, and use the non-retryable `empty_response` category (`response_truncated`
+for a `MAX_TOKENS` truncation). An empty-string reply also raises when the finish reason
+is `MAX_TOKENS` or a block.

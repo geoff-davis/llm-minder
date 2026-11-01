@@ -318,11 +318,11 @@ class TruncatedResponseError(EmptyResponseError):
     """The response stopped at its output-token bound before producing usable text.
 
     The ``EmptyResponseError`` raised when ``reason == "max_tokens"``, so a
-    classifier or ``on_error()`` can match it with ``isinstance``. It keeps the
-    non-retryable ``empty_response`` category: retrying the same request would
-    usually truncate again. To retry with a larger bound, classify it as
-    retryable in a custom classifier and raise the bound in
-    ``ModelStrategy.attempt_generation_config()``.
+    classifier or ``on_error()`` can match it with ``isinstance``. The built-in
+    classifiers give it the non-retryable ``response_truncated`` category:
+    retrying the same request would usually truncate again. To retry with a
+    larger bound, classify it as retryable in a custom classifier and raise the
+    bound in ``ModelStrategy.attempt_generation_config()``.
 
     New in 1.0 and provisional.
     """
@@ -603,6 +603,8 @@ class ErrorClassifier(ABC):
             return ErrorInfo(True, False, True, "framework_timeout")
         if isinstance(exception, RateLimitRetriesExceeded):
             return ErrorInfo(False, False, False, "rate_limit_retries_exceeded")
+        if isinstance(exception, TruncatedResponseError):
+            return ErrorInfo(False, False, False, "response_truncated")
         if isinstance(exception, EmptyResponseError):
             return ErrorInfo(False, False, False, "empty_response")
         return None

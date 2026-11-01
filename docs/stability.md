@@ -193,7 +193,8 @@ after it; build results by keyword.
 - **Custom `execute()` support.** `provider_call`, `attach_token_usage` and
   `ModelStrategy.attempt_generation_config()` are new in 0.32 and provisional. The
   `_failed_token_usage` exception attribute they rely on is stable.
-- **Empty-response reasons.** `EmptyResponseError.reason` and `.provider_reason`, and
-  `TruncatedResponseError`, are new in 1.0 and provisional.
+- **Empty-response reasons.** `EmptyResponseError.reason` and `.provider_reason`,
+  `TruncatedResponseError` and `ErrorCategory.RESPONSE_TRUNCATED` are new in 1.0 and
+  provisional.
 - **Provider-output views.** Provisional now; they may be promoted to stable at
   1.0.0rc1 (see above). `logprobs` is the most likely to stay provisional.

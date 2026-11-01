@@ -17,9 +17,20 @@ Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected
   for every built-in model: `"max_tokens"`, `"content_filter"`, `"refusal"`,
   `"tool_call"`, `"no_content"` or `"unknown"`. `provider_reason` keeps the provider's
   own value (`"MAX_TOKENS"`, `"length"`, `"max_output_tokens"`, ...). A truncation
-  raises the new `TruncatedResponseError` subclass. Messages, the `ValueError` base and
-  the non-retryable `empty_response` category are unchanged; a Gemini prompt blocked
-  before any candidate now reports its block reason. Provisional ([#273]).
+  raises the new `TruncatedResponseError` subclass. Messages and the `ValueError` base
+  are unchanged, and a Gemini prompt blocked before any candidate now reports its block
+  reason. Provisional ([#273]).
+
+### Changed
+
+- A truncated response now has the error category `response_truncated`
+  (`ErrorCategory.RESPONSE_TRUNCATED`) instead of `empty_response`. It is still not
+  retried. Update `abort_on_error_categories` and any code that matches
+  `"empty_response"` to catch truncations ([#273]).
+- An empty-string reply (`""`, not missing text) from Gemini or a Chat Completions
+  model now raises `EmptyResponseError` when the provider says it was cut off, blocked
+  or refused, instead of succeeding with empty text. An empty string after a normal
+  stop, or alongside tool calls, still succeeds ([#273]).
 
 ### Removed
 
