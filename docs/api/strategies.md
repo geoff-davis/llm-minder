@@ -261,7 +261,7 @@ strategies report. `provider_call(state)` times the call and records it as the
 attempt's provider time, even when the call raises. `attach_token_usage(exception,
 tokens)` keeps a billed response's tokens in the item's totals when handling the
 response fails afterwards, and keeps the exception's type, so classification and
-`on_error()` see the original error. Both are provisional in 1.0.
+`on_error()` see the original error. Both are new in 0.32 and provisional.
 
 ```python
 import json
