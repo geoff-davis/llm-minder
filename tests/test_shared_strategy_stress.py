@@ -50,7 +50,7 @@ class _CountingSharedStrategy(LLMCallStrategy[str]):
         self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
     ) -> tuple[str, TokenUsage]:
         self.execute_count += 1
-        return f"ok:{prompt}", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+        return f"ok:{prompt}", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}, None
 
     async def cleanup(self) -> None:
         self.cleanup_count += 1
@@ -170,7 +170,7 @@ class _StrategyUsingSlowCache(LLMCallStrategy[str]):
         # state to workers.
         assert self.model._prepared is True
         assert self.model._cache_value == "ready"
-        return f"ok:{prompt}", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+        return f"ok:{prompt}", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}, None
 
 
 @pytest.mark.asyncio

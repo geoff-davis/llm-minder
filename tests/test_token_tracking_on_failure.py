@@ -58,7 +58,7 @@ async def test_tokens_tracked_on_validation_failure():
                     e.__dict__["_failed_token_usage"] = tokens
                     raise
 
-            return output, tokens
+            return output, tokens, None
 
     strategy = FailingParserStrategy()
     config = ProcessorConfig(

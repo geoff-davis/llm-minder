@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable, Iterable, Mapping
 from difflib import get_close_matches
 from typing import ParamSpec, TypeVar
@@ -23,7 +22,33 @@ def validate_strategy(strategy: object) -> None:
         )
 
 
-def validate_keywords(kwargs: Mapping[str, object], allowed: Iterable[str]) -> None:
+# Keywords removed in 1.0, with what replaces them.
+_REMOVED_KEYWORDS = {
+    "timeout_per_item": "It was removed in 1.0; use attempt_timeout (same per-attempt meaning).",
+    "enable_detailed_logging": (
+        "It was removed in 1.0; set the level of the 'async_batch_llm' logger instead."
+    ),
+}
+
+# ParallelBatchProcessor parameters removed in 1.0; they live on its config.
+REMOVED_PROCESSOR_KEYWORDS = {
+    "max_workers": (
+        "It was removed from ParallelBatchProcessor in 1.0; "
+        "use config=ProcessorConfig(max_workers=...)."
+    ),
+    "timeout_per_item": ("It was removed in 1.0; use config=ProcessorConfig(attempt_timeout=...)."),
+    "rate_limit_cooldown": (
+        "It was removed in 1.0; use "
+        "config=ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=...))."
+    ),
+}
+
+
+def validate_keywords(
+    kwargs: Mapping[str, object],
+    allowed: Iterable[str],
+    removed: Mapping[str, str] = _REMOVED_KEYWORDS,
+) -> None:
     choices = set(allowed)
     unknown = set(kwargs) - choices
     if not unknown:
@@ -32,6 +57,8 @@ def validate_keywords(kwargs: Mapping[str, object], allowed: Iterable[str]) -> N
     for name in sorted(unknown):
         if name == "timeout":
             hint = "Use config=ProcessorConfig(attempt_timeout=...) for per-attempt timeouts."
+        elif name in removed:
+            hint = removed[name]
         else:
             matches = get_close_matches(name, sorted(choices), n=1)
             hint = f"Did you mean {matches[0]!r}?" if matches else "Check the processor arguments."
@@ -40,13 +67,9 @@ def validate_keywords(kwargs: Mapping[str, object], allowed: Iterable[str]) -> N
 
 
 def suggest_keyword_errors(
-    function: Callable[_P, _R], *, positional_deprecation: str | None = None
+    function: Callable[_P, _R], removed: Mapping[str, str] = _REMOVED_KEYWORDS
 ) -> Callable[_P, _R]:
-    """Keep a generated constructor's signature while validating its keywords.
-
-    With ``positional_deprecation``, also warn when arguments after ``self`` are
-    passed positionally (see :func:`deprecate_positional_arguments`).
-    """
+    """Keep a constructor's signature while validating its keywords."""
     import inspect
     from functools import wraps
 
@@ -54,26 +77,7 @@ def suggest_keyword_errors(
 
     @wraps(function)
     def checked(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-        if positional_deprecation is not None and len(args) > 1:
-            warnings.warn(positional_deprecation, DeprecationWarning, stacklevel=2)
-        validate_keywords(kwargs, names)
-        return function(*args, **kwargs)
-
-    return checked
-
-
-def deprecate_positional_arguments(function: Callable[_P, _R], message: str) -> Callable[_P, _R]:
-    """Warn when a generated ``__init__`` gets arguments after ``self`` positionally.
-
-    The wrapper adds one frame between the caller and ``__post_init__``, so a
-    warning raised there needs ``stacklevel=4`` to reach the caller.
-    """
-    from functools import wraps
-
-    @wraps(function)
-    def checked(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-        if len(args) > 1:
-            warnings.warn(message, DeprecationWarning, stacklevel=2)
+        validate_keywords(kwargs, names, removed)
         return function(*args, **kwargs)
 
     return checked

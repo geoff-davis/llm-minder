@@ -10,12 +10,29 @@ import async_batch_llm
 PAGE = Path(__file__).parents[1] / "docs" / "stability.md"
 
 
-def test_every_export_is_classified_once():
-    rows = [line for line in PAGE.read_text().splitlines() if line.startswith("| `")]
+def _rows(text: str) -> list[str]:
+    return [line for line in text.splitlines() if line.startswith("| `")]
+
+
+def _first_cell_names(rows: list[str]) -> list[str]:
     names: list[str] = []
     for row in rows:
-        first_cell = row.split("|")[1]
-        names.extend(re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)`", first_cell))
+        names.extend(re.findall(r"`([A-Za-z_][A-Za-z0-9_]*)`", row.split("|")[1]))
+    return names
+
+
+def test_every_export_is_classified_once():
+    # The removed-in-1.0 table lists names that are no longer exported.
+    classified, _, _ = PAGE.read_text().partition("### Removed in 1.0")
+    rows = _rows(classified)
+    names = _first_cell_names(rows)
     duplicates = sorted({name for name in names if names.count(name) > 1})
     assert duplicates == []
     assert sorted(set(names)) == sorted(async_batch_llm.__all__)
+
+
+def test_removed_names_are_not_exported():
+    _, _, removed = PAGE.read_text().partition("### Removed in 1.0")
+    names = set(_first_cell_names(_rows(removed.split("\n## ")[0])))
+    assert {"LLMGateway", "BatchProcessor", "ProcessingStats"} <= names
+    assert names.isdisjoint(async_batch_llm.__all__)

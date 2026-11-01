@@ -94,7 +94,7 @@ class _Strategy(LLMCallStrategy[str]):
         self.execution_started.set()
         if self.execute_delay:
             await asyncio.sleep(self.execute_delay)
-        return prompt, _TOKENS
+        return prompt, _TOKENS, None
 
     async def cleanup(self) -> None:
         self.cleanup_calls += 1
@@ -129,7 +129,7 @@ class _StubbornStrategy(_Strategy):
             await asyncio.sleep(self.linger)
             self.log.append("worker:done")
             raise
-        return prompt, _TOKENS
+        return prompt, _TOKENS, None
 
 
 class _Store:
@@ -321,7 +321,7 @@ async def test_c3_cancelled_cooldown_releases_admitted_work(
             self.calls += 1
             if self.calls == 1:
                 raise RuntimeError("429 throttled")
-            return "prompt", _TOKENS
+            return "prompt", _TOKENS, None
 
     strategy = RateLimitedStrategy()
     config = ProcessorConfig(
@@ -464,7 +464,7 @@ async def test_c1_interrupted_gateway_drain_keeps_strategy_open() -> None:
         async def execute(self, *args: Any, **kwargs: Any) -> tuple[str, TokenUsage]:
             entered.set()
             await release.wait()
-            return "prompt", _TOKENS
+            return "prompt", _TOKENS, None
 
     strategy = ExecutingStrategy()
     gateway = LLMCallPool(strategy, config=ProcessorConfig(max_workers=1))
@@ -720,7 +720,7 @@ async def test_c5_stream_terminal_waits_for_admission_callbacks(fail_observer: b
             self.calls += 1
             if self.calls == 1:
                 raise RuntimeError("429 throttled")
-            return "prompt", _TOKENS
+            return "prompt", _TOKENS, None
 
     strategy, store = RateLimitedStrategy(log=log), _Store(log)
     processor = _processor(
@@ -1334,7 +1334,7 @@ async def test_c5_busy_result_queue_cannot_postpone_worker_failure(
             nonlocal calls
             calls += 1
             await asyncio.sleep(0)
-            return "result", _TOKENS
+            return "result", _TOKENS, None
 
     store = (
         _Store(append_error=error, append_error_for={"0"}) if failure_kind == "artifact" else None
@@ -1397,7 +1397,7 @@ async def test_c6_concurrent_shutdown_interrupts_batch_without_cancelling_caller
         async def execute(self, *args: Any, **kwargs: Any) -> tuple[str, TokenUsage]:
             entered.set()
             await asyncio.Event().wait()
-            return "unreachable", _TOKENS
+            return "unreachable", _TOKENS, None
 
     strategy = WaitingStrategy()
     processor = _processor(config=ProcessorConfig(max_workers=workers))
@@ -2093,7 +2093,7 @@ async def test_c3_observer_cancellation_during_cooldown_end_is_an_interruption()
             self.calls += 1
             if self.calls == 1:
                 raise RuntimeError("429 throttled")
-            return prompt, _TOKENS
+            return prompt, _TOKENS, None
 
     processor = _processor(
         config=ProcessorConfig(
@@ -2382,7 +2382,7 @@ async def test_c1_older_cooldown_task_still_delivering_events_is_waited_for_and_
             self.calls += 1
             if self.calls <= 2:
                 raise RuntimeError("429 throttled")
-            return prompt, _TOKENS
+            return prompt, _TOKENS, None
 
     processor = _processor(
         config=ProcessorConfig(

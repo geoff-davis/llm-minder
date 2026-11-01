@@ -110,9 +110,6 @@ from .core.protocols import LLMModel, ManagedLLMModel
 # String-based strategy factory: llm("openai:gpt-6-luna")
 from .factory import llm
 
-# Message for the deprecated LLMGateway alias (old module path, removed in 1.0)
-from .gateway import _LLM_GATEWAY_DEPRECATION
-
 # LLM call strategies
 from .llm_strategies import (
     DeepSeekStrategy,
@@ -222,7 +219,6 @@ Example:
 __all__ = [
     # Core
     "BatchInterruptedError",
-    "BatchProcessor",  # deprecated; resolved by __getattr__, private in 1.0
     "AttemptTiming",
     "BatchResult",
     "BatchTermination",
@@ -231,7 +227,6 @@ __all__ = [
     "CachedTokenRates",
     "LLMWorkItem",
     "PostProcessorFunc",
-    "ProcessingStats",  # deprecated; resolved by __getattr__, private in 1.0
     "ProgressCallbackFunc",
     "RetryState",
     "StreamFinalizationError",
@@ -273,7 +268,6 @@ __all__ = [
     "call_result",
     "LLMCallError",
     "LLMCallPool",
-    "LLMGateway",  # deprecated; resolved by __getattr__ below, removed in 1.0
     # String-based strategy factory
     "llm",
     # LLM Strategies
@@ -292,7 +286,6 @@ __all__ = [
     "OpenAIModel",
     "OpenRouterModel",
     "MetadataExtractor",
-    "grounding_metadata_extractor",  # deprecated; resolved by __getattr__
     # Provider auxiliary output (typed metadata views)
     "Grounding",
     "GroundingSource",
@@ -365,44 +358,29 @@ except PackageNotFoundError:
     __version__ = "0.0.0+dev"
 
 
-# Deprecated public names: still importable (and listed in __all__ so wildcard
-# imports keep them) until 1.0, but each access warns. Resolved lazily so a
-# plain ``import async_batch_llm`` stays silent.
-_DEPRECATED_NAMES: dict[str, tuple[str, str, str]] = {
-    "LLMGateway": ("gateway", "LLMCallPool", _LLM_GATEWAY_DEPRECATION),
+# Names removed from the public API in 1.0. Looking one up raises the usual
+# AttributeError (so ``from async_batch_llm import X`` raises ImportError), with
+# a pointer to the replacement.
+_REMOVED_NAMES: dict[str, str] = {
+    "LLMGateway": "LLMGateway was removed in 1.0; use LLMCallPool, the same class.",
     "BatchProcessor": (
-        "base",
-        "BatchProcessor",
-        "BatchProcessor is deprecated and will be removed from the public API in "
-        "1.0; use ParallelBatchProcessor, its only implementation.",
+        "BatchProcessor was removed from the public API in 1.0; use "
+        "ParallelBatchProcessor, its only implementation."
     ),
     "ProcessingStats": (
-        "base",
-        "ProcessingStats",
-        "ProcessingStats is deprecated and will be removed from the public API in "
-        "1.0; read statistics from ParallelBatchProcessor.get_stats(), which "
-        "returns a dict.",
+        "ProcessingStats was removed from the public API in 1.0; read statistics "
+        "from ParallelBatchProcessor.get_stats(), which returns a dict."
     ),
     "grounding_metadata_extractor": (
-        "models",
-        "grounding_metadata_extractor",
-        "grounding_metadata_extractor is deprecated and will be removed from the "
-        "public API in 1.0; built-in Gemini models already put grounding in "
-        "metadata['grounding'], so remove it from metadata_extractors.",
+        "grounding_metadata_extractor was removed from the public API in 1.0; "
+        "built-in Gemini models already put grounding in metadata['grounding']."
     ),
 }
 
 
 def __getattr__(name: str) -> Any:
-    if name in _DEPRECATED_NAMES:
-        import importlib
-        import sys
-        import warnings
-
-        module_name, attribute, message = _DEPRECATED_NAMES[name]
-        # ``from async_batch_llm import X`` first probes the name from inside
-        # importlib; warn once, from the caller's own lookup.
-        if sys._getframe(1).f_globals.get("__name__") != "importlib._bootstrap":
-            warnings.warn(message, DeprecationWarning, stacklevel=2)
-        return getattr(importlib.import_module(f".{module_name}", __name__), attribute)
+    if name in _REMOVED_NAMES:
+        raise AttributeError(
+            f"module {__name__!r} has no attribute {name!r}. {_REMOVED_NAMES[name]}"
+        )
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

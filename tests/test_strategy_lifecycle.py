@@ -42,7 +42,7 @@ class LifecycleTrackingStrategy(LLMCallStrategy[str]):
             "output_tokens": 20,
             "total_tokens": 30,
         }
-        return self.output, tokens
+        return self.output, tokens, None
 
 
 @pytest.mark.asyncio
@@ -253,7 +253,7 @@ async def test_strategy_without_cleanup_method_works():
                 "output_tokens": 20,
                 "total_tokens": 30,
             }
-            return "output", tokens
+            return "output", tokens, None
 
     strategy = NoCleanupStrategy()
     config = ProcessorConfig(max_workers=2, attempt_timeout=10.0)
@@ -288,7 +288,7 @@ async def test_strategy_without_prepare_method_works():
                 "output_tokens": 20,
                 "total_tokens": 30,
             }
-            return "output", tokens
+            return "output", tokens, None
 
     strategy = NoPrepareStrategy()
     config = ProcessorConfig(max_workers=2, attempt_timeout=10.0)
@@ -378,7 +378,7 @@ async def test_core1_concurrent_calls_share_one_lifecycle():
             await asyncio.sleep(int(prompt) * 0.001)
             assert self.cleanups == 0
             self.finished += 1
-            return prompt, {}
+            return prompt, {}, None
 
     strategy = Shared()
     results = await asyncio.gather(*(call(strategy, str(i)) for i in range(10)))

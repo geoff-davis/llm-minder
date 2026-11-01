@@ -74,11 +74,15 @@ async def test_custom_strategy_with_progressive_temperature():
             if len(call_log) < 3:
                 raise Exception(f"Failed attempt {len(call_log)}")
 
-            return TestOutput(value="Success", temperature=temp), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(value="Success", temperature=temp),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
     config = ProcessorConfig(
         max_workers=1,
@@ -130,6 +134,7 @@ async def test_custom_strategy_with_simulated_api_call():
             return (
                 TestOutput(value=f"Direct call result (temp={temp})", temperature=temp),
                 {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
+                None,
             )
 
     config = ProcessorConfig(max_workers=1, attempt_timeout=10.0)
@@ -180,6 +185,7 @@ async def test_custom_strategy_with_retries():
             return (
                 TestOutput(value=f"Success on attempt {attempt}", temperature=temp),
                 {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
+                None,
             )
 
     config = ProcessorConfig(
@@ -220,7 +226,7 @@ async def test_custom_strategy_timeout_handling():
         ) -> tuple[TestOutput, dict[str, int]]:
             # Sleep longer than timeout to ensure it triggers
             await asyncio.sleep(1.0)  # 1 second sleep
-            return TestOutput(value="Should timeout"), {}
+            return TestOutput(value="Should timeout"), {}, None
 
     # Use very short timeout and no retries to make test fast
     config = ProcessorConfig(
@@ -288,11 +294,15 @@ async def test_strategy_lifecycle_prepare_and_cleanup():
             self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
         ) -> tuple[TestOutput, dict[str, int]]:
             lifecycle_log.append("execute")
-            return TestOutput(value="Success"), {
-                "input_tokens": 10,
-                "output_tokens": 20,
-                "total_tokens": 30,
-            }
+            return (
+                TestOutput(value="Success"),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "total_tokens": 30,
+                },
+                None,
+            )
 
         async def cleanup(self):
             lifecycle_log.append("cleanup")

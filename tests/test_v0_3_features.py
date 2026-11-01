@@ -55,11 +55,15 @@ class RetryStateStrategy(LLMCallStrategy[str]):
         if attempt < self.fail_until_attempt:
             raise RetryableTestError(f"Simulated failure on attempt {attempt}")
 
-        return f"Success after {attempt} attempts", {
-            "input_tokens": 10,
-            "output_tokens": 5,
-            "total_tokens": 15,
-        }
+        return (
+            f"Success after {attempt} attempts",
+            {
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "total_tokens": 15,
+            },
+            None,
+        )
 
     async def on_error(
         self, exception: Exception, attempt: int, state: RetryState | None = None
@@ -180,7 +184,7 @@ async def test_retry_state_none_backward_compatibility():
             state: RetryState | None = None,
         ) -> tuple[str, TokenUsage]:
             # Ignore state parameter completely (legacy behavior)
-            return "Success", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+            return "Success", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}, None
 
     strategy = LegacyStrategy()
     config = ProcessorConfig(max_workers=1, attempt_timeout=10.0)
@@ -212,7 +216,7 @@ async def test_on_error_receives_state():
                 state.set("execute_called", True)
             if attempt < 2:
                 raise RetryableTestError("Fail first attempt")
-            return "Success", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+            return "Success", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}, None
 
         async def on_error(
             self, exception: Exception, attempt: int, state: RetryState | None = None
@@ -356,7 +360,7 @@ async def test_shared_strategy_with_retry_state():
                 if attempts == 0:
                     raise RetryableTestError("First attempt")
 
-            return "Success", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+            return "Success", {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}, None
 
     # Use SAME strategy instance for all items
     strategy = SharedStrategy()

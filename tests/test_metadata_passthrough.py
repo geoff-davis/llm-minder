@@ -5,27 +5,36 @@ contract. Verifies:
 
 - Built-in strategies surface ``LLMResponse.metadata`` into
   ``WorkItemResult.metadata``.
-- Custom strategies returning the legacy 2-tuple still work via the compat
-  shim and get ``metadata=None``.
+- Custom strategies returning the pre-1.0 2-tuple fail with a pointer to the
+  fix, without a retry, and their token usage is still recorded.
 - The ``_unpack_strategy_result`` helper rejects malformed shapes.
-- ``gemini_safety_ratings`` continues to be populated for backward
-  compatibility (deprecated; will be removed once the metadata path is the
-  sole source).
+- ``gemini_safety_ratings`` is gone (removed in 1.0); ratings live in
+  ``metadata['safety_ratings']``.
 """
 
 from __future__ import annotations
 
 import dataclasses
+from collections import UserDict
+from collections.abc import Callable, Mapping
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
 from async_batch_llm import (
+    ArtifactIdentity,
+    JsonlArtifactStore,
     LLMWorkItem,
     OpenAIStrategy,
     OpenRouterStrategy,
     ParallelBatchProcessor,
     ProcessorConfig,
+    ResumePolicy,
+    SqliteArtifactStore,
+    process_prompts,
 )
 from async_batch_llm.base import (
     LLMResponse,
@@ -65,11 +74,10 @@ class TestUnpackStrategyResult:
         out, tokens, meta = _unpack_strategy_result(("hi", {"total_tokens": 5}, None))
         assert meta is None
 
-    def test_two_tuple_compat_shim_returns_none_metadata(self):
-        out, tokens, meta = _unpack_strategy_result(("hi", {"total_tokens": 5}))
-        assert out == "hi"
-        assert tokens == {"total_tokens": 5}
-        assert meta is None
+    def test_two_tuple_rejected_with_its_usage_attached(self):
+        with pytest.raises(ValueError, match=r"returned a 2-tuple.*Since 1\.0") as caught:
+            _unpack_strategy_result(("hi", {"total_tokens": 5}))
+        assert caught.value.__dict__["_failed_token_usage"] == {"total_tokens": 5}
 
     def test_non_tuple_rejected(self):
         with pytest.raises(ValueError, match="must return a tuple"):
@@ -78,9 +86,9 @@ class TestUnpackStrategyResult:
             _unpack_strategy_result({"a": 1})
 
     def test_wrong_arity_rejected(self):
-        with pytest.raises(ValueError, match="2- or 3-tuple"):
+        with pytest.raises(ValueError, match="must return a 3-tuple"):
             _unpack_strategy_result(("a",))
-        with pytest.raises(ValueError, match="2- or 3-tuple"):
+        with pytest.raises(ValueError, match="must return a 3-tuple"):
             _unpack_strategy_result(("a", "b", "c", "d"))
 
 
@@ -148,7 +156,10 @@ class _ThreeTupleStrategy(LLMCallStrategy[str]):
 
 
 class _TwoTupleLegacyStrategy(LLMCallStrategy[str]):
-    """Test helper: returns the legacy 2-tuple shape (no metadata)."""
+    """Test helper: returns the pre-1.0 2-tuple shape (no metadata)."""
+
+    def __init__(self) -> None:
+        self.calls = 0
 
     async def execute(
         self,
@@ -157,10 +168,38 @@ class _TwoTupleLegacyStrategy(LLMCallStrategy[str]):
         timeout: float,
         state: RetryState | None = None,
     ) -> tuple[str, TokenUsage]:
+        self.calls += 1
         return (
             f"legacy:{prompt}",
             {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
         )
+
+
+_BILLED_USAGE = {
+    "input_tokens": 7,
+    "output_tokens": 3,
+    "total_tokens": 10,
+    "cached_input_tokens": 2,
+    "cache_write_input_tokens": 1,
+}
+
+
+class _TwoTupleMappingStrategy(LLMCallStrategy[str]):
+    """Returns the pre-1.0 2-tuple with token usage in any Mapping type."""
+
+    def __init__(self, usage_type: Callable[[dict[str, int]], Mapping[str, int]]) -> None:
+        self.usage_type = usage_type
+        self.calls = 0
+
+    async def execute(
+        self,
+        prompt: str,
+        attempt: int,
+        timeout: float,
+        state: RetryState | None = None,
+    ) -> Any:
+        self.calls += 1
+        return f"legacy:{prompt}", self.usage_type(dict(_BILLED_USAGE))
 
 
 class TestWorkItemResultMetadata:
@@ -177,8 +216,9 @@ class TestWorkItemResultMetadata:
         assert result.results[0].metadata == {"provider": "test", "model": "x"}
 
     @pytest.mark.asyncio
-    async def test_two_tuple_legacy_strategy_yields_none_metadata(self):
-        """Pre-v0.10.0 strategies still work; metadata defaults to None."""
+    async def test_two_tuple_legacy_strategy_fails_without_retry(self):
+        """A 2-tuple fails as a logic error naming the strategy, isn't retried
+        (the provider already billed the call), and keeps its token usage."""
         strategy = _TwoTupleLegacyStrategy()
         config = ProcessorConfig(max_workers=1, attempt_timeout=2.0)
 
@@ -186,9 +226,51 @@ class TestWorkItemResultMetadata:
             await processor.add_work(LLMWorkItem(item_id="i1", strategy=strategy, prompt="hi"))
             result = await processor.process_all()
 
-        assert result.results[0].success
-        assert result.results[0].output == "legacy:hi"
-        assert result.results[0].metadata is None
+        item = result.results[0]
+        assert not item.success
+        assert item.error_category == "logic_error"
+        assert "_TwoTupleLegacyStrategy.execute() returned a 2-tuple" in (item.error or "")
+        assert strategy.calls == 1
+        assert item.token_usage["total_tokens"] == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "usage_type",
+        [dict, MappingProxyType, UserDict],
+        ids=["dict", "mappingproxy", "userdict"],
+    )
+    @pytest.mark.parametrize(
+        ("store_type", "suffix"),
+        [(JsonlArtifactStore, ".jsonl"), (SqliteArtifactStore, ".sqlite")],
+        ids=["jsonl", "sqlite"],
+    )
+    async def test_two_tuple_usage_in_any_mapping_is_counted_and_replayed(
+        self, tmp_path: Path, usage_type: Any, store_type: Any, suffix: str
+    ):
+        """Every Mapping keeps the billed usage, and both stores replay it as stored."""
+        path = tmp_path / f"two-tuple{suffix}"
+        identity = ArtifactIdentity(provider="test", model="m", prompt_version="v1")
+        strategy = _TwoTupleMappingStrategy(usage_type)
+        first = await process_prompts(
+            strategy, [("x", "hi")], artifact_store=store_type(path, identity=identity)
+        )
+        item = first.results[0]
+        assert item.error_category == "logic_error"
+        assert strategy.calls == 1
+        assert {k: item.token_usage.get(k) for k in _BILLED_USAGE} == _BILLED_USAGE
+
+        rerun = _TwoTupleMappingStrategy(usage_type)
+        replayed = await process_prompts(
+            rerun,
+            [("x", "hi")],
+            artifact_store=store_type(path, identity=identity),
+            resume=ResumePolicy.REUSE_ALL,
+        )
+        again = replayed.results[0]
+        assert rerun.calls == 0
+        assert again.replayed_from_artifact
+        assert again.error_category == "logic_error"
+        assert {k: again.token_usage.get(k) for k in _BILLED_USAGE} == _BILLED_USAGE
 
     @pytest.mark.asyncio
     async def test_three_tuple_with_none_metadata(self):
@@ -227,91 +309,18 @@ class TestWorkItemResultMetadata:
         assert item.tool_calls is not None and item.tool_calls[0].name == "f"
         assert item.logprobs is None
 
-    @pytest.mark.asyncio
-    async def test_legacy_two_tuple_strategy_views_are_none(self):
-        strategy = _TwoTupleLegacyStrategy()
-        config = ProcessorConfig(max_workers=1, attempt_timeout=2.0)
 
-        async with ParallelBatchProcessor[str, str, None](config=config) as processor:
-            await processor.add_work(LLMWorkItem(item_id="i1", strategy=strategy, prompt="hi"))
-            result = await processor.process_all()
-
-        item = result.results[0]
-        assert item.grounding is None
-        assert item.reasoning is None
-        assert item.tool_calls is None
-        assert item.logprobs is None
+# ── gemini_safety_ratings removed in 1.0 ─────────────────────────────
 
 
-# ── Backward-compat: gemini_safety_ratings populated from metadata ───
-
-
-class TestGeminiSafetyRatingsBackcompat:
-    """The legacy ``gemini_safety_ratings`` field is populated from
-    ``metadata['safety_ratings']`` so existing user code keeps working
-    until that field is removed. Reading it emits a DeprecationWarning."""
-
-    def test_backfill_from_metadata(self):
-        result = WorkItemResult(
-            item_id="x",
-            success=True,
-            metadata={"safety_ratings": {"HARM_HATE": "LOW"}},
-        )
-        with pytest.warns(DeprecationWarning, match="safety_ratings"):
-            assert result.gemini_safety_ratings == {"HARM_HATE": "LOW"}
-
-    def test_explicit_field_takes_precedence(self):
-        result = WorkItemResult(
-            item_id="x",
-            success=True,
-            metadata={"safety_ratings": {"HARM_HATE": "HIGH"}},
-            gemini_safety_ratings={"HARM_HATE": "LOW"},
-        )
-        # Caller-provided explicit value should not be overwritten.
-        with pytest.warns(DeprecationWarning):
-            assert result.gemini_safety_ratings == {"HARM_HATE": "LOW"}
-
-    def test_no_metadata_no_ratings(self):
-        result = WorkItemResult(item_id="x", success=True)
-        with pytest.warns(DeprecationWarning):
-            assert result.gemini_safety_ratings is None
-        assert result.metadata is None
-
-    def test_metadata_without_safety_ratings(self):
-        result = WorkItemResult(
-            item_id="x",
-            success=True,
-            metadata={"finish_reason": "stop"},
-        )
-        with pytest.warns(DeprecationWarning):
-            assert result.gemini_safety_ratings is None
-        assert result.metadata == {"finish_reason": "stop"}
-
-    def test_construction_and_repr_do_not_warn(self, recwarn):
-        """Only *reads* of the deprecated field warn — creating results and
-        repr()ing them (framework-internal operations) must stay silent."""
-        result = WorkItemResult(
-            item_id="x",
-            success=True,
-            metadata={"safety_ratings": {"HARM_HATE": "LOW"}},
-        )
-        repr(result)
-        deprecations = [w for w in recwarn.list if issubclass(w.category, DeprecationWarning)]
-        assert not deprecations
-
-    def test_dataclasses_replace_and_asdict_do_not_warn(self, recwarn):
-        """dataclasses.replace()/asdict() read every field via getattr —
-        copying a result (e.g. in a post-processor or middleware) is not a
-        use of the deprecated field and must stay silent."""
-        result = WorkItemResult(
-            item_id="x",
-            success=True,
-            metadata={"safety_ratings": {"HARM_HATE": "LOW"}},
-        )
-        copied = dataclasses.replace(result, item_id="y")
-        dataclasses.asdict(result)
-        deprecations = [w for w in recwarn.list if issubclass(w.category, DeprecationWarning)]
-        assert not deprecations
-        # The copy carries the value; a direct read still warns as usual.
-        with pytest.warns(DeprecationWarning):
-            assert copied.gemini_safety_ratings == {"HARM_HATE": "LOW"}
+def test_gemini_safety_ratings_field_is_removed():
+    assert "gemini_safety_ratings" not in {f.name for f in dataclasses.fields(WorkItemResult)}
+    result = WorkItemResult(
+        item_id="x",
+        success=True,
+        metadata={"safety_ratings": {"HARM_HATE": "LOW"}},
+    )
+    assert not hasattr(result, "gemini_safety_ratings")
+    assert result.metadata == {"safety_ratings": {"HARM_HATE": "LOW"}}
+    with pytest.raises(TypeError, match="gemini_safety_ratings"):
+        WorkItemResult(item_id="x", success=True, gemini_safety_ratings={})  # type: ignore[call-arg]

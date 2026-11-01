@@ -218,7 +218,7 @@ async def test_c4_d5_hint_clamp_and_fallback_across_hosts(
 
     class Strategy(LLMCallStrategy[str]):
         async def execute(self, prompt, attempt, timeout, state=None):
-            return "ok", {}
+            return "ok", {}, None
 
     config = ProcessorConfig(
         rate_limit=RateLimitConfig(cooldown_seconds=5, max_cooldown_seconds=10)

@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
     - uses: actions/checkout@v7.0.1
@@ -87,8 +87,8 @@ jobs:
       run: uv run pytest tests/ --tb=short -q
 
   quality:
-    # Lint and type checks are Python-version-independent (ruff targets py310
-    # via pyproject; mypy pins python_version = "3.10" there), so they run
+    # Lint and type checks are Python-version-independent (ruff targets py311
+    # via pyproject; mypy pins python_version = "3.11" there), so they run
     # once here, in parallel with the test matrix, instead of inside the
     # 3.12 test leg where mypy's ~20s sat on the critical path.
     runs-on: ubuntu-latest

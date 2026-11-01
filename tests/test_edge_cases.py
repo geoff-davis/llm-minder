@@ -618,18 +618,10 @@ async def test_config_auto_validation():
     relifted = dataclasses.replace(long_cooldown, cooldown_seconds=1200.0)
     assert relifted.max_cooldown_seconds == 1200.0
 
-    with pytest.warns(DeprecationWarning, match="rate_limit_cooldown"):
-        legacy = ParallelBatchProcessor(rate_limit_cooldown=900.0)
-    assert legacy.config.rate_limit.max_cooldown_seconds == 900.0
-
-    # Legacy kwarg overriding an already-lifted nested config (the #60×#61
-    # interaction): must construct, not raise.
-    with pytest.warns(DeprecationWarning, match="rate_limit_cooldown"):
-        legacy_override = ParallelBatchProcessor(
-            config=ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=900.0)),
-            rate_limit_cooldown=1200.0,
-        )
-    assert legacy_override.config.rate_limit.max_cooldown_seconds == 1200.0
+    lifted = ParallelBatchProcessor(
+        config=ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=900.0))
+    )
+    assert lifted.config.rate_limit.max_cooldown_seconds == 900.0
 
     with pytest.raises(ValueError, match="slow_start_final_delay must be >= 0"):
         RateLimitConfig(slow_start_final_delay=-0.1)

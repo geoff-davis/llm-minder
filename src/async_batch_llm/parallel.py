@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import functools
 import logging
 import time
 from dataclasses import dataclass, field
@@ -29,6 +30,7 @@ from ._internal.guardrails import (
     BatchAdmissionStopped,
     await_with_guardrails,
 )
+from ._internal.input_validation import REMOVED_PROCESSOR_KEYWORDS, suggest_keyword_errors
 from ._internal.item_executor import ItemExecutor, _detach_traceback
 from ._internal.rate_limit_coordinator import RateLimitCoordinator
 from ._internal.strategy_lifecycle import StrategyLifecycle
@@ -54,7 +56,6 @@ from .base import (
     WorkItemResult,
 )
 from .core import ProcessorConfig
-from .core.config import replace_user_config
 from .llm_strategies import LLMCallStrategy
 from .middleware import Middleware
 from .observers import ProcessingEvent, ProcessorObserver
@@ -146,13 +147,11 @@ class ParallelBatchProcessor(
     - Configuration objects for easier setup
     """
 
+    @functools.partial(suggest_keyword_errors, removed=REMOVED_PROCESSOR_KEYWORDS)
     def __init__(
         self,
-        max_workers: int | None = None,
+        *,
         post_processor: PostProcessorFunc[TOutput, TContext] | None = None,
-        timeout_per_item: float | None = None,
-        rate_limit_cooldown: float | None = None,  # Deprecated, use config
-        # New parameters
         config: ProcessorConfig | None = None,
         error_classifier: ErrorClassifier | None = None,
         rate_limit_strategy: RateLimitStrategy | None = None,
@@ -166,11 +165,14 @@ class ParallelBatchProcessor(
         Initialize the parallel batch processor.
 
         Args:
-            max_workers: Maximum concurrent workers (deprecated, use config)
             post_processor: Optional async function called after each successful item
-            timeout_per_item: Timeout per item in seconds (deprecated, use config)
-            rate_limit_cooldown: Cooldown duration (deprecated, use config)
-            config: Processor configuration object (recommended)
+            config: Processor configuration; ``ProcessorConfig()`` defaults when
+                omitted. All arguments are keyword-only since 1.0, which also
+                removed three parameters: use ``ProcessorConfig(max_workers=...)``,
+                ``ProcessorConfig(attempt_timeout=...)`` and
+                ``ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=...))``
+                instead of ``max_workers``, ``timeout_per_item`` and
+                ``rate_limit_cooldown``.
             error_classifier: Optional global classifier override. When omitted,
                 each strategy's recommendation is resolved independently.
             rate_limit_strategy: Strategy for handling rate limits
@@ -178,59 +180,8 @@ class ParallelBatchProcessor(
             observers: List of observers for events
             progress_callback: Optional callback(completed, total, current_item_id) for progress updates
         """
-        import warnings
-
-        # Emit deprecation warnings for legacy parameters
-        if max_workers is not None:
-            warnings.warn(
-                "The 'max_workers' parameter is deprecated and will be removed in 1.0. "
-                "Use ProcessorConfig(max_workers=...) instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if timeout_per_item is not None:
-            warnings.warn(
-                "The 'timeout_per_item' parameter is deprecated and will be removed in 1.0. "
-                "Use ProcessorConfig(attempt_timeout=...) instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if rate_limit_cooldown is not None:
-            warnings.warn(
-                "The 'rate_limit_cooldown' parameter is deprecated and will be removed in 1.0. "
-                "Use ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=...)) instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        # Handle backward compatibility
         if config is None:
-            from .core import RateLimitConfig
-
-            config = ProcessorConfig(
-                max_workers=max_workers or 5,
-                attempt_timeout=timeout_per_item or 120.0,
-                rate_limit=RateLimitConfig(cooldown_seconds=rate_limit_cooldown or 300.0),
-            )
-        else:
-            # Override config with explicit legacy parameters if provided — but
-            # build a NEW config via dataclasses.replace rather than mutating the
-            # caller's object (and its nested RateLimitConfig). Callers may reuse
-            # the same ProcessorConfig across processors and shouldn't see it
-            # silently rewritten under them.
-            import dataclasses
-
-            overrides: dict = {}
-            if max_workers is not None:
-                overrides["max_workers"] = max_workers
-            if timeout_per_item is not None:
-                overrides["attempt_timeout"] = timeout_per_item
-            if rate_limit_cooldown is not None:
-                overrides["rate_limit"] = dataclasses.replace(
-                    config.rate_limit, cooldown_seconds=rate_limit_cooldown
-                )
-            if overrides:
-                config = replace_user_config(config, **overrides)
+            config = ProcessorConfig()
 
         # Always an int after ProcessorConfig.__post_init__ resolution.
         resolved_max_workers = cast(int, config.max_workers)

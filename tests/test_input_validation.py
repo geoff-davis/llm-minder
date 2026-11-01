@@ -21,7 +21,7 @@ class _DummyStrategy(LLMCallStrategy[str]):
     """Minimal valid strategy for constructing work items in tests."""
 
     async def execute(self, prompt, attempt, timeout, state=None):  # type: ignore[override]
-        return "ok", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        return "ok", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}, None
 
 
 # ─── LLMWorkItem validation ───────────────────────────────────────────

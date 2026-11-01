@@ -207,14 +207,3 @@ async def test_single_call_uses_shared_executor_admission_path() -> None:
 def test_explicit_capacity_must_be_positive() -> None:
     with pytest.raises(ValueError, match="max_provider_concurrency must be >= 1"):
         ProcessorConfig(max_provider_concurrency=0)
-
-
-def test_new_capacity_field_preserves_existing_positional_config_order() -> None:
-    # Position 2 is the deprecated timeout_per_item alias (kept positional
-    # for backward compat), so constructing through it warns.
-    with pytest.warns(DeprecationWarning, match="timeout_per_item"):
-        config = ProcessorConfig(7, 42.0)
-
-    assert config.max_workers == 7
-    assert config.attempt_timeout == 42.0
-    assert config.max_provider_concurrency is None

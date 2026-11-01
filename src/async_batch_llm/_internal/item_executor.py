@@ -1608,8 +1608,8 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
 
                             llm_start_time = time.time()
                             execution_started = time.perf_counter()
-                            # _unpack_strategy_result accepts both legacy 2-tuples
-                            # and current 3-tuples (output, tokens, metadata).
+                            # _unpack_strategy_result checks the (output, tokens,
+                            # metadata) return shape.
                             usage_observation: TokenUsageObservation | None = None
                             provider_succeeded = False
                             attempt_metadata: Any = None

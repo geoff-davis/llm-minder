@@ -791,7 +791,7 @@ class SqliteArtifactStore:
                         next_request = await asyncio.wait_for(
                             self._writer_queue.get(), timeout=remaining
                         )
-                    except (TimeoutError, asyncio.TimeoutError):
+                    except TimeoutError:
                         break
                 if isinstance(next_request, _AppendRequest):
                     batch.append(next_request)

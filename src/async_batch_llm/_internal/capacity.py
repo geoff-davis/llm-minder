@@ -117,7 +117,7 @@ class _CapacityGate:
                             abort_controller=abort_controller,
                             operation_timeout=max(until_next_ramp, 0.001),
                         )
-                    except (TimeoutError, asyncio.TimeoutError):
+                    except TimeoutError:
                         pass
                 if limit < self.capacity:
                     ramp_wait += max(0.0, time.perf_counter() - segment_started)

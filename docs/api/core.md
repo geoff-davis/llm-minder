@@ -177,8 +177,7 @@ properties on `LLMResponse` or `WorkItemResult`.
 > **Removed:** the old `GeminiResponse` wrapper and the `include_metadata`
 > opt-in were removed in v0.6.0. Read metadata off `result.metadata` instead.
 > For Gemini safety ratings specifically, `result.metadata["safety_ratings"]`
-> carries them (the deprecated `result.gemini_safety_ratings` field is still
-> backfilled for compatibility, and is removed in 1.0).
+> carries them (the `result.gemini_safety_ratings` field was removed in 1.0).
 
 **Usage:**
 
@@ -282,9 +281,8 @@ generic types for string prompts with no context. `PostProcessorFunc` and
 
 ::: async_batch_llm.ProgressCallbackFunc
 
-## Deprecated names
+## Removed names
 
 `BatchProcessor`, `ProcessingStats`, `LLMGateway` and `grounding_metadata_extractor`
-still import from `async_batch_llm` but warn and leave the public API in 1.0. They
-aren't documented here; see the [v0.27 migration guide](../migration/v0.27.md#deprecations)
-for replacements.
+were removed in 1.0; see [Removed in 1.0](../stability.md#removed-in-10) for
+replacements.

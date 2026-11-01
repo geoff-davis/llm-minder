@@ -113,7 +113,7 @@ class LLMCallStrategy(ABC, Generic[TOutput]):
     @abstractmethod
     async def execute(
         self, prompt: str, attempt: int, timeout: float, state: "RetryState | None" = None
-    ) -> tuple[TOutput, TokenUsage] | tuple[TOutput, TokenUsage, dict[str, Any] | None]:
+    ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
         """
         Execute an LLM call for the given attempt.
 
@@ -132,16 +132,15 @@ class LLMCallStrategy(ABC, Generic[TOutput]):
             state: Optional retry state that persists across attempts (v0.3.0)
 
         Returns:
-            Either a 2-tuple ``(output, token_usage)`` or a 3-tuple
-            ``(output, token_usage, metadata)``. ``token_usage`` is a
+            A 3-tuple ``(output, token_usage, metadata)``. ``token_usage`` is a
             TokenUsage dict with optional keys ``input_tokens``,
             ``output_tokens``, ``total_tokens``, ``cached_input_tokens``.
             ``metadata`` (v0.10.0) is a provider-specific dict forwarded into
             ``WorkItemResult.metadata`` — typically ``finish_reason``,
             ``model``, ``provider`` (OpenRouter), ``safety_ratings`` (Gemini);
-            pass ``None`` if you have nothing to surface. The 2-tuple shape is
-            deprecated since v0.27 (``DeprecationWarning``) and will be
-            rejected in 1.0; built-in strategies all return the 3-tuple shape.
+            pass ``None`` if you have nothing to surface. Since 1.0 a 2-tuple
+            ``(output, token_usage)`` fails the item with a ``ValueError``
+            (category ``logic_error``); its token usage is still recorded.
 
         Raises:
             Exception: Any exception propagated to trigger a retry (if
@@ -509,8 +508,6 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
             3-tuple ``(parsed_output, token_usage, metadata)`` where ``metadata``
             is forwarded from ``LLMResponse.metadata`` (provider, finish_reason,
             model, safety_ratings, etc.). Added the metadata slot in v0.10.0.
-            The framework still accepts the legacy 2-tuple shape from custom
-            strategies, but that is deprecated since v0.27 and removed in 1.0.
         """
         # Only pass `config` when set, so a custom LLMModel whose generate()
         # doesn't accept the kwarg keeps working — the default path is identical

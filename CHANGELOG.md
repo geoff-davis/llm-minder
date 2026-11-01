@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Work toward 1.0.0rc1. It removes everything 0.27 and 0.28 deprecated and drops
+Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected; the
+[removed-in-1.0 table](docs/stability.md#removed-in-10) lists each replacement.
+
+### Removed
+
+- Python 3.10. 1.0 requires Python 3.11 or newer.
+- `LLMGateway` (from `async_batch_llm` and `async_batch_llm.gateway`), `BatchProcessor`,
+  `ProcessingStats` and `grounding_metadata_extractor` as public names. Accessing one
+  raises `AttributeError` naming its replacement.
+- `ProcessorConfig(timeout_per_item=...)`, `ProcessorConfig.timeout_per_item` and
+  `ProcessorConfig(enable_detailed_logging=...)`. Passing either keyword raises
+  `TypeError` naming its replacement.
+- Positional arguments to `ProcessorConfig`, `RetryConfig`, `RateLimitConfig`,
+  `StartupRampConfig` and `GuardrailConfig`, which are now keyword-only.
+- The `max_workers`, `timeout_per_item` and `rate_limit_cooldown` parameters of
+  `ParallelBatchProcessor`, which now takes keyword arguments only.
+- `WorkItemResult.gemini_safety_ratings`; read `result.metadata["safety_ratings"]`.
+  The `WorkItemResult` fields after it move up one position.
+- Calling `BatchResult.cache_hit_rate()`; it is a plain float property.
+- The default cached-token rate: `effective_input_tokens()` and `estimated_cost()`
+  require `cached_token_rate`.
+- Integer prompts in `process_prompts` and `process_stream`, which now raise
+  `TypeError`.
+- The 2-tuple `execute()` return. A strategy that returns `(output, tokens)` now fails
+  the item with a `ValueError` (category `logic_error`, not retried); its tokens are
+  still counted.
+
 ## [0.32.0] - 2026-10-31
 
 The last release before 1.0, and the last to support Python 3.10. It adds public

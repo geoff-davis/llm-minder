@@ -23,7 +23,7 @@ GitHub Actions. When debugging a single test, call `uv run pytest tests/test_ret
 
 ## Coding Style & Naming Conventions
 
-Python code targets 3.10 with a Ruff-enforced 100-character soft limit. Prefer type-hinted, dataclass-friendly APIs
+Python code targets 3.11 with a Ruff-enforced 100-character soft limit. Prefer type-hinted, dataclass-friendly APIs
 and keep async flows explicit. Modules and packages use snake_case; concrete strategy classes use PascalCase suffixed
 with `Strategy` or `Classifier`. Observers and middleware should expose verbs describing side effects (e.g.,
 `LoggingObserver`). Run `make format` and `make lint` before submitting to keep imports sorted and styles consistent.
@@ -84,7 +84,7 @@ rebuilding the investigation. Scale the handoff to the change; documentation-onl
   and existing fixtures, folding useful cases into the nearest regression suite rather than duplicating them.
 - State validation commands, results, interpreter versions, deliberate omissions, and accepted tradeoffs precisely.
   A passing full suite does not replace finding-specific evidence. Reviewers should reuse that evidence and run
-  focused checks; repeat full suites when new changes or unresolved concerns warrant it. Verify Python 3.10 and a
+  focused checks; repeat full suites when new changes or unresolved concerns warrant it. Verify Python 3.11 and a
   current supported interpreter when cancellation or asyncio semantics may differ.
 - If review is delegated, include the exact target, settled decisions, known limitations, and out-of-scope items
   so subsequent rounds do not rediscover accepted tradeoffs. Verify candidate findings before presenting them as

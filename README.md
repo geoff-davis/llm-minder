@@ -14,7 +14,7 @@ API may be cheaper.
 
 [![PyPI version](https://img.shields.io/pypi/v/async-batch-llm)](https://pypi.org/project/async-batch-llm/)
 [![PyPI Downloads](https://img.shields.io/pepy/dt/async-batch-llm)](https://pepy.tech/projects/async-batch-llm)
-[![Python 3.10-3.15](https://img.shields.io/badge/python-3.10--3.15-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11-3.15](https://img.shields.io/badge/python-3.11--3.15-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/github/actions/workflow/status/geoff-davis/async-batch-llm/test.yml?branch=main&label=tests)](https://github.com/geoff-davis/async-batch-llm/actions/workflows/test.yml)
 [![Coverage](https://raw.githubusercontent.com/geoff-davis/async-batch-llm/python-coverage-comment-action-data/badge.svg)](https://github.com/geoff-davis/async-batch-llm/tree/python-coverage-comment-action-data)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -169,7 +169,7 @@ extras for the providers you use:
 | `all` | All of the above | All of the above |
 
 `CallableStrategy`, `FakeStrategy`, and custom `LLMCallStrategy` subclasses need
-no extra. Supported on Python 3.10–3.15, tested on Linux and macOS.
+no extra. Supported on Python 3.11–3.15, tested on Linux and macOS.
 
 ## Providers
 

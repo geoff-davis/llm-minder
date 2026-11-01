@@ -255,7 +255,7 @@ async def example_custom_strategy():
 
         async def execute(
             self, prompt: str, attempt: int, timeout: float, state=None
-        ) -> tuple[str, TokenUsage]:
+        ) -> tuple[str, TokenUsage, None]:
             """Execute the LLM call."""
             self.call_count += 1
             print(f"  [Strategy] execute() called - attempt {attempt}, prompt: {prompt[:50]}...")
@@ -266,6 +266,7 @@ async def example_custom_strategy():
             return (
                 f"Mock response for: {prompt}",
                 {"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+                None,  # metadata
             )
 
         async def cleanup(self):

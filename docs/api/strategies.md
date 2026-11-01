@@ -69,8 +69,9 @@ Execute an LLM call.
 - `metadata` (`dict[str, Any] | None`): Provider metadata forwarded to `WorkItemResult.metadata`;
   `None` when there is none
 
-Returning the 2-tuple `(output, token_usage)` is deprecated since v0.27 and emits a
-`DeprecationWarning` pointing at your `execute()`; it will be rejected in 1.0.
+Since 1.0, returning the 2-tuple `(output, token_usage)` fails the item with a
+`ValueError` (category `logic_error`, not retried) that names your strategy. Its token
+usage is still recorded.
 
 **Raises:** Any exception to trigger retry (if retryable) or failure
 

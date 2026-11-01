@@ -116,16 +116,6 @@ async def test_rejects_ambiguous_prompt_sources(source):
 
 
 @pytest.mark.asyncio
-async def test_integer_prompt_warning_once_per_call():
-    from async_batch_llm.testing import FakeStrategy
-
-    with pytest.warns(DeprecationWarning, match="Integer prompt") as warnings:
-        batch = await process_prompts(FakeStrategy(lambda prompt: prompt), [1, 2, 3])
-    assert len(warnings) == 1
-    assert [result.output for result in batch.in_input_order().results] == ["1", "2", "3"]
-
-
-@pytest.mark.asyncio
 async def test_duplicate_ids_warn_once():
     from async_batch_llm.testing import FakeStrategy
 

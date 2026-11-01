@@ -579,7 +579,7 @@ async def test_exec3_classifier_failure_is_an_item_failure(surface, caplog):
         async def execute(self, prompt, attempt, timeout, state=None):
             if prompt == "bad":
                 raise original
-            return prompt, {}
+            return prompt, {}, None
 
     classifier = BrokenClassifier()
     strategy = Provider()
