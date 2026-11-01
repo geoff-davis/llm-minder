@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ModelStrategy.attempt_generation_config(attempt, state)`: override it to change
+  provider config per attempt, merged over `generation_config`, without overriding
+  `execute()` ([#267]).
+- `provider_call(state)` and `attach_token_usage(exception, tokens)`, so a strategy
+  that overrides `execute()` can report provider time and keep a billed
+  response's tokens when parsing fails, using only public names. Both are
+  provisional ([#267]).
+
+[#267]: https://github.com/geoff-davis/async-batch-llm/issues/267
+
 ## [0.31.0] - 2026-10-30
 
 The last release before 1.0, and the last to support Python 3.10. It lets an
