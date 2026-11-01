@@ -232,6 +232,75 @@ subclass for.
 
 ::: async_batch_llm.ModelStrategy
 
+### Per-attempt config
+
+To change provider config from one attempt to the next, override
+`attempt_generation_config()` rather than `execute()`. Its keys replace the same
+top-level keys of `generation_config` for that call. Timing, token accounting on
+parse failures and later fixes to `execute()` still apply.
+
+```python
+from typing import Any
+
+from async_batch_llm import DeepSeekStrategy, RetryState
+
+
+class GrowingOutputBound(DeepSeekStrategy):
+    """Double the output-token bound on each retry: 1024, 2048, 4096, ..."""
+
+    def attempt_generation_config(
+        self, attempt: int, state: RetryState | None
+    ) -> dict[str, Any] | None:
+        return {"max_tokens": 1024 * 2 ** (attempt - 1)}
+```
+
+## Helpers for custom `execute()` overrides
+
+A strategy that makes its own provider call can report what the built-in
+strategies report. `provider_call(state)` times the call and records it as the
+attempt's provider time, even when the call raises. `attach_token_usage(exception,
+tokens)` keeps a billed response's tokens in the item's totals when handling the
+response fails afterwards, and keeps the exception's type, so classification and
+`on_error()` see the original error. Both are provisional in 1.0.
+
+```python
+import json
+from typing import Any
+
+from async_batch_llm import (
+    LLMCallStrategy,
+    RetryState,
+    TokenUsage,
+    attach_token_usage,
+    provider_call,
+)
+
+
+class MyStrategy(LLMCallStrategy[dict]):
+    def __init__(self, client: Any) -> None:
+        self.client = client
+
+    async def execute(
+        self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
+    ) -> tuple[dict, TokenUsage, dict[str, Any] | None]:
+        async with provider_call(state):
+            response = await self.client.generate(prompt)
+        tokens: TokenUsage = {"total_tokens": response.total_tokens}
+        try:
+            output = json.loads(response.text)
+        except ValueError as e:
+            attach_token_usage(e, tokens)
+            raise
+        return output, tokens, None
+```
+
+Setting the `_failed_token_usage` attribute on an exception yourself, which is what
+`attach_token_usage()` does, is also supported.
+
+::: async_batch_llm.provider_call
+
+::: async_batch_llm.attach_token_usage
+
 ## PydanticAIStrategy
 
 ::: async_batch_llm.PydanticAIStrategy

@@ -11,16 +11,14 @@ v0.6.0: Strategies now accept an LLMModel instead of raw client + model name.
 import asyncio
 import inspect
 import logging
-import time
 import weakref
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast, overload
 
-from ._internal.execution_state import record_provider_seconds
 from .base import LLMResponse, RetryState, TokenUsage
 from .core.protocols import ManagedLLMModel
-from .strategies.errors import TokenTrackingError
+from .provider_calls import attach_token_usage, provider_call
 from .token_estimation import TokenEstimate, TokenEstimator
 
 # Conditional imports for optional dependencies
@@ -78,17 +76,9 @@ def _attach_token_usage(exception: Exception, tokens: "TokenUsage") -> NoReturn:
 
     When a response parser raises, the underlying API has usually already
     billed the tokens — so we surface them to the framework's failure-path
-    token accounting before propagating the error.
-
-    Built-in exceptions without a writable ``__dict__`` are wrapped in a
-    :class:`TokenTrackingError` (preserving the original via ``__cause__``);
-    everything else gets ``_failed_token_usage`` stamped on it. Never returns.
+    token accounting before propagating the error. Never returns.
     """
-    if not hasattr(exception, "__dict__"):
-        wrapped = TokenTrackingError(str(exception), token_usage=tokens)
-        wrapped.__cause__ = exception
-        raise wrapped from exception
-    exception.__dict__["_failed_token_usage"] = tokens
+    attach_token_usage(exception, tokens)
     raise exception
 
 
@@ -385,8 +375,8 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
                 OpenAI-compatible ``response_format`` / ``max_tokens`` (merged
                 into the model's ``extra_body``). Lets a built-in strategy carry
                 native structured output or grounding without subclassing
-                ``execute()``. A subclass that overrides ``execute()`` and needs a
-                *per-attempt* config can read ``self.generation_config`` and merge.
+                ``execute()``. For a config that changes per attempt, override
+                :meth:`attempt_generation_config` instead of ``execute()``.
             quota_scope: Optional identity shared by strategies consuming the
                 same provider/account quota. Defaults to the model, matching
                 the existing concurrency scope.
@@ -484,6 +474,26 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
                 # released; a redundant close must not bypass a peer's lease.
                 await self.model.cleanup()
 
+    def attempt_generation_config(
+        self, attempt: int, state: RetryState | None
+    ) -> dict[str, Any] | None:
+        """Return config to merge over ``generation_config`` for this attempt.
+
+        Override it to change provider config per attempt without overriding
+        ``execute()``, for example to raise an output-token bound after a
+        truncated response. The returned keys replace the same top-level keys of
+        ``generation_config`` for this call only (a shallow merge); ``None``, the
+        default, sends ``generation_config`` unchanged. Don't mutate
+        ``self.generation_config``: the strategy may be shared by concurrent
+        items.
+
+        Args:
+            attempt: The logical attempt number, as passed to ``execute()``.
+            state: The item's retry state, as passed to ``execute()``; it holds
+                whatever ``on_error()`` recorded about earlier attempts.
+        """
+        return None
+
     async def execute(
         self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
     ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
@@ -506,13 +516,14 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
         # doesn't accept the kwarg keeps working — the default path is identical
         # to before generation_config existed.
         gen_kwargs: dict[str, Any] = {"temperature": self.temperature}
-        if self.generation_config is not None:
-            gen_kwargs["config"] = self.generation_config
-        provider_started = time.perf_counter()
-        try:
+        config = self.generation_config
+        attempt_config = self.attempt_generation_config(attempt, state)
+        if attempt_config is not None:
+            config = {**(config or {}), **attempt_config}
+        if config is not None:
+            gen_kwargs["config"] = config
+        async with provider_call(state):
             llm_response = await self.model.generate(prompt, **gen_kwargs)
-        finally:
-            record_provider_seconds(state, time.perf_counter() - provider_started)
 
         try:
             output = self.response_parser(llm_response)
@@ -723,11 +734,8 @@ class PydanticAIStrategy(LLMCallStrategy[TOutput]):
             object doesn't expose provider-side metadata uniformly, so
             ``metadata`` is currently always ``None`` here. (v0.10.0)
         """
-        provider_started = time.perf_counter()
-        try:
+        async with provider_call(state):
             result = await self.agent.run(prompt)
-        finally:
-            record_provider_seconds(state, time.perf_counter() - provider_started)
 
         # Extract token usage FIRST (before accessing result.output which may fail validation).
         # pydantic-ai 1.x renamed request_tokens/response_tokens -> input_tokens/output_tokens

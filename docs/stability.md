@@ -107,6 +107,7 @@ change in a minor release. **Deprecated** names warn now and leave the public AP
 | `RateLimitStrategy`, `ExponentialBackoffStrategy`, `FixedDelayStrategy` | Stable |
 | `TokenEstimate`, `TokenEstimator`, `CharacterTokenEstimator` | Stable |
 | `pydantic_json_parser`, `strip_code_fences` | Stable |
+| `provider_call`, `attach_token_usage` | Provisional (new in 1.0, for custom `execute()` overrides) |
 | `Grounding`, `GroundingSource`, `ToolCall` | Provisional (typed provider-output views) |
 | `grounding_metadata_extractor` | Deprecated (built-in Gemini models already emit grounding) |
 
@@ -186,5 +187,8 @@ The legacy parameters come first in `ParallelBatchProcessor`'s signature, so pas
   provisional.
 - **`LLMCallPool.termination` and `LLMCallPool.resume()`** are new in 0.31 and
   provisional.
+- **Custom `execute()` support.** `provider_call`, `attach_token_usage` and
+  `ModelStrategy.attempt_generation_config()` are new in 1.0 and provisional. The
+  `_failed_token_usage` exception attribute they rely on is stable.
 - **Provider-output views.** Provisional now; they may be promoted to stable at
   1.0.0rc1 (see above). `logprobs` is the most likely to stay provisional.

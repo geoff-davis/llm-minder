@@ -146,6 +146,7 @@ from .parallel import ParallelBatchProcessor
 
 # Structured-output parsing helpers
 from .parsing import pydantic_json_parser, strip_code_fences
+from .provider_calls import attach_token_usage, provider_call
 
 # Provider auxiliary output (typed metadata views)
 from .provider_output import Grounding, GroundingSource, ToolCall
@@ -345,6 +346,9 @@ __all__ = [
     # Structured-output parsing helpers
     "pydantic_json_parser",
     "strip_code_fences",
+    # Helpers for custom execute() overrides
+    "attach_token_usage",
+    "provider_call",
     # Type aliases (convenience)
     "SimpleBatchProcessor",
     "SimpleWorkItem",

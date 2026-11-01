@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import inspect
-import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Generic, Protocol, TypeAlias, TypeVar, cast
 
-from ._internal.execution_state import record_provider_seconds
 from .artifacts import ArtifactIdentity
 from .base import RetryState, TokenUsage
 from .llm_strategies import LLMCallStrategy
+from .provider_calls import provider_call
 from .strategies import ErrorClassifier
 from .token_estimation import TokenEstimate, TokenEstimator
 from .token_extractor import TokenExtractor
@@ -274,8 +273,7 @@ class CallableStrategy(LLMCallStrategy[TOutput]):
     async def execute(
         self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
     ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
-        provider_started = time.perf_counter()
-        try:
+        async with provider_call(state):
             pending = self._invoke(prompt, attempt=attempt, timeout=timeout, state=state)
             if not inspect.isawaitable(pending):
                 raise TypeError(
@@ -283,8 +281,6 @@ class CallableStrategy(LLMCallStrategy[TOutput]):
                     "declare it with async def"
                 )
             outcome = await pending
-        finally:
-            record_provider_seconds(state, time.perf_counter() - provider_started)
 
         output, usage, metadata = _normalize_outcome(outcome)
         return cast(TOutput, output), usage, metadata
