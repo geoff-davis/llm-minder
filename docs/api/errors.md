@@ -76,6 +76,8 @@ decides how long each cooldown lasts.
 
 ::: async_batch_llm.EmptyResponseError
 
+::: async_batch_llm.TruncatedResponseError
+
 ::: async_batch_llm.ProviderResponseError
 
 ::: async_batch_llm.StructuredOutputSchemaError

@@ -82,6 +82,9 @@ class ErrorCategory(_StrValueEnum):
     ``TypeError``, ``KeyError`` and similar). Not retried."""
     EMPTY_RESPONSE = "empty_response"
     """The provider returned a billed response with no usable text. Not retried."""
+    RESPONSE_TRUNCATED = "response_truncated"
+    """The response hit its output-token bound before producing usable text
+    (``TruncatedResponseError``). Not retried by default."""
     UNKNOWN = "unknown"
     """An exception no classifier recognized. Retried, in case it is transient."""
     CLASSIFIER_ERROR = "classifier_error"

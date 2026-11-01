@@ -11,6 +11,27 @@ Work toward 1.0.0rc1. It removes everything 0.27 and 0.28 deprecated and drops
 Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected; the
 [removed-in-1.0 table](docs/stability.md#removed-in-10) lists each replacement.
 
+### Added
+
+- `EmptyResponseError.reason` says why a billed response was unusable, the same way
+  for every built-in model: `"max_tokens"`, `"content_filter"`, `"refusal"`,
+  `"tool_call"`, `"no_content"` or `"unknown"`. `provider_reason` keeps the provider's
+  own value (`"MAX_TOKENS"`, `"length"`, `"max_output_tokens"`, ...). A truncation
+  raises the new `TruncatedResponseError` subclass. Messages and the `ValueError` base
+  are unchanged, and a Gemini prompt blocked before any candidate now reports its block
+  reason. Provisional ([#273]).
+
+### Changed
+
+- A truncated response now has the error category `response_truncated`
+  (`ErrorCategory.RESPONSE_TRUNCATED`) instead of `empty_response`. It is still not
+  retried. Update `abort_on_error_categories` and any code that matches
+  `"empty_response"` to catch truncations ([#273]).
+- An empty-string reply (`""`, not missing text) from Gemini or a Chat Completions
+  model now raises `EmptyResponseError` when the provider says it was cut off, blocked
+  or refused, instead of succeeding with empty text. An empty string after a normal
+  stop, or alongside tool calls, still succeeds ([#273]).
+
 ### Removed
 
 - Python 3.10. 1.0 requires Python 3.11 or newer.
@@ -34,6 +55,8 @@ Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected
 - The 2-tuple `execute()` return. A strategy that returns `(output, tokens)` now fails
   the item with a `ValueError` (category `logic_error`, not retried); its tokens are
   still counted.
+
+[#273]: https://github.com/geoff-davis/async-batch-llm/issues/273
 
 ## [0.32.0] - 2026-10-31
 

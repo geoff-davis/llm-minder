@@ -22,6 +22,7 @@ from .errors import (
     TokenEstimationError,
     TokenEstimatorRequired,
     TokenTrackingError,
+    TruncatedResponseError,
 )
 from .rate_limit import (
     ExponentialBackoffStrategy,
@@ -39,6 +40,7 @@ __all__ = [
     "ErrorInfo",
     "DefaultErrorClassifier",
     "EmptyResponseError",
+    "TruncatedResponseError",
     "FrameworkTimeoutError",
     "ItemDeadlineExceeded",
     "MiddlewareContractError",
