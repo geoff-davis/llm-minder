@@ -9,7 +9,7 @@ import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from async_batch_llm.base import TokenUsage
@@ -263,6 +263,12 @@ class TokenEstimateExceedsLimit(TokenEstimationError):
     error_category = "token_estimate_exceeds_limit"
 
 
+EmptyResponseReason = Literal[
+    "max_tokens", "content_filter", "refusal", "tool_call", "no_content", "unknown"
+]
+"""Values of :attr:`EmptyResponseError.reason`."""
+
+
 class EmptyResponseError(ValueError, AsyncBatchLLMError):
     """The provider returned a billed response with no usable text.
 
@@ -277,13 +283,63 @@ class EmptyResponseError(ValueError, AsyncBatchLLMError):
     failed-attempt accounting (``WorkItemResult.token_usage``) reflects the
     real spend.
 
-    Added in v0.16.0.
+    Attributes:
+        reason: Why the response was unusable, in provider-independent terms:
+            ``"max_tokens"`` (the output bound was reached; raised as
+            :class:`TruncatedResponseError`), ``"content_filter"`` (a safety or
+            policy block), ``"refusal"``, ``"tool_call"`` (the model answered
+            with a tool call instead of text), ``"no_content"`` (the response
+            finished normally but had no text) or ``"unknown"``. Match on this
+            rather than the message text.
+        provider_reason: The provider's own value, such as ``"MAX_TOKENS"``,
+            ``"length"`` or ``"max_output_tokens"``, for logging; ``None``
+            when the provider gave none.
+
+    Added in v0.16.0; ``reason`` and ``provider_reason`` are new in 1.0 and
+    provisional.
     """
 
-    def __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        token_usage: TokenUsage | dict[str, int] | None = None,
+        reason: EmptyResponseReason = "unknown",
+        provider_reason: str | None = None,
+    ):
         super().__init__(message)
+        self.reason: EmptyResponseReason = reason
+        self.provider_reason = provider_reason
         if token_usage:
             self._failed_token_usage = dict(token_usage)
+
+
+class TruncatedResponseError(EmptyResponseError):
+    """The response stopped at its output-token bound before producing usable text.
+
+    The ``EmptyResponseError`` raised when ``reason == "max_tokens"``, so a
+    classifier or ``on_error()`` can match it with ``isinstance``. It keeps the
+    non-retryable ``empty_response`` category: retrying the same request would
+    usually truncate again. To retry with a larger bound, classify it as
+    retryable in a custom classifier and raise the bound in
+    ``ModelStrategy.attempt_generation_config()``.
+
+    New in 1.0 and provisional.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        token_usage: TokenUsage | dict[str, int] | None = None,
+        provider_reason: str | None = None,
+    ):
+        super().__init__(
+            message,
+            token_usage=token_usage,
+            reason="max_tokens",
+            provider_reason=provider_reason,
+        )
 
 
 class ProviderResponseError(AsyncBatchLLMError):

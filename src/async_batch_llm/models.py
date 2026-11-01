@@ -26,9 +26,11 @@ from ._internal.responses_translation import translate_input, translate_request_
 from .base import LLMResponse
 from .strategies.errors import (
     EmptyResponseError,
+    EmptyResponseReason,
     ProviderResponseError,
     StructuredOutputSchemaError,
     StructuredOutputValidationError,
+    TruncatedResponseError,
 )
 
 # A user-supplied hook that maps a raw provider response onto extra metadata
@@ -333,16 +335,85 @@ def _usage_dict(tokens: tuple[int, int, int, int], cache_write_tokens: int = 0) 
     return usage
 
 
+# Provider stop reasons (lower-cased) -> EmptyResponseError.reason. Gemini
+# FinishReason / BlockedReason names, Chat Completions finish_reason values and
+# Responses API incomplete_details.reason values share one table.
+_EMPTY_RESPONSE_REASONS: dict[str, EmptyResponseReason] = {
+    # Output bound reached
+    "max_tokens": "max_tokens",
+    "length": "max_tokens",
+    "max_output_tokens": "max_tokens",
+    # Safety and policy blocks
+    "content_filter": "content_filter",
+    "safety": "content_filter",
+    "recitation": "content_filter",
+    "blocklist": "content_filter",
+    "prohibited_content": "content_filter",
+    "spii": "content_filter",
+    "image_safety": "content_filter",
+    "image_prohibited_content": "content_filter",
+    "image_recitation": "content_filter",
+    # Tool calls instead of text
+    "tool_calls": "tool_call",
+    "function_call": "tool_call",
+    "malformed_function_call": "tool_call",
+    "unexpected_tool_call": "tool_call",
+    "too_many_tool_calls": "tool_call",
+    # Finished normally, but without text
+    "stop": "no_content",
+    "completed": "no_content",
+}
+
+
+def _empty_response_reason(provider_reason: str | None) -> EmptyResponseReason:
+    """Normalize a provider's stop reason; unrecognized values are ``"unknown"``."""
+    if provider_reason is None:
+        return "unknown"
+    return _EMPTY_RESPONSE_REASONS.get(provider_reason.lower(), "unknown")
+
+
+def _reason_text(value: Any) -> str | None:
+    """A provider reason as a string, or None when absent or not reason-shaped."""
+    if isinstance(value, enum.Enum):
+        value = value.value
+    return value if isinstance(value, str) and value else None
+
+
 def _raise_empty_response(
-    message: str, tokens: tuple[int, int, int, int], cache_write_tokens: int = 0
+    message: str,
+    tokens: tuple[int, int, int, int],
+    cache_write_tokens: int = 0,
+    *,
+    provider_reason: str | None = None,
+    reason: EmptyResponseReason | None = None,
 ) -> NoReturn:
     """Raise EmptyResponseError carrying the tokens the provider already billed.
 
     The API call succeeded (and was billed) even though it produced no usable
     text — without attaching the counts, the framework's failed-attempt
-    accounting would report zero spend for the attempt.
+    accounting would report zero spend for the attempt. ``reason`` defaults to
+    the normalized ``provider_reason``; a truncation raises
+    :class:`TruncatedResponseError`.
     """
-    raise EmptyResponseError(message, token_usage=_usage_dict(tokens, cache_write_tokens))
+    if reason is None:
+        reason = _empty_response_reason(provider_reason)
+    token_usage = _usage_dict(tokens, cache_write_tokens)
+    if reason == "max_tokens":
+        raise TruncatedResponseError(
+            message, token_usage=token_usage, provider_reason=provider_reason
+        )
+    raise EmptyResponseError(
+        message, token_usage=token_usage, reason=reason, provider_reason=provider_reason
+    )
+
+
+def _gemini_empty_reason(response: Any, metadata: dict[str, Any] | None) -> str | None:
+    """The candidate's finish reason, or the prompt's block reason when no candidate came back."""
+    finish_reason = _reason_text((metadata or {}).get("finish_reason"))
+    if finish_reason is not None:
+        return finish_reason
+    feedback = getattr(response, "prompt_feedback", None)
+    return _reason_text(getattr(feedback, "block_reason", None))
 
 
 def _openai_cache_write_tokens(response: Any) -> int:
@@ -552,6 +623,7 @@ class GeminiModel:
                 f"Empty response from model (finish_reason="
                 f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
                 tokens,
+                provider_reason=_gemini_empty_reason(response, metadata),
             )
 
         return _with_cache_group(
@@ -899,6 +971,7 @@ class GeminiCachedModel:
                 f"Empty response from model (finish_reason="
                 f"{(metadata or {}).get('finish_reason', 'unknown')}).{safety_info}",
                 tokens,
+                provider_reason=_gemini_empty_reason(response, metadata),
             )
 
         return _with_cache_group(
@@ -1287,6 +1360,8 @@ class OpenAICompatibleModel:
         text = getattr(message, "content", None)
         if text is None:
             finish_reason = getattr(response.choices[0], "finish_reason", "unknown")
+            provider_reason = _reason_text(finish_reason)
+            refused = _reason_text(getattr(message, "refusal", None)) is not None
             _raise_empty_response(
                 f"Empty response content from model "
                 f"(finish_reason={finish_reason!r}). "
@@ -1294,6 +1369,8 @@ class OpenAICompatibleModel:
                 "or token limit was reached.",
                 tokens,
                 cache_writes,
+                provider_reason=provider_reason,
+                reason="refusal" if refused else None,
             )
 
         return _with_cache_group(
@@ -1866,6 +1943,7 @@ class _ResponsesSurface:
                 f"Incomplete {self._responses_label} Responses output (reason={reason or 'unknown'}).",
                 tokens,
                 cache_writes,
+                provider_reason=_reason_text(reason),
             )
 
         text = self._responses_text(response)
@@ -1874,6 +1952,7 @@ class _ResponsesSurface:
                 f"No text returned from {self._responses_label} Responses API.",
                 tokens,
                 cache_writes,
+                provider_reason=_reason_text(status),
             )
 
         input_tokens, output_tokens, total_tokens, cached_tokens = tokens
@@ -2189,7 +2268,13 @@ class OpenAIModel(_ResponsesSurface, OpenAICompatibleModel):
         cache_writes = self._extract_cache_write_tokens(response)
         if not text:
             if output.refusals:
-                _raise_empty_response("OpenAI refused the request.", tokens, cache_writes)
+                _raise_empty_response(
+                    "OpenAI refused the request.",
+                    tokens,
+                    cache_writes,
+                    provider_reason=_reason_text(status),
+                    reason="refusal",
+                )
             if status == "incomplete":
                 details = getattr(response, "incomplete_details", None)
                 reason = getattr(details, "reason", None)
@@ -2197,10 +2282,14 @@ class OpenAIModel(_ResponsesSurface, OpenAICompatibleModel):
                     f"Incomplete OpenAI Responses output (reason={reason or 'unknown'}).",
                     tokens,
                     cache_writes,
+                    provider_reason=_reason_text(reason),
                 )
             if not (status == "completed" and output.tool_calls):
                 _raise_empty_response(
-                    "No text returned from OpenAI Responses API.", tokens, cache_writes
+                    "No text returned from OpenAI Responses API.",
+                    tokens,
+                    cache_writes,
+                    provider_reason=_reason_text(status),
                 )
         input_tokens, output_tokens, total_tokens, cached_tokens = tokens
         return LLMResponse(

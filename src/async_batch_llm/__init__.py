@@ -177,6 +177,7 @@ from .strategies import (
     TokenEstimationError,
     TokenEstimatorRequired,
     TokenTrackingError,
+    TruncatedResponseError,
 )
 
 # High-level streaming API (built on the processor's streaming mode)
@@ -299,6 +300,7 @@ __all__ = [
     "ErrorInfo",
     "DefaultErrorClassifier",
     "EmptyResponseError",
+    "TruncatedResponseError",
     "FrameworkTimeoutError",
     "ItemDeadlineExceeded",
     "MiddlewareContractError",

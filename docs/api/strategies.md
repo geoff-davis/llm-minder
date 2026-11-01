@@ -255,6 +255,38 @@ class GrowingOutputBound(DeepSeekStrategy):
         return {"max_tokens": 1024 * 2 ** (attempt - 1)}
 ```
 
+A truncated response raises `TruncatedResponseError`, which the built-in
+classifiers treat as non-retryable `empty_response`, so the item would fail on its
+first attempt. To retry a truncation with the larger bound, and nothing else, mark
+it retryable in a classifier (new in 1.0 and provisional):
+
+```python
+from async_batch_llm import (
+    DefaultErrorClassifier,
+    ErrorInfo,
+    ParallelBatchProcessor,
+    TruncatedResponseError,
+)
+
+
+class RetryTruncations(DefaultErrorClassifier):
+    def classify(self, exception: Exception) -> ErrorInfo:
+        if isinstance(exception, TruncatedResponseError):
+            return ErrorInfo(
+                is_retryable=True,
+                is_rate_limit=False,
+                is_timeout=False,
+                error_category="empty_response",
+            )
+        return super().classify(exception)
+
+
+processor = ParallelBatchProcessor(error_classifier=RetryTruncations())
+```
+
+Subclass the classifier your provider uses (for DeepSeek, `OpenAIErrorClassifier`).
+Safety blocks and refusals keep their own `reason` and stay final.
+
 ## Helpers for custom `execute()` overrides
 
 A strategy that makes its own provider call can report what the built-in

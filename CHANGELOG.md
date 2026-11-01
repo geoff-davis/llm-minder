@@ -11,6 +11,16 @@ Work toward 1.0.0rc1. It removes everything 0.27 and 0.28 deprecated and drops
 Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected; the
 [removed-in-1.0 table](docs/stability.md#removed-in-10) lists each replacement.
 
+### Added
+
+- `EmptyResponseError.reason` says why a billed response was unusable, the same way
+  for every built-in model: `"max_tokens"`, `"content_filter"`, `"refusal"`,
+  `"tool_call"`, `"no_content"` or `"unknown"`. `provider_reason` keeps the provider's
+  own value (`"MAX_TOKENS"`, `"length"`, `"max_output_tokens"`, ...). A truncation
+  raises the new `TruncatedResponseError` subclass. Messages, the `ValueError` base and
+  the non-retryable `empty_response` category are unchanged; a Gemini prompt blocked
+  before any candidate now reports its block reason. Provisional ([#273]).
+
 ### Removed
 
 - Python 3.10. 1.0 requires Python 3.11 or newer.
@@ -34,6 +44,8 @@ Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected
 - The 2-tuple `execute()` return. A strategy that returns `(output, tokens)` now fails
   the item with a `ValueError` (category `logic_error`, not retried); its tokens are
   still counted.
+
+[#273]: https://github.com/geoff-davis/async-batch-llm/issues/273
 
 ## [0.32.0] - 2026-10-31
 

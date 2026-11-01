@@ -186,10 +186,15 @@ empty text and `result.tool_calls`, so check for `text == ""` in a parser.
 
 **How to confirm.** Inspect `result.exception`, provider finish/stop reason,
 typed provider metadata, safety ratings, tool-call views, and token usage. A
-billed empty response can still contribute failed-attempt tokens.
+billed empty response can still contribute failed-attempt tokens. The
+exception's `reason` names the cause the same way for every built-in model
+(`"max_tokens"`, `"content_filter"`, `"refusal"`, `"tool_call"`, `"no_content"` or
+`"unknown"`), and `provider_reason` holds the provider's own value; match on these,
+not on the message.
 
 **Fix.** Adjust the prompt or safety configuration where policy permits,
-increase the output limit for length termination, or use a strategy/parser
+increase the output limit for length termination (a `TruncatedResponseError`;
+see [Per-attempt config](api/strategies.md#per-attempt-config) to raise it on retry), or use a strategy/parser
 that intentionally handles tool calls. Do not retry a policy block blindly.
 Use `TokenTrackingError` in a custom callable when a billed response fails
 application parsing so its usage is retained.

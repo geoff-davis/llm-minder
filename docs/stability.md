@@ -131,6 +131,7 @@ Every exception type below subclasses `AsyncBatchLLMError`.
 | `BatchAdmissionClosedError`, `BatchInterruptedError`, `StreamFinalizationError`, `CleanupInterruptedError` | Stable |
 | `FrameworkTimeoutError`, `RateLimitRetriesExceeded`, `TokenTrackingError`, `LLMCallError` | Stable |
 | `EmptyResponseError`, `ProviderResponseError`, `MiddlewareContractError`, `QuotaScopeError` | Stable |
+| `TruncatedResponseError` | Provisional (new in 1.0, with `EmptyResponseError.reason`) |
 | `StructuredOutputSchemaError`, `StructuredOutputValidationError` | Stable |
 | `TokenEstimationError`, `TokenEstimatorRequired`, `TokenEstimateExceedsLimit` | Stable |
 | `ArtifactError`, `ArtifactIdentityError`, `ArtifactFormatError`, `ArtifactIOError`, `ArtifactSerializationError` | Stable |
@@ -192,5 +193,7 @@ after it; build results by keyword.
 - **Custom `execute()` support.** `provider_call`, `attach_token_usage` and
   `ModelStrategy.attempt_generation_config()` are new in 0.32 and provisional. The
   `_failed_token_usage` exception attribute they rely on is stable.
+- **Empty-response reasons.** `EmptyResponseError.reason` and `.provider_reason`, and
+  `TruncatedResponseError`, are new in 1.0 and provisional.
 - **Provider-output views.** Provisional now; they may be promoted to stable at
   1.0.0rc1 (see above). `logprobs` is the most likely to stay provisional.
