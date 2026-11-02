@@ -10,8 +10,9 @@ environment, for example from a ``.env`` file:
 Keys: ``GOOGLE_API_KEY`` (Gemini, PydanticAI), ``OPENAI_API_KEY``,
 ``OPENROUTER_API_KEY``, ``DEEPSEEK_API_KEY``. The tests go through the public
 entry points (``llm()``, ``process_prompts``) and check what unit tests mock:
-token accounting, provider metadata, structured output, and how each provider's
-authentication failure is classified.
+token accounting, provider metadata, the typed provider-output views, empty and
+truncated responses, structured output, and how each provider's authentication
+failure is classified.
 """
 
 from __future__ import annotations
@@ -263,3 +264,153 @@ async def test_openai_compatible_factory_against_deepseek():
 @needs_deepseek
 async def test_deepseek_bad_key_fails_fast():
     await _assert_auth_failure(llm(f"deepseek:{DEEPSEEK_MODEL}", api_key="sk-invalid"))
+
+
+# Typed provider-output views (.grounding, .reasoning, .tool_calls, .logprobs).
+# These check the view shapes against real responses before 1.0 marks them stable.
+
+OPENROUTER_REASONING_MODEL = "deepseek/deepseek-v4.1-flash-1017"
+WEATHER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a city.",
+        "parameters": {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+        },
+    },
+}
+WEATHER_PROMPT = "What's the weather in Paris right now? Use the tool."
+
+
+def _only_success(result: BatchResult) -> Any:
+    _assert_all_succeeded(result)
+    [item] = result.results
+    return item
+
+
+@needs_google
+async def test_gemini_grounding_view():
+    from google.genai import types
+
+    strategy = llm(
+        f"gemini:{GEMINI_MODEL}",
+        generation_config={"tools": [types.Tool(google_search=types.GoogleSearch())]},
+    )
+    item = _only_success(
+        await _run(strategy, ["Search the web: who won the 2025 Nobel Prize in Physics?"])
+    )
+    grounding = item.grounding
+    assert grounding is not None, item.metadata
+    assert grounding.sources, grounding
+    for source in grounding.sources:
+        assert source.uri.startswith("http"), source
+        assert source.title is None or isinstance(source.title, str), source
+    assert all(isinstance(query, str) and query for query in grounding.queries), grounding
+    assert all(isinstance(support, dict) for support in grounding.supports), grounding
+
+
+@needs_deepseek
+async def test_deepseek_reasoning_view():
+    item = _only_success(
+        await _run(llm(f"deepseek:{DEEPSEEK_MODEL}", thinking=True), ["What is 17 + 25?"])
+    )
+    assert "42" in str(item.output)
+    assert isinstance(item.reasoning, str) and item.reasoning.strip(), item.metadata
+
+
+@needs_openrouter
+async def test_openrouter_reasoning_view():
+    strategy = llm(
+        f"openrouter:{OPENROUTER_REASONING_MODEL}",
+        generation_config={"reasoning": {"enabled": True}},
+    )
+    item = _only_success(await _run(strategy, ["What is 17 + 25?"]))
+    assert "42" in str(item.output)
+    assert isinstance(item.reasoning, str) and item.reasoning.strip(), item.metadata
+
+
+@needs_openai
+async def test_openai_responses_reasoning_summary_view():
+    strategy = llm(
+        f"openai:{OPENAI_REASONING_MODEL}",
+        generation_config={"reasoning": {"effort": "low", "summary": "auto"}},
+    )
+    item = _only_success(
+        # A trivial prompt can finish in so few reasoning tokens that no summary comes back.
+        await _run(
+            strategy,
+            ["A bat and a ball cost $1.10; the bat costs $1 more. Ball price? Explain carefully."],
+        )
+    )
+    assert isinstance(item.reasoning, str) and item.reasoning.strip(), item.metadata
+
+
+@needs_openai
+async def test_openai_responses_tool_calls_view():
+    import json
+
+    strategy = llm(
+        f"openai:{OPENAI_MODEL}",
+        generation_config={"tools": [WEATHER_TOOL], "tool_choice": "required"},
+    )
+    item = _only_success(await _run(strategy, [WEATHER_PROMPT]))
+    assert item.output == ""
+    assert (item.metadata or {}).get("finish_reason") == "tool_calls", item.metadata
+    [call] = item.tool_calls
+    assert call.name == "get_weather"
+    assert isinstance(call.id, str) and call.id, call
+    assert "paris" in json.loads(call.arguments)["city"].lower(), call
+
+
+@needs_openai
+async def test_openai_chat_tool_call_only_turn_reports_tool_call_reason():
+    from async_batch_llm import EmptyResponseError, OpenAIModel, OpenAIStrategy
+
+    model = OpenAIModel.from_api_key(OPENAI_MODEL, api_surface="chat_completions")
+    # gpt-6-luna rejects function tools on Chat Completions unless reasoning is off.
+    strategy = OpenAIStrategy(
+        model,
+        generation_config={
+            "tools": [WEATHER_TOOL],
+            "tool_choice": "required",
+            "reasoning_effort": "none",
+        },
+    )
+    [item] = (await _run(strategy, [WEATHER_PROMPT])).results
+    assert not item.success
+    assert item.error_category == ErrorCategory.EMPTY_RESPONSE, item.error
+    assert isinstance(item.exception, EmptyResponseError), item.exception
+    assert item.exception.reason == "tool_call"
+    assert item.exception.provider_reason == "tool_calls"
+    assert len(item.timing.attempts) == 1
+    assert item.token_usage["input_tokens"] > 0
+
+
+@needs_openai
+async def test_openai_truncation_reports_response_truncated():
+    from async_batch_llm import TruncatedResponseError
+
+    # A reasoning model spends a tiny output bound on reasoning before any text.
+    strategy = llm(f"openai:{OPENAI_REASONING_MODEL}", generation_config={"max_tokens": 16})
+    [item] = (await _run(strategy, ["Write a 500-word essay about the sea."])).results
+    assert not item.success
+    assert item.error_category == ErrorCategory.RESPONSE_TRUNCATED, item.error
+    assert isinstance(item.exception, TruncatedResponseError), item.exception
+    assert item.exception.provider_reason == "max_output_tokens"
+    assert item.token_usage["output_tokens"] > 0
+
+
+@needs_deepseek
+async def test_deepseek_chat_logprobs_view():
+    strategy = llm(
+        f"deepseek:{DEEPSEEK_MODEL}",
+        thinking=False,
+        generation_config={"logprobs": True, "top_logprobs": 2},
+    )
+    item = _only_success(await _run(strategy, ["Reply with ok."]))
+    logprobs = item.logprobs
+    assert isinstance(logprobs, dict), item.metadata
+    assert logprobs.get("content"), logprobs
