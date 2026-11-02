@@ -359,10 +359,13 @@ async def test_openai_responses_tool_calls_view():
     item = _only_success(await _run(strategy, [WEATHER_PROMPT]))
     assert item.output == ""
     assert (item.metadata or {}).get("finish_reason") == "tool_calls", item.metadata
-    [call] = item.tool_calls
-    assert call.name == "get_weather"
-    assert isinstance(call.id, str) and call.id, call
-    assert "paris" in json.loads(call.arguments)["city"].lower(), call
+    # tool_choice="required" still allows parallel calls, so don't assume exactly one.
+    assert item.tool_calls, item.metadata
+    for call in item.tool_calls:
+        assert call.name == "get_weather", call
+        assert isinstance(call.id, str) and call.id, call
+        assert isinstance(json.loads(call.arguments)["city"], str), call
+    assert any("paris" in json.loads(c.arguments)["city"].lower() for c in item.tool_calls)
 
 
 @needs_openai
