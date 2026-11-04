@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from async_batch_llm.models import (
+from llm_minder.models import (
     DeepSeekModel,
     OpenAICompatibleModel,
     OpenAIModel,
@@ -387,7 +387,7 @@ class TestDeepSeekThinkingToggle:
         assert model._default_extra_body == {"thinking": {"type": "enabled"}}
 
     def test_from_api_key_thinking_forwarded(self):
-        with patch("async_batch_llm.models.AsyncOpenAI"):
+        with patch("llm_minder.models.AsyncOpenAI"):
             model = DeepSeekModel.from_api_key("deepseek-v4-flash", api_key="sk-x", thinking=False)
         assert model._default_extra_body == {"thinking": {"type": "disabled"}}
 
@@ -406,17 +406,17 @@ class TestJsonMode:
     """json_mode=True injects response_format into extra_body (issue #26)."""
 
     def test_json_mode_sets_response_format(self):
-        with patch("async_batch_llm.models.AsyncOpenAI"):
+        with patch("llm_minder.models.AsyncOpenAI"):
             model = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-x", json_mode=True)
         assert model._default_extra_body == {"response_format": {"type": "json_object"}}
 
     def test_json_mode_off_by_default(self):
-        with patch("async_batch_llm.models.AsyncOpenAI"):
+        with patch("llm_minder.models.AsyncOpenAI"):
             model = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-x")
         assert model._default_extra_body is None
 
     def test_explicit_response_format_wins_over_json_mode(self):
-        with patch("async_batch_llm.models.AsyncOpenAI"):
+        with patch("llm_minder.models.AsyncOpenAI"):
             model = OpenAIModel.from_api_key(
                 "gpt-4o-mini",
                 api_key="sk-x",
@@ -432,7 +432,7 @@ class TestJsonMode:
     async def test_json_mode_forwarded_to_call(self):
         response = _build_response()
         client = _build_client(response)
-        with patch("async_batch_llm.models.AsyncOpenAI", return_value=client):
+        with patch("llm_minder.models.AsyncOpenAI", return_value=client):
             model = OpenAIModel.from_api_key(
                 "gpt-4o-mini", api_key="sk-x", json_mode=True, api_surface="chat_completions"
             )
@@ -444,14 +444,14 @@ class TestJsonMode:
 
 class TestImportError:
     def test_constructor_raises_when_sdk_missing(self):
-        with patch("async_batch_llm.models.AsyncOpenAI", None):
+        with patch("llm_minder.models.AsyncOpenAI", None):
             with pytest.raises(ImportError) as exc_info:
                 OpenAIModel("gpt-4o-mini", MagicMock())
             assert "openai is required" in str(exc_info.value)
             assert "[openai]" in str(exc_info.value)
 
     def test_from_api_key_raises_when_sdk_missing(self):
-        with patch("async_batch_llm.models.AsyncOpenAI", None):
+        with patch("llm_minder.models.AsyncOpenAI", None):
             with pytest.raises(ImportError) as exc_info:
                 OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-x")
             assert "openai is required" in str(exc_info.value)
@@ -490,8 +490,8 @@ class TestConnectionPoolSizing:
 
     def test_max_connections_builds_sized_http_client(self):
         with (
-            patch("async_batch_llm.models.AsyncOpenAI") as mock_client_cls,
-            patch("async_batch_llm.models._build_openai_http_client") as mock_http_client,
+            patch("llm_minder.models.AsyncOpenAI") as mock_client_cls,
+            patch("llm_minder.models._build_openai_http_client") as mock_http_client,
         ):
             OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-x", max_connections=150)
 
@@ -500,13 +500,13 @@ class TestConnectionPoolSizing:
         assert kwargs["http_client"] is mock_http_client.return_value
 
     def test_no_max_connections_leaves_http_client_unset(self):
-        with patch("async_batch_llm.models.AsyncOpenAI") as mock_client_cls:
+        with patch("llm_minder.models.AsyncOpenAI") as mock_client_cls:
             OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-x")
         _, kwargs = mock_client_cls.call_args
         assert "http_client" not in kwargs
 
     def test_max_connections_and_http_client_conflict(self):
-        with patch("async_batch_llm.models.AsyncOpenAI"):
+        with patch("llm_minder.models.AsyncOpenAI"):
             with pytest.raises(ValueError, match="not both"):
                 OpenAIModel.from_api_key(
                     "gpt-4o-mini",
@@ -516,14 +516,14 @@ class TestConnectionPoolSizing:
                 )
 
     def test_max_connections_must_be_positive(self):
-        with patch("async_batch_llm.models.AsyncOpenAI"):
+        with patch("llm_minder.models.AsyncOpenAI"):
             with pytest.raises(ValueError, match=">= 1"):
                 OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-x", max_connections=0)
 
     def test_deepseek_max_connections_forwarded(self):
         with (
-            patch("async_batch_llm.models.AsyncOpenAI") as mock_client_cls,
-            patch("async_batch_llm.models._build_openai_http_client") as mock_http_client,
+            patch("llm_minder.models.AsyncOpenAI") as mock_client_cls,
+            patch("llm_minder.models._build_openai_http_client") as mock_http_client,
         ):
             DeepSeekModel.from_api_key("deepseek-chat", api_key="sk-x", max_connections=300)
         mock_http_client.assert_called_once_with(300)
@@ -582,8 +582,8 @@ async def test_prov1_owned_model_reopens_after_cleanup(surface, api_surface, mon
     import httpx
     from openai import AsyncOpenAI as SDKClient
 
-    import async_batch_llm.models as models
-    from async_batch_llm import OpenAIStrategy, call, process_prompts
+    import llm_minder.models as models
+    from llm_minder import OpenAIStrategy, call, process_prompts
 
     def handler(request):
         return httpx.Response(200, json=_sdk_json(request))
@@ -634,7 +634,7 @@ async def test_prov1_two_strategies_share_owned_model_until_last_release(api_sur
     import httpx
     from openai import AsyncOpenAI
 
-    from async_batch_llm import OpenAIStrategy, ProcessorConfig, RetryConfig, call_result, models
+    from llm_minder import OpenAIStrategy, ProcessorConfig, RetryConfig, call_result, models
 
     slow_started, fast_closed = asyncio.Event(), asyncio.Event()
     in_flight = 0
@@ -686,8 +686,8 @@ async def test_prov1_abandoned_host_does_not_pin_retained_strategys_model_lease(
     import gc
     import weakref
 
-    from async_batch_llm import OpenAIStrategy
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder import OpenAIStrategy
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     client = _build_client(_build_response())
     client.close = AsyncMock()
@@ -754,8 +754,8 @@ async def test_prov1_none_http_client_keeps_sdk_transport_owned():
 async def test_prov1_redundant_manual_cleanup_preserves_peer_model_lease(host_managed):
     import gc
 
-    from async_batch_llm import OpenAIStrategy
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder import OpenAIStrategy
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     model = OpenAIModel.from_api_key("m", api_key="test")
     first, peer = OpenAIStrategy(model), OpenAIStrategy(model)

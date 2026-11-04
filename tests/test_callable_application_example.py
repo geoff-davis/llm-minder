@@ -52,13 +52,13 @@ async def test_callable_application_example(tmp_path: Path) -> None:
 async def test_application_sink_ignores_in_progress_artifact_tail(
     tmp_path: Path, tail: bytes
 ) -> None:
-    from async_batch_llm import JsonlArtifactStore, LLMWorkItem, WorkItemResult
     from examples.example_callable_application import (
         IDENTITY,
         FakeApplicationGateway,
         TransactionalResultSink,
         build_strategy,
     )
+    from llm_minder import JsonlArtifactStore, LLMWorkItem, WorkItemResult
 
     path = tmp_path / "application.jsonl"
     item = LLMWorkItem(

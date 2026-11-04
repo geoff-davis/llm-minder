@@ -1,8 +1,8 @@
 {
-  "name": "async-batch-llm",
+  "name": "llm-minder",
   "version": "0.8.0",
   "private": true,
-  "description": "Markdown tooling for the async-batch-llm Python package.",
+  "description": "Markdown tooling for the llm-minder Python package.",
   "directories": {
     "doc": "docs",
     "example": "examples",
@@ -13,16 +13,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/geoff-davis/async-batch-llm.git"
+    "url": "git+https://github.com/geoff-davis/llm-minder.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/geoff-davis/async-batch-llm/issues"
+    "url": "https://github.com/geoff-davis/llm-minder/issues"
   },
-  "homepage": "https://github.com/geoff-davis/async-batch-llm#readme",
+  "homepage": "https://github.com/geoff-davis/llm-minder#readme",
   "devDependencies": {
     "markdownlint-cli2": "^0.22.1"
   },

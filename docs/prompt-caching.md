@@ -70,7 +70,7 @@ cache. A built-in model picks a group for you (table above), but a label you cho
 reads better and keeps jobs apart:
 
 ```python
-from async_batch_llm import DeepSeekModel, OpenAIModel
+from llm_minder import DeepSeekModel, OpenAIModel
 
 # A label for every call this model makes. It is never sent to the provider.
 model = DeepSeekModel.from_api_key("deepseek-chat", cache_group="tier1-dedupe")
@@ -99,7 +99,7 @@ For a custom strategy or `CallableStrategy`, put the group in the metadata you
 return:
 
 ```python
-from async_batch_llm import CallOutcome
+from llm_minder import CallOutcome
 
 async def invoke(prompt, *, attempt, timeout, state):
     response = await client.generate(prompt)
@@ -154,7 +154,7 @@ about 95%, and a group's first call, which writes the cache, reads 0%.
 ## 5. Stop a run when hits drop
 
 ```python
-from async_batch_llm import GuardrailConfig, ProcessorConfig
+from llm_minder import GuardrailConfig, ProcessorConfig
 
 config = ProcessorConfig(
     max_workers=20,
@@ -170,7 +170,7 @@ Once a group has `cache_hit_window` measured calls, a window hit rate below
 fail-fast](guardrails.md#configurable-fail-fast). Check for it on the result:
 
 ```python
-from async_batch_llm import ErrorCategory
+from llm_minder import ErrorCategory
 
 if result.termination.error_category == ErrorCategory.CACHE_HIT_RATE_BELOW_FLOOR:
     print(result.termination.reason)
@@ -232,7 +232,7 @@ to the next pool:
 ```python
 import json
 
-from async_batch_llm import CacheGroupTracker, LLMCallPool
+from llm_minder import CacheGroupTracker, LLMCallPool
 
 saved = json.dumps(pool.cache_tracker.to_dict())  # at a checkpoint or on shutdown
 

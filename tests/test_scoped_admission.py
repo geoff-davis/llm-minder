@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     CallableStrategy,
     CallOutcome,
     GuardrailConfig,
@@ -21,17 +21,17 @@ from async_batch_llm import (
     ProcessorConfig,
     call_result,
 )
-from async_batch_llm._internal.admission import AdmissionRegistry
-from async_batch_llm._internal.capacity import CapacityLimiter
-from async_batch_llm._internal.classifier_resolver import StrategyClassifierResolver
-from async_batch_llm._internal.event_dispatcher import EventDispatcher
-from async_batch_llm._internal.executor_host import ExecutorHost
-from async_batch_llm.base import LLMResponse, RetryState, TokenUsage
-from async_batch_llm.core import RateLimitConfig, RetryConfig
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.middleware import BaseMiddleware
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
-from async_batch_llm.strategies import (
+from llm_minder._internal.admission import AdmissionRegistry
+from llm_minder._internal.capacity import CapacityLimiter
+from llm_minder._internal.classifier_resolver import StrategyClassifierResolver
+from llm_minder._internal.event_dispatcher import EventDispatcher
+from llm_minder._internal.executor_host import ExecutorHost
+from llm_minder.base import LLMResponse, RetryState, TokenUsage
+from llm_minder.core import RateLimitConfig, RetryConfig
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.middleware import BaseMiddleware
+from llm_minder.observers import BaseObserver, ProcessingEvent
+from llm_minder.strategies import (
     DefaultErrorClassifier,
     ErrorClassifier,
     ErrorInfo,
@@ -197,7 +197,7 @@ async def test_none_quota_scope_falls_back_but_raising_scope_fails_closed() -> N
     broken_scope = _Strategy(raise_scope=True)
 
     none_state = registry.resolve(none_scope)
-    from async_batch_llm import QuotaScopeError
+    from llm_minder import QuotaScopeError
 
     with pytest.raises(QuotaScopeError, match="quota_scope"):
         registry.resolve(broken_scope)
@@ -825,7 +825,7 @@ async def test_artifact_replay_bypasses_quota_cooldown_and_capacity() -> None:
         async def close(self) -> None:
             self.closed = True
 
-    from async_batch_llm import ResumePolicy, WorkItemResult
+    from llm_minder import ResumePolicy, WorkItemResult
 
     strategy = _Strategy()
     store = _ReplayStore()
@@ -891,7 +891,7 @@ def test_rpm_validation_accepts_positive_fractional_values() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("surface", ["batch", "stream", "single", "pool"])
 async def test_raising_quota_scope_fails_closed_on_every_surface(surface, monkeypatch, caplog):
-    from async_batch_llm import process_prompts, process_stream
+    from llm_minder import process_prompts, process_stream
 
     class Broken(_Strategy):
         @property
@@ -952,7 +952,7 @@ async def test_quota_scope_preserves_control_exceptions(control):
 @pytest.mark.parametrize("surface", ["batch", "stream"])
 @pytest.mark.parametrize("scope_kind", ["shared", "distinct", "unhashable", "none", "raising"])
 async def test_effective_quota_scope_matrix(surface, scope_kind, monkeypatch):
-    from async_batch_llm import process_prompts, process_stream
+    from llm_minder import process_prompts, process_stream
 
     shared = [] if scope_kind == "unhashable" else object()
     original_strategy = _Strategy(scope=shared)
@@ -1133,7 +1133,7 @@ async def test_failed_result_preserves_capacity_wait_in_admission_timing(retryab
 )
 @pytest.mark.parametrize("exit_mode", ["success", "cancel", "deadline", "abort"])
 async def test_adm1_preempted_start_refunds_without_consuming_attempt(pause_at, exit_mode):
-    from async_batch_llm._internal.guardrails import AbortCause
+    from llm_minder._internal.guardrails import AbortCause
 
     reservations = []
     rewaiting = asyncio.Event()
@@ -1157,7 +1157,7 @@ async def test_adm1_preempted_start_refunds_without_consuming_attempt(pause_at, 
                     await asyncio.sleep(0)
 
     strategy = Strategy()
-    from async_batch_llm import TokenEstimate
+    from llm_minder import TokenEstimate
 
     config = ProcessorConfig(
         max_workers=1,

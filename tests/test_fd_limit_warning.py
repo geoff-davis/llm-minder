@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
-from async_batch_llm import ParallelBatchProcessor, ProcessorConfig
-from async_batch_llm.parallel import _warn_if_fd_limit_low
+from llm_minder import ParallelBatchProcessor, ProcessorConfig
+from llm_minder.parallel import _warn_if_fd_limit_low
 
 resource = pytest.importorskip("resource", reason="RLIMIT_NOFILE is Unix-only")
 
@@ -32,7 +32,7 @@ class TestWarnIfFdLimitLow:
                 _warn_if_fd_limit_low(250)
         msg = str(record[0].message)
         assert "ulimit -n" in msg
-        assert "geoff-davis.github.io/async-batch-llm" in msg
+        assert "geoff-davis.github.io/llm-minder" in msg
 
     def test_no_warn_with_ample_headroom(self):
         # Plenty of fds above the worker count → silent.

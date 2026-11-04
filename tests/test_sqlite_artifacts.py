@@ -15,9 +15,9 @@ from typing import Any
 
 import pytest
 
-import async_batch_llm
-import async_batch_llm.sqlite_artifacts as sqlite_artifacts_module
-from async_batch_llm import (
+import llm_minder
+import llm_minder.sqlite_artifacts as sqlite_artifacts_module
+from llm_minder import (
     ArtifactFormatError,
     ArtifactIdentity,
     ArtifactIOError,
@@ -31,9 +31,9 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.sqlite_artifacts import SQLITE_APPLICATION_ID, SQLITE_SCHEMA_VERSION
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.sqlite_artifacts import SQLITE_APPLICATION_ID, SQLITE_SCHEMA_VERSION
 
 
 class _CountingStrategy(LLMCallStrategy[str]):
@@ -104,10 +104,10 @@ def test_constructor_rejects_memory_and_unknown_durability(tmp_path: Path) -> No
 
 
 def test_public_exports() -> None:
-    assert async_batch_llm.SqliteArtifactStore is SqliteArtifactStore
-    assert async_batch_llm.SqliteDurability is SqliteDurability
-    assert "SqliteArtifactStore" in async_batch_llm.__all__
-    assert "SqliteDurability" in async_batch_llm.__all__
+    assert llm_minder.SqliteArtifactStore is SqliteArtifactStore
+    assert llm_minder.SqliteDurability is SqliteDurability
+    assert "SqliteArtifactStore" in llm_minder.__all__
+    assert "SqliteDurability" in llm_minder.__all__
 
 
 @pytest.mark.asyncio
@@ -699,7 +699,7 @@ async def test_cancelled_read_results_closes_its_owned_reader_thread(
     baseline_threads = {
         thread.ident
         for thread in threading.enumerate()
-        if thread.name.startswith("async-batch-llm-sqlite-reader")
+        if thread.name.startswith("llm-minder-sqlite-reader")
     }
 
     def blocked_page(
@@ -741,7 +741,7 @@ async def test_cancelled_read_results_closes_its_owned_reader_thread(
     assert {
         thread.ident
         for thread in threading.enumerate()
-        if thread.name.startswith("async-batch-llm-sqlite-reader")
+        if thread.name.startswith("llm-minder-sqlite-reader")
     } == baseline_threads
 
 
@@ -815,7 +815,7 @@ async def test_repeated_read_results_cancellation_never_blocks_event_loop(
     baseline_threads = {
         thread.ident
         for thread in threading.enumerate()
-        if thread.name.startswith("async-batch-llm-sqlite-reader")
+        if thread.name.startswith("llm-minder-sqlite-reader")
     }
 
     read = asyncio.create_task(SqliteArtifactStore.read_results(path))
@@ -834,7 +834,7 @@ async def test_repeated_read_results_cancellation_never_blocks_event_loop(
         active_threads = {
             thread.ident
             for thread in threading.enumerate()
-            if thread.name.startswith("async-batch-llm-sqlite-reader")
+            if thread.name.startswith("llm-minder-sqlite-reader")
         }
         if active_threads == baseline_threads:
             break
@@ -895,7 +895,7 @@ async def test_schema_and_path_rejections(tmp_path: Path) -> None:
     with sqlite3.connect(foreign_path) as connection:
         connection.execute("CREATE TABLE foreign_table (id INTEGER)")
     foreign = SqliteArtifactStore(foreign_path, identity=_identity())
-    with pytest.raises(ArtifactFormatError, match="not an async-batch-llm artifact"):
+    with pytest.raises(ArtifactFormatError, match="not an llm-minder artifact"):
         await foreign.prepare_item(_item("id", "p"))
     await foreign.close()
 
@@ -1534,8 +1534,8 @@ async def test_abrupt_process_after_committed_append_reopens_cleanly(tmp_path: P
 import asyncio
 import os
 import sys
-from async_batch_llm import ArtifactIdentity, LLMWorkItem, SqliteArtifactStore, WorkItemResult
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import ArtifactIdentity, LLMWorkItem, SqliteArtifactStore, WorkItemResult
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class Strategy(LLMCallStrategy[str]):
     async def execute(self, prompt, attempt, timeout, state=None):
@@ -1571,8 +1571,8 @@ async def test_abrupt_process_before_batch_commit_exposes_no_partial_row(tmp_pat
 import asyncio
 import os
 import sys
-from async_batch_llm import ArtifactIdentity, LLMWorkItem, SqliteArtifactStore, WorkItemResult
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import ArtifactIdentity, LLMWorkItem, SqliteArtifactStore, WorkItemResult
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class Strategy(LLMCallStrategy[str]):
     async def execute(self, prompt, attempt, timeout, state=None):

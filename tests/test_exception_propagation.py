@@ -7,7 +7,7 @@ these tests pin down the batch and streaming paths plus the serialization
 boundary.
 """
 
-from async_batch_llm import (
+from llm_minder import (
     FrameworkTimeoutError,
     LLMCallStrategy,
     LLMWorkItem,
@@ -113,7 +113,7 @@ class TestSerializationBoundary:
 
         # By design, deserialization never instantiates a class named by
         # untrusted JSON — the live exception does not round-trip.
-        from async_batch_llm import BatchResult
+        from llm_minder import BatchResult
 
         restored = BatchResult.from_dict(data)
         assert restored.results[0].exception is None

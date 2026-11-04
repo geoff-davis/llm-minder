@@ -5,7 +5,7 @@ import warnings
 
 import pytest
 
-from async_batch_llm import ProcessorConfig
+from llm_minder import ProcessorConfig
 
 
 class TestNewName:

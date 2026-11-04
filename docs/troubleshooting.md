@@ -2,7 +2,7 @@
 
 Start with the terminal `WorkItemResult`, its `error_category` (look up any value in
 the [`ErrorCategory` reference](api/core.md#errorcategory)), and
-`result.timing`. Enable [logging](logging.md) for `async_batch_llm` before
+`result.timing`. Enable [logging](logging.md) for `llm_minder` before
 raising concurrency or retry budgets; more work often amplifies the original
 problem.
 
@@ -412,7 +412,7 @@ bundled reporter's throttled rendering.
 `ProcessorConfig.progress_refresh_interval_seconds` separately from
 `progress_interval`. Verify whether `progress` is `True` or a callable.
 
-**Fix.** Install `async-batch-llm[progress]`. Tune
+**Fix.** Install `llm-minder[progress]`. Tune
 `progress_refresh_interval_seconds` for the bundled reporter; the logging
 fallback uses at least a one-second cadence. Expect lazy-source totals to grow.
 Aggregate inside a custom callback if its documented per-item delivery is too

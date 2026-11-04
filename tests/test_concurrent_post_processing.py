@@ -15,9 +15,9 @@ import time
 
 import pytest
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
-from async_batch_llm.base import RetryState, TokenUsage, WorkItemResult
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
+from llm_minder.base import RetryState, TokenUsage, WorkItemResult
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class _InstantStrategy(LLMCallStrategy[str]):

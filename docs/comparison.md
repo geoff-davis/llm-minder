@@ -3,7 +3,7 @@
 **Last reviewed: 2026-10-02.** Capabilities change; follow the linked primary
 documentation before making a long-lived platform decision.
 
-async-batch-llm (ABL) is a narrow, in-process execution layer for independent
+llm-minder (ABL) is a narrow, in-process execution layer for independent
 online LLM calls. It is not a dataset framework, model server, network gateway,
 native batch client, scheduler, or durable workflow engine. That boundary is
 often more useful than a feature checklist.

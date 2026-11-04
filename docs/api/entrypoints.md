@@ -2,15 +2,15 @@
 
 ## process_prompts
 
-::: async_batch_llm.process_prompts
+::: llm_minder.process_prompts
 
 ## process_stream
 
-::: async_batch_llm.process_stream
+::: llm_minder.process_stream
 
 ## llm
 
-::: async_batch_llm.llm
+::: llm_minder.llm
 
 ## call and call_result
 
@@ -19,27 +19,27 @@ One-shot calls are documented with the shared call pool on
 
 ## RetryState
 
-::: async_batch_llm.RetryState
+::: llm_minder.RetryState
 
 ## Middleware
 
-::: async_batch_llm.middleware.Middleware
+::: llm_minder.middleware.Middleware
 
 ## BaseMiddleware
 
-::: async_batch_llm.BaseMiddleware
+::: llm_minder.BaseMiddleware
 
 ## TokenEstimator
 
-::: async_batch_llm.TokenEstimator
+::: llm_minder.TokenEstimator
 
 ## TokenEstimate
 
-::: async_batch_llm.TokenEstimate
+::: llm_minder.TokenEstimate
 
 ## CharacterTokenEstimator
 
-::: async_batch_llm.CharacterTokenEstimator
+::: llm_minder.CharacterTokenEstimator
 
 `ErrorClassifier`, the built-in classifiers and the rate-limit strategies are on
 [Errors and Classification](errors.md).

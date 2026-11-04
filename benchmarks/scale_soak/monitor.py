@@ -55,9 +55,7 @@ def thread_count() -> int:
 
 def sqlite_executor_thread_count() -> int:
     """Threads owned by SqliteArtifactStore executors (by name prefix)."""
-    return sum(
-        1 for thread in threading.enumerate() if thread.name.startswith("async-batch-llm-sqlite")
-    )
+    return sum(1 for thread in threading.enumerate() if thread.name.startswith("llm-minder-sqlite"))
 
 
 def loop_default_executor_thread_count() -> int:

@@ -10,9 +10,9 @@ This tests the hybrid approach using context managers for prepare/cleanup:
 
 import pytest
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class LifecycleTrackingStrategy(LLMCallStrategy[str]):
@@ -354,7 +354,7 @@ async def test_mixed_shared_and_unique_strategies():
 async def test_core1_concurrent_calls_share_one_lifecycle():
     import asyncio
 
-    from async_batch_llm import call
+    from llm_minder import call
 
     class Shared(LifecycleTrackingStrategy):
         prepares = 0
@@ -387,7 +387,7 @@ async def test_core1_concurrent_calls_share_one_lifecycle():
 
 
 async def test_core1_processor_and_call_share_lease():
-    from async_batch_llm import call
+    from llm_minder import call
 
     strategy = LifecycleTrackingStrategy()
     async with ParallelBatchProcessor() as processor:
@@ -402,7 +402,7 @@ async def test_core1_processor_and_call_share_lease():
 async def test_core1_prepare_failure_shared_then_next_acquirer_retries():
     import asyncio
 
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     entered, proceed = asyncio.Event(), asyncio.Event()
     failure = ValueError("prepare failed")
@@ -438,7 +438,7 @@ async def test_core1_prepare_failure_shared_then_next_acquirer_retries():
 async def test_core1_cancelled_prepare_does_not_cancel_peer(owner_cancelled):
     import asyncio
 
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     entered, proceed = asyncio.Event(), asyncio.Event()
 
@@ -471,7 +471,7 @@ async def test_core1_cancelled_prepare_does_not_cancel_peer(owner_cancelled):
 async def test_core1_new_owner_waits_for_last_cleanup():
     import asyncio
 
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     entered, proceed = asyncio.Event(), asyncio.Event()
 
@@ -503,7 +503,7 @@ async def test_core1_new_owner_waits_for_last_cleanup():
 
 @pytest.mark.parametrize("new_owner", [True, False])
 async def test_core1_failed_cleanup_retries_only_for_last_owner(new_owner):
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     class Shared(LifecycleTrackingStrategy):
         preparations = 0
@@ -536,7 +536,7 @@ async def test_core1_abandoned_host_does_not_keep_peer_lease_alive():
     import gc
     import weakref
 
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     strategy = LifecycleTrackingStrategy()
     abandoned, remaining = StrategyLifecycle(), StrategyLifecycle()
@@ -553,7 +553,7 @@ async def test_core1_abandoned_host_does_not_keep_peer_lease_alive():
 def test_core1_strategy_reuse_across_event_loops():
     import asyncio
 
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     strategy = LifecycleTrackingStrategy()
 

@@ -6,7 +6,7 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallStrategy,
     LLMWorkItem,
     ParallelBatchProcessor,
@@ -15,7 +15,7 @@ from async_batch_llm import (
     RetryConfig,
     RetryState,
 )
-from async_batch_llm.testing import MockAgent
+from llm_minder.testing import MockAgent
 
 
 class TestOutput(BaseModel):

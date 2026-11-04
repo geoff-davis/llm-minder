@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     LLMCallPool,
     LLMCallStrategy,
@@ -14,12 +14,12 @@ from async_batch_llm import (
     RetryConfig,
     process_prompts,
 )
-from async_batch_llm.classifiers.gemini import GeminiErrorClassifier
-from async_batch_llm.classifiers.openai import OpenAIErrorClassifier
-from async_batch_llm.classifiers.openrouter import OpenRouterErrorClassifier
-from async_batch_llm.classifiers.pydantic_ai import PydanticAIErrorClassifier
-from async_batch_llm.core import GuardrailConfig
-from async_batch_llm.strategies.errors import BatchAbortedError, DefaultErrorClassifier
+from llm_minder.classifiers.gemini import GeminiErrorClassifier
+from llm_minder.classifiers.openai import OpenAIErrorClassifier
+from llm_minder.classifiers.openrouter import OpenRouterErrorClassifier
+from llm_minder.classifiers.pydantic_ai import PydanticAIErrorClassifier
+from llm_minder.core import GuardrailConfig
+from llm_minder.strategies.errors import BatchAbortedError, DefaultErrorClassifier
 
 google_auth_exceptions = pytest.importorskip("google.auth.exceptions")
 DefaultCredentialsError = google_auth_exceptions.DefaultCredentialsError

@@ -1,6 +1,6 @@
 # Batch LLM Examples
 
-This directory contains example scripts demonstrating how to use the `async-batch-llm` package.
+This directory contains example scripts demonstrating how to use the `llm-minder` package.
 
 ## Running Examples
 
@@ -13,7 +13,7 @@ First, install the package:
 uv pip install -e ..
 
 # If installed from PyPI
-uv pip install async-batch-llm
+uv pip install llm-minder
 ```
 
 ### What each example needs
@@ -57,7 +57,7 @@ python example_callable_application.py
 
 ### Quickstart assets
 
-The [no-key Colab notebook](https://colab.research.google.com/github/geoff-davis/async-batch-llm/blob/main/notebooks/async_batch_llm_quickstart.ipynb)
+The [no-key Colab notebook](https://colab.research.google.com/github/geoff-davis/llm-minder/blob/main/notebooks/llm_minder_quickstart.ipynb)
 shows coalesced progress, item-local retry feedback, a terminal failure,
 `BatchResult.summary()`, and checkpoint replay. The README terminal animation
 is generated from the same credential-free application scenario; see
@@ -120,7 +120,7 @@ Processed 5 items:
 Grounded Gemini batches: requests the `google_search` tool via
 `generation_config` and reads web citations back through the typed views
 (`result.grounding.sources` / `.queries`) — no custom strategy or extractor
-needed. Requires `async-batch-llm[gemini]` and a `GOOGLE_API_KEY`.
+needed. Requires `llm-minder[gemini]` and a `GOOGLE_API_KEY`.
 
 ### `example_embeddings.py`
 

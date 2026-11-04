@@ -1,4 +1,4 @@
-"""Example usage of the async_batch_llm module.
+"""Example usage of the llm_minder module.
 
 This demonstrates how to use the batch processing framework with PydanticAI agents.
 Includes examples of the new configuration system, middleware, observers, and testing utilities.
@@ -12,13 +12,13 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 
-from async_batch_llm.base import LLMWorkItem, WorkItemResult
-from async_batch_llm.classifiers import GeminiErrorClassifier
-from async_batch_llm.core import ProcessorConfig, RateLimitConfig, RetryConfig
-from async_batch_llm.middleware import BaseMiddleware
-from async_batch_llm.observers import MetricsObserver
-from async_batch_llm.parallel import ParallelBatchProcessor
-from async_batch_llm.testing import MockAgent
+from llm_minder.base import LLMWorkItem, WorkItemResult
+from llm_minder.classifiers import GeminiErrorClassifier
+from llm_minder.core import ProcessorConfig, RateLimitConfig, RetryConfig
+from llm_minder.middleware import BaseMiddleware
+from llm_minder.observers import MetricsObserver
+from llm_minder.parallel import ParallelBatchProcessor
+from llm_minder.testing import MockAgent
 
 # Configure logging
 logging.basicConfig(
@@ -103,7 +103,7 @@ async def example_simple():
         output_type=BookSummary,
         system_prompt="You are a book summarization expert.",
     )
-    from async_batch_llm import PydanticAIStrategy
+    from llm_minder import PydanticAIStrategy
 
     strategy = PydanticAIStrategy(agent=agent)
 
@@ -169,7 +169,7 @@ async def example_with_context_and_postprocessor():
         output_type=BookSummary,
         system_prompt="You are a book summarization expert.",
     )
-    from async_batch_llm import PydanticAIStrategy
+    from llm_minder import PydanticAIStrategy
 
     strategy = PydanticAIStrategy(agent=agent)
 
@@ -263,7 +263,7 @@ async def example_error_handling():
         output_type=BookSummary,
         system_prompt="You are a book summarization expert.",
     )
-    from async_batch_llm import PydanticAIStrategy
+    from llm_minder import PydanticAIStrategy
 
     strategy = PydanticAIStrategy(agent=agent)
 
@@ -344,7 +344,7 @@ async def example_testing_with_mocks():
         # Note: rate_limit_on_call is disabled for this simple example
         # You can enable it by setting rate_limit_on_call=3
     )
-    from async_batch_llm import PydanticAIStrategy
+    from llm_minder import PydanticAIStrategy
 
     strategy = PydanticAIStrategy(agent=mock_agent)
 

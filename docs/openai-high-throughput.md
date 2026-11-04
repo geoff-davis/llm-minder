@@ -11,7 +11,7 @@ model advertises `N`, so execution attempts are admitted before
 `attempt_timeout` starts and never queue invisibly inside the transport.
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     DeepSeekModel,
     DeepSeekStrategy,
     ParallelBatchProcessor,
@@ -100,7 +100,7 @@ httpx pool. Configure the transport explicitly and declare the same capacity on
 ```python
 import httpx
 from openai import AsyncOpenAI
-from async_batch_llm import OpenAIModel, OpenAIStrategy, ProcessorConfig
+from llm_minder import OpenAIModel, OpenAIStrategy, ProcessorConfig
 
 http_client = httpx.AsyncClient(
     limits=httpx.Limits(max_connections=32, max_keepalive_connections=32),
@@ -160,7 +160,7 @@ callers share capacity and cooldown state. Set `max_pending` for load shedding
 and `submit_timeout` for the end-to-end request budget:
 
 ```python
-from async_batch_llm import LLMCallPool
+from llm_minder import LLMCallPool
 
 async with LLMCallPool(
     strategy,

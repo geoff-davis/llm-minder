@@ -1,4 +1,4 @@
-"""Performance benchmarks for async-batch-llm.
+"""Performance benchmarks for llm-minder.
 
 These tests measure throughput, scaling, and resource usage.
 Run with: pytest -m benchmark
@@ -12,8 +12,8 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, PydanticAIStrategy
-from async_batch_llm.testing import MockAgent
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, PydanticAIStrategy
+from llm_minder.testing import MockAgent
 
 
 class BenchmarkOutput(BaseModel):
@@ -331,7 +331,7 @@ async def test_retry_performance_impact():
     num_items = 100
     latency = 0.01
 
-    from async_batch_llm import RetryConfig
+    from llm_minder import RetryConfig
 
     # Test with retries enabled
     mock_agent = MockAgent(

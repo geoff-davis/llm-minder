@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     DeepSeekModel,
     ErrorCategory,
@@ -32,14 +32,14 @@ from async_batch_llm import (
     call_result,
     process_prompts,
 )
-from async_batch_llm._internal.cache_groups import (
+from llm_minder._internal.cache_groups import (
     MAX_CACHE_GROUPS,
     CacheHitTracker,
     normalize_cache_group,
 )
-from async_batch_llm.base import BatchResult, BatchTermination, LLMWorkItem, RetryState
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
-from async_batch_llm.serialization import batch_result_from_dict, batch_result_to_dict
+from llm_minder.base import BatchResult, BatchTermination, LLMWorkItem, RetryState
+from llm_minder.observers import BaseObserver, ProcessingEvent
+from llm_minder.serialization import batch_result_from_dict, batch_result_to_dict
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -554,7 +554,7 @@ async def test_responses_miss_reason_comes_from_prompt_cache_diagnostics(
 
 
 def test_miss_reason_reads_mappings_too() -> None:
-    from async_batch_llm.models import _diagnostics_miss_reason
+    from llm_minder.models import _diagnostics_miss_reason
 
     class _Resp:
         prompt_cache_diagnostics = {"type": "cache_miss", "reason": "prompt_cache_key_changed"}

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from async_batch_llm import (
+from llm_minder import (
     DeepSeekModel,
     DeepSeekStrategy,
     LLMWorkItem,
@@ -18,8 +18,8 @@ from async_batch_llm import (
     StructuredOutputSchemaError,
     StructuredOutputValidationError,
 )
-from async_batch_llm.artifacts import infer_artifact_identity
-from async_batch_llm.classifiers.openai import OpenAIErrorClassifier
+from llm_minder.artifacts import infer_artifact_identity
+from llm_minder.classifiers.openai import OpenAIErrorClassifier
 
 
 class Verdict(BaseModel):
@@ -247,7 +247,7 @@ def test_responses_capability_fails_closed_without_schema_fallback() -> None:
 
 
 def test_from_api_key_forwards_responses_configuration_to_model() -> None:
-    with patch("async_batch_llm.models.AsyncOpenAI"):
+    with patch("llm_minder.models.AsyncOpenAI"):
         model = DeepSeekModel.from_api_key(
             "deepseek-v4-flash",
             api_key="sk-test",

@@ -11,8 +11,8 @@ from typing import Any
 import httpx
 import pytest
 
-import async_batch_llm.models as models
-from async_batch_llm import (
+import llm_minder.models as models
+from llm_minder import (
     DeepSeekModel,
     DeepSeekStrategy,
     EmptyResponseError,
@@ -28,13 +28,13 @@ from async_batch_llm import (
     SqliteArtifactStore,
     process_prompts,
 )
-from async_batch_llm._internal.responses_translation import (
+from llm_minder._internal.responses_translation import (
     translate_input,
     translate_request_config,
 )
-from async_batch_llm.artifacts import infer_artifact_identity
-from async_batch_llm.base import LLMWorkItem
-from async_batch_llm.classifiers.openai import OpenAIErrorClassifier
+from llm_minder.artifacts import infer_artifact_identity
+from llm_minder.base import LLMWorkItem
+from llm_minder.classifiers.openai import OpenAIErrorClassifier
 
 # ── Translation (pure functions) ─────────────────────────────────────────────
 

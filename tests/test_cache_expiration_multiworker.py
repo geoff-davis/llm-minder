@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
-from async_batch_llm.llm_strategies import GeminiStrategy
-from async_batch_llm.models import GeminiCachedModel
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
+from llm_minder.llm_strategies import GeminiStrategy
+from llm_minder.models import GeminiCachedModel
 from tests.test_gemini_strategies import AsyncIterList
 
 

@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python -m benchmarks.scale_soak",
         description=(
             "Deterministic, credential-free scale/restart soak harness for "
-            "async-batch-llm. Emits a versioned JSON report."
+            "llm-minder. Emits a versioned JSON report."
         ),
     )
     parser.add_argument("--profile", choices=(*PROFILES, "custom"), default="ci")
@@ -174,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.verbose:
         # The scenarios deliberately inject thousands of failures; the
         # framework's per-failure logging would swamp the run output.
-        logging.getLogger("async_batch_llm").setLevel(logging.CRITICAL)
+        logging.getLogger("llm_minder").setLevel(logging.CRITICAL)
     report, exit_code = run_config(config)
     write_report(report, config.output)
     print(f"[scale-soak] report written to {config.output}")

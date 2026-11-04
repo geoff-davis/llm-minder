@@ -1,5 +1,8 @@
 # Migrating from v0.18.x to v0.20.0
 
+> This page predates the rename to `llm-minder` in 1.0. Its examples use the old
+> names: install `async-batch-llm`, import `async_batch_llm`.
+
 v0.19.0 was not published. Its planned onboarding and ergonomics improvements
 are included in v0.20.0. Upgrade directly from v0.18.x; no v0.19 package, tag,
 or intermediate checkpoint conversion exists.

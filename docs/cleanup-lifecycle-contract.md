@@ -6,7 +6,7 @@ the high-level `call_result()` / `process_prompts()` / `process_stream()`
 surfaces. `tests/test_cleanup_contract.py` holds one executable test per
 clause; a change to this document without a matching test change is a bug.
 
-The implementation lives in `src/async_batch_llm/_internal/cleanup.py`.
+The implementation lives in `src/llm_minder/_internal/cleanup.py`.
 
 ## 1. Timing and ordering
 

@@ -1,11 +1,11 @@
-"""Example demonstrating async-batch-llm with LangChain integration.
+"""Example demonstrating llm-minder with LangChain integration.
 
 This example shows how to create custom strategies that integrate with LangChain
 runnables (LCEL chains such as ``prompt | llm``), including a small RAG
 (Retrieval-Augmented Generation) pipeline. It targets LangChain 1.x.
 
 Install dependencies:
-    pip install 'async-batch-llm' 'langchain-core>=1' 'langchain-openai' 'langchain-anthropic'
+    pip install 'llm-minder' 'langchain-core>=1' 'langchain-openai' 'langchain-anthropic'
 """
 
 import asyncio
@@ -17,8 +17,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable
 from langchain_openai import ChatOpenAI
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 def _message_tokens(message: AIMessage) -> TokenUsage:

@@ -12,7 +12,7 @@ import httpx
 import pytest
 from openai import APIStatusError
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     DefaultErrorClassifier,
     ErrorInfo,
@@ -28,11 +28,11 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm._internal.guardrails import AbortCause
-from async_batch_llm.base import LLMWorkItem, RetryState, TokenUsage, WorkItemResult
-from async_batch_llm.call_pool import LLMCallPool
-from async_batch_llm.middleware import BaseMiddleware
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
+from llm_minder._internal.guardrails import AbortCause
+from llm_minder.base import LLMWorkItem, RetryState, TokenUsage, WorkItemResult
+from llm_minder.call_pool import LLMCallPool
+from llm_minder.middleware import BaseMiddleware
+from llm_minder.observers import BaseObserver, ProcessingEvent
 
 _TOKENS: TokenUsage = {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3}
 
@@ -161,7 +161,7 @@ async def test_batch_deadline_cancels_pre_middleware_and_skips_error_recovery() 
 @pytest.mark.asyncio
 async def test_streaming_admission_has_no_post_commit_cancellation_point() -> None:
     processor = ParallelBatchProcessor(config=ProcessorConfig(max_workers=1))
-    from async_batch_llm.base import _ProcessorState
+    from llm_minder.base import _ProcessorState
 
     processor._state = _ProcessorState.STREAMING
     processor._result_stream = asyncio.Queue()
@@ -337,7 +337,7 @@ SCHEDULING_SLACK = 0.005
 @pytest.mark.asyncio
 @pytest.mark.parametrize("pickup_skew", [0, 0.01])
 async def test_capacity_admits_only_before_each_items_own_deadline(pickup_skew: float) -> None:
-    from async_batch_llm._internal.execution_state import runtime_state
+    from llm_minder._internal.execution_state import runtime_state
 
     class RecordStarts(LLMCallStrategy[str]):
         max_concurrency = 1
@@ -720,8 +720,8 @@ async def test_stream_can_be_closed_externally_without_guardrail_misclassificati
 async def test_pydantic_ai_validation_category_only_aborts_for_exact_type(error_name):
     from pydantic_ai import exceptions
 
-    from async_batch_llm import PydanticAIStrategy
-    from async_batch_llm.testing import MockAgent
+    from llm_minder import PydanticAIStrategy
+    from llm_minder.testing import MockAgent
 
     calls = []
 
@@ -767,7 +767,7 @@ async def test_exec2_provider_timeout_retains_identity_and_timing(error_type, ca
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["jsonl", "sqlite"])
 async def test_adm6_early_deadline_keeps_error_and_guardrail_record(tmp_path, backend):
-    from async_batch_llm import (
+    from llm_minder import (
         ArtifactIdentity,
         JsonlArtifactStore,
         ResumePolicy,

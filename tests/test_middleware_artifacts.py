@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactError,
     ArtifactFormatError,
     ArtifactIOError,
@@ -30,9 +30,9 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.artifacts import infer_artifact_identity
-from async_batch_llm.middleware import BaseMiddleware
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
+from llm_minder.artifacts import infer_artifact_identity
+from llm_minder.middleware import BaseMiddleware
+from llm_minder.observers import BaseObserver, ProcessingEvent
 
 
 class Strategy(LLMCallStrategy[str]):
@@ -133,7 +133,7 @@ async def test_preprocessing_preserves_subclass_validation(hook):
 
 @pytest.mark.parametrize("stored_result", [None, {}, [], 1, "invalid"])
 def test_top_level_exclusion_category_wins_over_result_shape(stored_result):
-    from async_batch_llm._internal.artifact_codec import is_non_replayable_record
+    from llm_minder._internal.artifact_codec import is_non_replayable_record
 
     assert is_non_replayable_record({"error_category": "batch_aborted", "result": stored_result})
     assert not is_non_replayable_record({"result": stored_result})
@@ -211,7 +211,7 @@ async def test_invalid_artifact_input_fails_only_its_item(store_factory, bad_inp
 @pytest.mark.parametrize("guard", ["item", "abort", "batch"])
 @pytest.mark.asyncio
 async def test_completed_lookup_wins_guardrail_and_preserves_stored_success(store_factory, guard):
-    from async_batch_llm._internal.guardrails import AbortCause
+    from llm_minder._internal.guardrails import AbortCause
 
     class ReplayStrategy(Strategy):
         configurations = 0
@@ -278,7 +278,7 @@ async def test_completed_lookup_wins_guardrail_and_preserves_stored_success(stor
 async def test_guardrail_audit_records_do_not_mask_success(
     store_factory, category, legacy, monkeypatch
 ):
-    from async_batch_llm._internal import artifact_codec
+    from llm_minder._internal import artifact_codec
 
     strategy = Strategy()
     await run(store_factory(), strategy, Transform())
@@ -392,7 +392,7 @@ async def test_streaming_capacity_warning_uses_consumer_module(surface, ignore):
 @pytest.mark.parametrize("surface", ["batch", "stream"])
 @pytest.mark.asyncio
 async def test_submission_without_warning_does_not_create_registry(surface, monkeypatch):
-    from async_batch_llm import streaming
+    from llm_minder import streaming
 
     monkeypatch.delattr(sys.modules[__name__], "__warningregistry__", raising=False)
     monkeypatch.delattr(asyncio.base_events, "__warningregistry__", raising=False)
@@ -402,7 +402,7 @@ async def test_submission_without_warning_does_not_create_registry(surface, monk
 
     if surface == "batch":
         monkeypatch.setattr(
-            "async_batch_llm.parallel.capture_capacity_warning_source", unexpected_capture
+            "llm_minder.parallel.capture_capacity_warning_source", unexpected_capture
         )
         await run(None, Strategy(), [])
     else:
@@ -479,7 +479,7 @@ async def test_item_timeout_checkpoint_failure_still_propagates(
 async def test_audit_artifact_failure_preserves_controlled_stop(
     store_factory, phase, error_type, abort_kind, caplog
 ):
-    from async_batch_llm._internal.guardrails import AbortCause
+    from llm_minder._internal.guardrails import AbortCause
 
     strategy = Strategy()
     store = store_factory()
@@ -544,7 +544,7 @@ async def test_configuration_rechecks_strategy_identity_and_releases_entries():
 
 @pytest.mark.asyncio
 async def test_queued_aborts_are_audited_and_run_on_resume(store_factory):
-    from async_batch_llm._internal.guardrails import AbortCause
+    from llm_minder._internal.guardrails import AbortCause
 
     strategy = Strategy()
     store = store_factory()
@@ -854,7 +854,7 @@ async def test_ordinary_preprocessing_exceptions_remain_fail_open():
 async def test_effective_audit_fields_and_exact_key_precede_publication(store_factory, monkeypatch):
     import importlib
 
-    from async_batch_llm._internal.artifact_codec import fingerprint_work_item
+    from llm_minder._internal.artifact_codec import fingerprint_work_item
 
     store = store_factory(include_prompt=True, include_context=True)
     records = []
@@ -951,7 +951,7 @@ async def test_identity_is_independent_of_preprocessing_completion_order(store_f
 
 @pytest.mark.asyncio
 async def test_replacement_selects_classifier_and_quota_scope():
-    from async_batch_llm import ErrorClassifier, ErrorInfo
+    from llm_minder import ErrorClassifier, ErrorInfo
 
     scope = object()
 
@@ -1160,7 +1160,7 @@ async def test_legacy_filter_artifact_cannot_replay_after_policy_allows(
 @pytest.mark.parametrize("store_cls", [JsonlArtifactStore, SqliteArtifactStore])
 @pytest.mark.parametrize("terminal", [False, True])
 async def test_exec1_middleware_recovery_accounts_for_paid_attempts(tmp_path, store_cls, terminal):
-    from async_batch_llm import ArtifactIdentity, EmptyResponseError, TokenTrackingError
+    from llm_minder import ArtifactIdentity, EmptyResponseError, TokenTrackingError
 
     class PaidFailures(LLMCallStrategy[str]):
         async def execute(self, prompt, attempt, timeout, state=None):

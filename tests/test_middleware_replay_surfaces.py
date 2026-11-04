@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIOError,
     JsonlArtifactStore,
     LLMWorkItem,
@@ -24,8 +24,8 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.middleware import BaseMiddleware
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.middleware import BaseMiddleware
 
 pytestmark = pytest.mark.asyncio
 

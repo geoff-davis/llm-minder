@@ -7,7 +7,7 @@ import traceback
 
 import pytest
 
-from async_batch_llm import CallableStrategy, call, call_result, process_prompts
+from llm_minder import CallableStrategy, call, call_result, process_prompts
 
 
 async def user_function_with_bug(prompt, *, attempt, timeout, state):
@@ -55,7 +55,7 @@ async def test_repeated_bug_has_one_diagnostic_and_count_summary(caplog, surface
         if surface == "stream":
             batch = await process_prompts(strategy, [str(i) for i in range(200)])
         else:
-            from async_batch_llm import LLMWorkItem, ParallelBatchProcessor
+            from llm_minder import LLMWorkItem, ParallelBatchProcessor
 
             async with ParallelBatchProcessor() as processor:
                 for i in range(200):
@@ -67,7 +67,7 @@ async def test_repeated_bug_has_one_diagnostic_and_count_summary(caplog, surface
     assert len(summaries) == 1
     assert "200 items failed with the same error" in batch.summary()
     assert batch.failed == 200
-    from async_batch_llm import BatchResult
+    from llm_minder import BatchResult
 
     assert (
         "200 items failed with the same error" in BatchResult.from_json(batch.to_json()).summary()
@@ -77,7 +77,7 @@ async def test_repeated_bug_has_one_diagnostic_and_count_summary(caplog, surface
 @pytest.mark.parametrize("field", ["latency", "failure_rate"])
 @pytest.mark.parametrize("value", [True, False, "1", None, [1], float("nan")])
 def test_fake_strategy_rejects_non_numbers(field, value):
-    from async_batch_llm.testing import FakeStrategy
+    from llm_minder.testing import FakeStrategy
 
     # Same convention as numeric config fields: bool and non-numbers are rejected.
     with pytest.raises(ValueError, match=f"{field} must be a finite number"):
@@ -86,9 +86,9 @@ def test_fake_strategy_rejects_non_numbers(field, value):
 
 @pytest.mark.asyncio
 async def test_fake_strategy_schedule_and_usage():
-    from async_batch_llm import ProcessorConfig
-    from async_batch_llm.core import RateLimitConfig, RetryConfig
-    from async_batch_llm.testing import FakeRateLimitError, FakeStrategy
+    from llm_minder import ProcessorConfig
+    from llm_minder.core import RateLimitConfig, RetryConfig
+    from llm_minder.testing import FakeRateLimitError, FakeStrategy
 
     strategy = FakeStrategy(
         lambda prompt: prompt.upper(),
@@ -117,7 +117,7 @@ async def test_rejects_ambiguous_prompt_sources(source):
 
 @pytest.mark.asyncio
 async def test_duplicate_ids_warn_once():
-    from async_batch_llm.testing import FakeStrategy
+    from llm_minder.testing import FakeStrategy
 
     with pytest.warns(UserWarning, match="Duplicate") as warnings:
         await process_prompts(FakeStrategy("ok"), [("id", "one"), ("id", "two"), ("id", "three")])
@@ -125,7 +125,7 @@ async def test_duplicate_ids_warn_once():
 
 
 def test_processor_config_keyword_suggestion():
-    from async_batch_llm import ProcessorConfig
+    from llm_minder import ProcessorConfig
 
     with pytest.raises(TypeError, match="Did you mean 'max_workers'"):
         ProcessorConfig(max_worker=2)
@@ -133,7 +133,7 @@ def test_processor_config_keyword_suggestion():
 
 @pytest.mark.asyncio
 async def test_openai_usage_aliases_are_normalized():
-    from async_batch_llm import CallOutcome
+    from llm_minder import CallOutcome
 
     async def invoke(prompt, **kwargs):
         return CallOutcome("ok", {"prompt_tokens": 7, "completion_tokens": 3})
@@ -149,7 +149,7 @@ async def test_openai_usage_aliases_are_normalized():
 
 @pytest.mark.asyncio
 async def test_classifier_bug_has_one_user_traceback(caplog):
-    from async_batch_llm.strategies import ErrorClassifier
+    from llm_minder.strategies import ErrorClassifier
 
     class BrokenClassifier(ErrorClassifier):
         def classify(self, exception):
@@ -173,7 +173,7 @@ def test_context_manager_retains_output_type(tmp_path):
     snippet = tmp_path / "typing_case.py"
     snippet.write_text("""
 from typing_extensions import assert_type
-from async_batch_llm import ParallelBatchProcessor, LLMWorkItem, CallableStrategy, CallOutcome
+from llm_minder import ParallelBatchProcessor, LLMWorkItem, CallableStrategy, CallOutcome
 class Output: pass
 async def invoke(prompt: str, **kwargs: object) -> CallOutcome[Output]:
     return CallOutcome(Output())
@@ -199,7 +199,7 @@ def test_processor_config_wrapper_preserves_dataclass_contracts():
     import inspect
     import pickle
 
-    from async_batch_llm import ProcessorConfig
+    from llm_minder import ProcessorConfig
 
     signature = inspect.signature(ProcessorConfig)
     assert "max_workers" in signature.parameters
@@ -247,8 +247,8 @@ def test_processor_config_wrapper_preserves_dataclass_contracts():
     ],
 )
 def test_terminal_traceback_policy(exception, category, retryable, expected):
-    from async_batch_llm._internal.error_logging import terminal_traceback
-    from async_batch_llm.strategies import ErrorInfo
+    from llm_minder._internal.error_logging import terminal_traceback
+    from llm_minder.strategies import ErrorInfo
 
     info = ErrorInfo(retryable, False, False, category)
     assert (terminal_traceback(exception, info) is not None) is expected
@@ -256,7 +256,7 @@ def test_terminal_traceback_policy(exception, category, retryable, expected):
 
 @pytest.mark.asyncio
 async def test_pool_retains_user_frame():
-    from async_batch_llm import LLMCallPool
+    from llm_minder import LLMCallPool
 
     async with LLMCallPool(CallableStrategy(user_function_with_bug)) as pool:
         with pytest.raises(ValueError) as caught:
@@ -267,7 +267,7 @@ async def test_pool_retains_user_frame():
 
 
 def test_uninspectable_callable_keeps_runtime_validation(monkeypatch):
-    import async_batch_llm.callable_strategy as module
+    import llm_minder.callable_strategy as module
 
     def unavailable(callback):
         raise ValueError("signature unavailable")
@@ -278,7 +278,7 @@ def test_uninspectable_callable_keeps_runtime_validation(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_mixed_usage_naming_is_rejected():
-    from async_batch_llm import CallOutcome
+    from llm_minder import CallOutcome
 
     async def invoke(prompt, **kwargs):
         return CallOutcome("ok", {"input_tokens": 1, "completion_tokens": 2})
@@ -291,7 +291,7 @@ async def test_mixed_usage_naming_is_rejected():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("surface", ["work_item", "call", "prompts", "stream", "pool"])
 async def test_invalid_strategy_has_wrapper_hint(surface):
-    from async_batch_llm import LLMCallPool, LLMWorkItem, process_stream
+    from llm_minder import LLMCallPool, LLMWorkItem, process_stream
 
     with pytest.raises(TypeError, match="CallableStrategy"):
         if surface == "work_item":
@@ -308,8 +308,8 @@ async def test_invalid_strategy_has_wrapper_hint(surface):
 
 
 def test_terminal_log_cache_bounds_many_unique_long_failures():
-    from async_batch_llm._internal.error_logging import TerminalFailureLogs
-    from async_batch_llm.strategies import ErrorInfo
+    from llm_minder._internal.error_logging import TerminalFailureLogs
+    from llm_minder.strategies import ErrorInfo
 
     target = logging.Logger("quiet-terminal-cache", level=logging.CRITICAL)
     logs = TerminalFailureLogs()
@@ -323,8 +323,8 @@ def test_terminal_log_cache_bounds_many_unique_long_failures():
 
 
 def test_terminal_log_overflow_stays_visible_and_tracked_keys_still_deduplicate(caplog):
-    from async_batch_llm._internal.error_logging import TerminalFailureLogs
-    from async_batch_llm.strategies import ErrorInfo
+    from llm_minder._internal.error_logging import TerminalFailureLogs
+    from llm_minder.strategies import ErrorInfo
 
     target = logging.getLogger("terminal-cache-overflow")
     logs = TerminalFailureLogs()
@@ -350,8 +350,8 @@ def test_terminal_log_overflow_stays_visible_and_tracked_keys_still_deduplicate(
 
 
 def test_terminal_log_key_uses_bounded_message_prefix(caplog):
-    from async_batch_llm._internal.error_logging import TerminalFailureLogs
-    from async_batch_llm.strategies import ErrorInfo
+    from llm_minder._internal.error_logging import TerminalFailureLogs
+    from llm_minder.strategies import ErrorInfo
 
     logs = TerminalFailureLogs()
     target = logging.getLogger("terminal-cache-prefix")

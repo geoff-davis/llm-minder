@@ -3,7 +3,7 @@
 Guards against the doc-drift bug classes found in the 2026-07 docs audit:
 
 1. Fenced ``python`` blocks that no longer parse.
-2. ``from async_batch_llm ... import X`` naming symbols that don't exist.
+2. ``from llm_minder ... import X`` naming symbols that don't exist.
 3. Doc classes overriding framework hooks (``LLMCallStrategy.execute``,
    ``Middleware.after_process``, ...) with the wrong parameter count —
    the framework calls hooks positionally, so a stale signature in a
@@ -29,9 +29,9 @@ from pathlib import Path
 
 import pytest
 
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.middleware.base import Middleware
-from async_batch_llm.observers.base import ProcessorObserver
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.middleware.base import Middleware
+from llm_minder.observers.base import ProcessorObserver
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -173,7 +173,7 @@ def test_doc_snippet_parses(snippet: Snippet) -> None:
 
 @pytest.mark.parametrize("snippet", CURRENT_SNIPPETS, ids=lambda s: s.label)
 def test_doc_imports_resolve(snippet: Snippet) -> None:
-    """Every async_batch_llm import in a doc snippet must exist."""
+    """Every llm_minder import in a doc snippet must exist."""
     tree = parse_snippet(snippet.source)
     if tree is None:  # reported by test_doc_snippet_parses
         pytest.skip("snippet does not parse")
@@ -182,9 +182,9 @@ def test_doc_imports_resolve(snippet: Snippet) -> None:
         if not isinstance(node, ast.ImportFrom) or node.level:
             continue
         # Exact-prefix match: importing executes module code, so only ever
-        # import this package itself (not e.g. an async_batch_llm_x typosquat).
+        # import this package itself (not e.g. an llm_minder_x typosquat).
         module_name = node.module or ""
-        if module_name != "async_batch_llm" and not module_name.startswith("async_batch_llm."):
+        if module_name != "llm_minder" and not module_name.startswith("llm_minder."):
             continue
         module = importlib.import_module(module_name)
         for alias in node.names:
@@ -237,7 +237,7 @@ def test_doc_hook_signatures_match_framework(snippet: Snippet) -> None:
 # --- self-tests: prove the checker catches the bug classes it exists for ---
 
 BAD_EXECUTE = """
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class Broken(LLMCallStrategy[str]):
     async def execute(self, prompt, attempt, timeout):  # missing state
@@ -245,7 +245,7 @@ class Broken(LLMCallStrategy[str]):
 """
 
 BAD_MIDDLEWARE = """
-from async_batch_llm import BaseMiddleware
+from llm_minder import BaseMiddleware
 
 class Broken(BaseMiddleware):
     async def after_process(self, work_item, result):  # extra param

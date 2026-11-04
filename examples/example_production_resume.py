@@ -1,6 +1,6 @@
 """Resumable production batch with deadlines and fail-fast guardrails.
 
-Requires ``pip install 'async-batch-llm[openai]'`` and ``OPENAI_API_KEY``.
+Requires ``pip install 'llm-minder[openai]'`` and ``OPENAI_API_KEY``.
 Run the example again with the same inputs to replay the checkpointed successes
 without another provider call.
 """
@@ -11,7 +11,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     ArtifactIdentity,
     GuardrailConfig,

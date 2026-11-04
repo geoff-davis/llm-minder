@@ -1,10 +1,10 @@
 """Bulk LLM benchmark: minimize wall time on a big batch job, the right way.
 
-This is the flagship "why async-batch-llm" demo. It runs the GSM8K math
+This is the flagship "why llm-minder" demo. It runs the GSM8K math
 benchmark through several providers and shows three things at once:
 
 1. **Wall-time race** — the same workload run three ways, per provider:
-   sequential loop vs naive ``asyncio.gather`` vs ``async-batch-llm``.
+   sequential loop vs naive ``asyncio.gather`` vs ``llm-minder``.
    Concurrency is what collapses wall time; the framework also adds the retry /
    backoff / rate-limit handling a bare ``gather`` lacks. Read across rows to
    compare providers, down columns to compare orchestrations.
@@ -44,7 +44,7 @@ outputs whose answer we couldn't parse, and decides whether they match gold.
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[deepseek,gemini,openrouter,openai]'
+pip install 'llm-minder[deepseek,gemini,openrouter,openai]'
 python examples/download_gsm8k.py
 ```
 
@@ -83,7 +83,7 @@ python examples/example_batch_benchmark.py --throughput   # only the worker-pool
 runtime) and jumps straight to the provider bake-off — handy when iterating.
 
 ``--throughput`` runs *only* the throughput benchmark: for each large-pool
-provider, it races a chunked ``asyncio.gather`` against ``async-batch-llm``,
+provider, it races a chunked ``asyncio.gather`` against ``llm-minder``,
 both pinned to the provider's full worker count, on a big batch
 (``THROUGHPUT_ITEMS``). Isolates how much the worker pool's continuous refill
 beats per-chunk barriers at scale.
@@ -383,9 +383,9 @@ class StreamingGzipWriter:
 # ---------------------------------------------------------------------------
 # Strategy: fast → high-reasoning escalation, validation-gated
 # ---------------------------------------------------------------------------
-from async_batch_llm import ErrorClassifier, ErrorInfo  # noqa: E402
-from async_batch_llm.core.protocols import ManagedLLMModel  # noqa: E402
-from async_batch_llm.llm_strategies import LLMCallStrategy  # noqa: E402
+from llm_minder import ErrorClassifier, ErrorInfo  # noqa: E402
+from llm_minder.core.protocols import ManagedLLMModel  # noqa: E402
+from llm_minder.llm_strategies import LLMCallStrategy  # noqa: E402
 
 
 class AnswerParseError(Exception):
@@ -550,7 +550,7 @@ class Contestant:
 
 
 def make_deepseek() -> Contestant:
-    from async_batch_llm import DeepSeekModel, OpenAIErrorClassifier
+    from llm_minder import DeepSeekModel, OpenAIErrorClassifier
 
     pricing, pricing_basis = pricing_for(DEEPSEEK_MODEL)
     fast = ModelCall(
@@ -605,7 +605,7 @@ def _make_gemini(
     think_config: dict[str, Any],
     workers: int,
 ) -> Contestant:
-    from async_batch_llm import GeminiErrorClassifier, GeminiModel
+    from llm_minder import GeminiErrorClassifier, GeminiModel
 
     pricing, pricing_basis = pricing_for(model_id)
     model = GeminiModel(model_id, _gemini_client(workers))  # one model, two thinking configs
@@ -654,13 +654,13 @@ def _openrouter_billing_metadata(response: Any) -> dict[str, Any]:
 
 
 def make_glm() -> Contestant:
-    from async_batch_llm import OpenRouterErrorClassifier, OpenRouterModel
+    from llm_minder import OpenRouterErrorClassifier, OpenRouterModel
 
     pricing, pricing_basis = pricing_for(GLM_MODEL)
     model = OpenRouterModel.from_api_key(
         GLM_MODEL,
         max_connections=GLM_WORKERS,
-        title="async-batch-llm benchmark",
+        title="llm-minder benchmark",
         extra_body=GLM_PROVIDER_ROUTING,
         metadata_extractors=[_openrouter_billing_metadata],
     )
@@ -688,8 +688,8 @@ def make_glm() -> Contestant:
 def _bench_config(workers: int) -> Any:
     """Shared ProcessorConfig: max_attempts=3 for content failures, plus a short
     rate-limit cooldown and a bounded rate-limit-retry budget (see BENCH_*)."""
-    from async_batch_llm import ProcessorConfig
-    from async_batch_llm.core import RateLimitConfig, RetryConfig
+    from llm_minder import ProcessorConfig
+    from llm_minder.core import RateLimitConfig, RetryConfig
 
     return ProcessorConfig(
         max_workers=workers,
@@ -722,7 +722,7 @@ async def run_contestant(
     # dance. We carry per-item context (gold + question) via (item_id, prompt,
     # context) triples, and write each result to the .jsonl.gz file via the
     # forwarded post_processor.
-    from async_batch_llm import process_prompts
+    from llm_minder import process_prompts
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = RESULTS_DIR / f"{contestant.name}_results.jsonl.gz"
@@ -893,7 +893,7 @@ def score_batch(
 async def grade_ambiguous(
     ambiguous: list[tuple[str, str, float | None]],
 ) -> tuple[dict[str, bool], Any]:
-    from async_batch_llm import (
+    from llm_minder import (
         OpenAIModel,
         OpenAIStrategy,
         ProcessorConfig,
@@ -959,12 +959,12 @@ async def race_naive_gather(
 
 
 async def race_processor(items: list[Item], contestant: Contestant) -> tuple[float, int]:
-    """async-batch-llm: concurrent AND robust (retry, backoff, escalation).
+    """llm-minder: concurrent AND robust (retry, backoff, escalation).
 
     This leg times orchestration only — no result writing — so the race stays a
     clean apples-to-apples comparison of how the calls are driven. (Disk I/O is
     negligible at this scale anyway.)"""
-    from async_batch_llm import LLMWorkItem, ParallelBatchProcessor
+    from llm_minder import LLMWorkItem, ParallelBatchProcessor
 
     config = _bench_config(contestant.workers)
     start = perf_counter()
@@ -989,7 +989,7 @@ class RaceResult:
     name: str
     seq: tuple[float, int]  # (wall, ok)
     gather: tuple[float, int]
-    proc: tuple[float, int]  # async-batch-llm
+    proc: tuple[float, int]  # llm-minder
     workers: int = 0
 
 
@@ -1010,7 +1010,7 @@ class ThroughputResult:
     # each leg: (wall_seconds, ok_count, rate_limit_hits)
     gather: tuple[float, int, int]  # chunked gather at `workers` concurrency
     semaphore: tuple[float, int, int]  # semaphore-pool gather, continuous refill
-    abl: tuple[float, int, int]  # async-batch-llm at `workers` concurrency
+    abl: tuple[float, int, int]  # llm-minder at `workers` concurrency
 
 
 async def _throughput_gather(
@@ -1069,9 +1069,9 @@ async def _throughput_semaphore(
 
 
 async def _throughput_abl(items: list[Item], contestant: Contestant) -> tuple[float, int, int]:
-    """async-batch-llm leg; returns the processor's rate_limit_count (each one is
+    """llm-minder leg; returns the processor's rate_limit_count (each one is
     a coordinated cooldown: pause all workers + slow-start)."""
-    from async_batch_llm import LLMWorkItem, ParallelBatchProcessor
+    from llm_minder import LLMWorkItem, ParallelBatchProcessor
 
     config = _bench_config(contestant.workers)
     start = perf_counter()
@@ -1163,7 +1163,7 @@ def print_race(rows: list[RaceResult], n: int) -> None:
     print(
         "\nRead across rows to compare providers; down columns to compare "
         "orchestrations.\nConcurrency collapses wall time (sequential -> gather "
-        "-> async-batch-llm), and the\nframework leg matches a bare gather on "
+        "-> llm-minder), and the\nframework leg matches a bare gather on "
         "speed while ALSO surviving transient errors\nand rate limits that gather "
         "would silently drop (note OK=all items, every provider)."
     )
@@ -1184,7 +1184,7 @@ def print_throughput(rows: list[ThroughputResult], n: int) -> None:
     print("=" * 96)
     print(
         "  g = chunked gather   s = semaphore pool (continuous refill)   "
-        "a = async-batch-llm   RL = rate-limit hits"
+        "a = llm-minder   RL = rate-limit hits"
     )
     print(
         f"{'Provider':<14}{'Workers':>8}{'g it/s':>8}{'g RL':>6}"
@@ -1208,11 +1208,11 @@ def print_throughput(rows: list[ThroughputResult], n: int) -> None:
         "\nThree orchestrations at the *same* worker count:\n"
         "  - chunked gather (g): per-chunk barriers — waits for the slowest call in each chunk;\n"
         "  - semaphore pool (s): continuous refill, the FAIR concurrency baseline;\n"
-        "  - async-batch-llm (a): continuous refill PLUS retry/backoff/coordinated cooldown.\n"
+        "  - llm-minder (a): continuous refill PLUS retry/backoff/coordinated cooldown.\n"
         "Expect a ~= s on raw throughput: a well-written semaphore pool already saturates the\n"
         "provider, so the framework should match it, not beat it. The differentiation isn't "
         "speed —\nit's the RL columns and what happens on failure: g/s have no backoff, so a "
-        "429/503 is a\nsilently lost result; async-batch-llm retries, pauses all workers, and "
+        "429/503 is a\nsilently lost result; llm-minder retries, pauses all workers, and "
         "slow-starts (see the\nerror/retry resilience summary). Parity on throughput + survival "
         "on errors is the win."
     )
@@ -1296,7 +1296,7 @@ def write_summary(
     cost — so this dumps the same numbers ``print_race``/``print_bakeoff`` show,
     letting a run be cited (e.g. in docs) without re-running it.
     """
-    from async_batch_llm import __version__ as abl_version
+    from llm_minder import __version__ as abl_version
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1407,7 +1407,7 @@ def write_summary(
                 "workers": r.workers,
                 "sequential_s": round(r.seq[0], 2),
                 "gather_s": round(r.gather[0], 2),
-                "async_batch_llm_s": round(r.proc[0], 2),
+                "llm_minder_s": round(r.proc[0], 2),
                 "speedup_seq_to_abl": (round(r.seq[0] / r.proc[0], 1) if r.proc[0] else None),
                 "ok": r.proc[1],
             }
@@ -1461,10 +1461,10 @@ def write_summary(
 
 def write_throughput(rows: list[ThroughputResult], n: int) -> Path:
     """Persist the throughput parity table (chunked gather vs semaphore pool vs
-    async-batch-llm, same concurrency) to ``benchmark_results/throughput.json``."""
+    llm-minder, same concurrency) to ``benchmark_results/throughput.json``."""
     from datetime import datetime, timezone
 
-    from async_batch_llm import __version__ as abl_version
+    from llm_minder import __version__ as abl_version
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1488,7 +1488,7 @@ def write_throughput(rows: list[ThroughputResult], n: int) -> Path:
                 "workers": r.workers,
                 "chunked_gather": _leg(r.gather),
                 "semaphore_pool": _leg(r.semaphore),
-                "async_batch_llm": _leg(r.abl),
+                "llm_minder": _leg(r.abl),
             }
             for r in rows
         ],

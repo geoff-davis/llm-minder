@@ -5,16 +5,16 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     PydanticAIStrategy,
 )
-from async_batch_llm.classifiers import GeminiErrorClassifier
-from async_batch_llm.core import RetryConfig
-from async_batch_llm.strategies import DefaultErrorClassifier, ErrorInfo
-from async_batch_llm.testing import MockAgent
+from llm_minder.classifiers import GeminiErrorClassifier
+from llm_minder.core import RetryConfig
+from llm_minder.strategies import DefaultErrorClassifier, ErrorInfo
+from llm_minder.testing import MockAgent
 
 
 class TestOutput(BaseModel):
@@ -409,7 +409,7 @@ async def test_retry_succeeds_on_final_attempt():
 async def test_token_usage_tracked_across_retries():
     """Test that token usage is accumulated across failed retries."""
 
-    from async_batch_llm.testing.mocks import MockResult, MockUsage
+    from llm_minder.testing.mocks import MockResult, MockUsage
 
     class TokenTrackingAgent:
         def __init__(self):
@@ -471,8 +471,8 @@ async def test_token_usage_tracked_across_retries():
     ],
 )
 async def test_retry_delay_uses_resolved_category(name, category, expected_delay, caplog):
-    from async_batch_llm import CallableStrategy, CallOutcome, call_result
-    from async_batch_llm.strategies import ErrorClassifier
+    from llm_minder import CallableStrategy, CallOutcome, call_result
+    from llm_minder.strategies import ErrorClassifier
 
     class Classifier(ErrorClassifier):
         def classify(self, exception):
@@ -515,7 +515,7 @@ async def test_pydantic_ai_default_classifier_retry_delay(surface, error_kind, t
         UnexpectedModelBehavior,
     )
 
-    from async_batch_llm import LLMCallPool, call_result, process_prompts, process_stream
+    from llm_minder import LLMCallPool, call_result, process_prompts, process_stream
 
     class ResultValidationError(Exception):
         pass
@@ -537,7 +537,7 @@ async def test_pydantic_ai_default_classifier_retry_delay(surface, error_kind, t
         return TestOutput(value="ok")
 
     strategy = PydanticAIStrategy(MockAgent(response_factory=respond, latency=0))
-    from async_batch_llm import PydanticAIErrorClassifier
+    from llm_minder import PydanticAIErrorClassifier
 
     assert isinstance(strategy.recommended_error_classifier(), PydanticAIErrorClassifier)
     config = ProcessorConfig(retry=RetryConfig(max_attempts=2, initial_wait=0.02, jitter=False))
@@ -563,8 +563,8 @@ async def test_pydantic_ai_default_classifier_retry_delay(surface, error_kind, t
 
 @pytest.mark.parametrize("surface", ["batch", "single"])
 async def test_exec3_classifier_failure_is_an_item_failure(surface, caplog):
-    from async_batch_llm import LLMCallStrategy, call_result, process_prompts
-    from async_batch_llm.strategies import ErrorClassifier
+    from llm_minder import LLMCallStrategy, call_result, process_prompts
+    from llm_minder.strategies import ErrorClassifier
 
     original = ValueError("provider error")
 
@@ -600,8 +600,8 @@ async def test_exec3_classifier_failure_is_an_item_failure(surface, caplog):
 
 @pytest.mark.asyncio
 async def test_adm5_many_retries_preserve_original_failure_instead_of_overflow():
-    from async_batch_llm import ProcessorConfig, RetryConfig, call_result
-    from async_batch_llm.llm_strategies import LLMCallStrategy
+    from llm_minder import ProcessorConfig, RetryConfig, call_result
+    from llm_minder.llm_strategies import LLMCallStrategy
 
     failure = RuntimeError("transient outage")
 

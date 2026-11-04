@@ -9,7 +9,7 @@ to bring an existing async client.
 Install the extra for your provider. Add `progress` for a tqdm terminal bar:
 
 ```bash
-pip install 'async-batch-llm[openai,progress]'
+pip install 'llm-minder[openai,progress]'
 export OPENAI_API_KEY='...'
 ```
 
@@ -28,8 +28,8 @@ adds one provider SDK at the minimum version CI tests:
 
 `CallableStrategy`, `FakeStrategy`, and your own `LLMCallStrategy` subclasses need
 no extra. The credential-free
-[embedded application example](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_callable_application.py)
-and [Colab notebook](https://colab.research.google.com/github/geoff-davis/async-batch-llm/blob/main/notebooks/async_batch_llm_quickstart.ipynb)
+[embedded application example](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_callable_application.py)
+and [Colab notebook](https://colab.research.google.com/github/geoff-davis/llm-minder/blob/main/notebooks/llm_minder_quickstart.ipynb)
 need only the core package plus the optional progress extra.
 
 ## 2. First small batch
@@ -39,7 +39,7 @@ provider admission, and the connection pool when the model supports resizing.
 
 ```python
 import asyncio
-from async_batch_llm import llm, process_prompts
+from llm_minder import llm, process_prompts
 
 async def main():
     batch = await process_prompts(
@@ -122,7 +122,7 @@ count, not the bundled terminal refresh cadence.
 ## 6. Add checkpoint and resume
 
 ```python
-from async_batch_llm import JsonlArtifactStore, ResumePolicy
+from llm_minder import JsonlArtifactStore, ResumePolicy
 
 store = JsonlArtifactStore("runs/summaries.jsonl")
 batch = await process_prompts(
@@ -148,7 +148,7 @@ Use `process_stream()` when the source is lazy or the result set is large:
 
 ```python
 from collections.abc import AsyncIterator
-from async_batch_llm import ProcessorConfig, process_stream
+from llm_minder import ProcessorConfig, process_stream
 
 async def source() -> AsyncIterator[tuple[str, str]]:
     async for row in repository.iter_documents(page_size=500):
@@ -177,7 +177,7 @@ final `BatchResult`.
 built-in strategies:
 
 ```python
-from async_batch_llm import ArtifactIdentity, CallOutcome, CallableStrategy
+from llm_minder import ArtifactIdentity, CallOutcome, CallableStrategy
 
 async def invoke(prompt, *, attempt, timeout, state):
     response = await existing_client.generate(prompt, timeout=timeout)

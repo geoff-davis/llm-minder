@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactError,
     ArtifactIdentity,
     GuardrailConfig,
@@ -22,11 +22,11 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.artifacts import ArtifactStore
-from async_batch_llm.base import RetryState, TokenUsage, WorkItemResult
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.observers import BaseObserver
-from async_batch_llm.strategies import ErrorClassifier, ErrorInfo
+from llm_minder.artifacts import ArtifactStore
+from llm_minder.base import RetryState, TokenUsage, WorkItemResult
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.observers import BaseObserver
+from llm_minder.strategies import ErrorClassifier, ErrorInfo
 
 _TOKENS: TokenUsage = {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
 

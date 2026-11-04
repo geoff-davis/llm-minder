@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 
 import pytest
 
-from async_batch_llm import OpenRouterModel, OpenRouterStrategy
-from async_batch_llm.base import LLMResponse
+from llm_minder import OpenRouterModel, OpenRouterStrategy
+from llm_minder.base import LLMResponse
 
 
 def _build_response(
@@ -139,7 +139,7 @@ class TestErrorInResponseBody:
 
     @pytest.mark.asyncio
     async def test_error_body_raises_provider_response_error(self):
-        from async_batch_llm import ProviderResponseError
+        from llm_minder import ProviderResponseError
 
         response = _build_response(
             error={"message": "Upstream provider is overloaded", "code": 502}
@@ -168,8 +168,8 @@ class TestErrorInResponseBody:
         assert result.text == "fine"
 
     def test_classifier_retries_provider_response_error(self):
-        from async_batch_llm import ProviderResponseError
-        from async_batch_llm.classifiers import OpenRouterErrorClassifier
+        from llm_minder import ProviderResponseError
+        from llm_minder.classifiers import OpenRouterErrorClassifier
 
         classifier = OpenRouterErrorClassifier()
         info = classifier.classify(
@@ -180,8 +180,8 @@ class TestErrorInResponseBody:
         assert info.error_category == "upstream_error"
 
     def test_classifier_flags_embedded_429_as_rate_limit(self):
-        from async_batch_llm import ProviderResponseError
-        from async_batch_llm.classifiers import OpenRouterErrorClassifier
+        from llm_minder import ProviderResponseError
+        from llm_minder.classifiers import OpenRouterErrorClassifier
 
         classifier = OpenRouterErrorClassifier()
         info = classifier.classify(
@@ -192,8 +192,8 @@ class TestErrorInResponseBody:
         assert info.error_category == "rate_limit"
 
     def test_classifier_flags_no_provider_as_network_error(self):
-        from async_batch_llm import ProviderResponseError
-        from async_batch_llm.classifiers import OpenRouterErrorClassifier
+        from llm_minder import ProviderResponseError
+        from llm_minder.classifiers import OpenRouterErrorClassifier
 
         classifier = OpenRouterErrorClassifier()
         info = classifier.classify(

@@ -1,9 +1,12 @@
-"""Write artifact and result fixtures with a published async-batch-llm release.
+"""Write artifact and result fixtures with a published llm-minder release.
 
 Run once per release, with that release installed, for example:
 
-    uv run --no-project --python 3.12 --with async-batch-llm==0.18.0 \
-        python scripts/write_legacy_fixtures.py tests/fixtures/v0_18
+    uv run --no-project --python 3.12 --with llm-minder==1.0.0 \
+        python scripts/write_legacy_fixtures.py tests/fixtures/v1_0
+
+Releases before 1.0 were published as async-batch-llm (for example
+``--with async-batch-llm==0.32.0``); the script imports either name.
 
 The current test suite (tests/test_legacy_fixtures.py) checks that these files
 still load, replay and accept new records. Do not regenerate fixtures for a
@@ -16,7 +19,10 @@ import asyncio
 import sys
 from pathlib import Path
 
-import async_batch_llm as abl
+try:
+    import llm_minder as abl
+except ImportError:  # releases before 1.0 were published as async-batch-llm
+    import async_batch_llm as abl  # type: ignore[no-redef]
 
 IDENTITY = {"provider": "fixture", "model": "fixture-model", "prompt_version": "1"}
 PROMPTS = [("ok1", "alpha"), ("ok2", "beta"), ("bad", "gamma")]

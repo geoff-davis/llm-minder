@@ -5,10 +5,10 @@ from importlib.metadata import version
 
 def test_version_matches_package():
     """Verify __version__ matches package metadata."""
-    from async_batch_llm import __version__
+    from llm_minder import __version__
 
     # Should match pyproject.toml version
-    package_version = version("async-batch-llm")
+    package_version = version("llm-minder")
     assert __version__ == package_version, (
         f"__version__ ({__version__}) doesn't match package metadata ({package_version})"
     )
@@ -16,7 +16,7 @@ def test_version_matches_package():
 
 def test_version_format():
     """Verify version follows semantic versioning."""
-    from async_batch_llm import __version__
+    from llm_minder import __version__
 
     # Should be in format X.Y.Z or X.Y.Z+dev
     parts = __version__.replace("+dev", "").split(".")

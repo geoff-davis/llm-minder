@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from async_batch_llm import TokenEstimate, TokenEstimateExceedsLimit
-from async_batch_llm._internal.admission import AdmissionGateClosed, QuotaGate
+from llm_minder import TokenEstimate, TokenEstimateExceedsLimit
+from llm_minder._internal.admission import AdmissionGateClosed, QuotaGate
 
 
 @dataclass

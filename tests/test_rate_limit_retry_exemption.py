@@ -2,7 +2,7 @@
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
@@ -10,8 +10,8 @@ from async_batch_llm import (
     RateLimitRetriesExceeded,
     RetryConfig,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 _TOKENS: TokenUsage = {"input_tokens": 1, "output_tokens": 1, "total_tokens": 1}
 
@@ -186,7 +186,7 @@ async def test_raises_rate_limit_retries_exceeded_type():
 async def test_adm6_exhausted_item_reports_without_waiting_for_shared_cooldown():
     import asyncio
 
-    from async_batch_llm import LLMCallPool
+    from llm_minder import LLMCallPool
 
     config = _fast_config(max_rate_limit_retries=0)
     config.rate_limit.cooldown_seconds = 2

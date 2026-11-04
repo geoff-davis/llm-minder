@@ -11,6 +11,13 @@ Work toward 1.0.0rc1. It removes everything 0.27 and 0.28 deprecated and drops
 Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected; the
 [removed-in-1.0 table](docs/stability.md#removed-in-10) lists each replacement.
 
+**The package is renamed from `async-batch-llm` to `llm-minder`.** Install
+`llm-minder` and import `llm_minder`; v0.32 is the last release published as
+`async-batch-llm`. The library logs under the `llm_minder` logger, and
+`MetricsObserver.export_prometheus()` names its metrics `llm_minder_*`. Artifact and
+result files keep their format, so checkpoints written by earlier releases still
+resume. See [Renamed in 1.0](docs/stability.md#renamed-in-10).
+
 ### Added
 
 - `EmptyResponseError.reason` says why a billed response was unusable, the same way
@@ -2841,7 +2848,7 @@ See **[Migration Guide](docs/archive/MIGRATION_V0_1.md)** for complete upgrade i
 [#122]: https://github.com/geoff-davis/async-batch-llm/issues/122
 [#125]: https://github.com/geoff-davis/async-batch-llm/issues/125
 
-[Unreleased]: https://github.com/geoff-davis/async-batch-llm/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v0.32.0...HEAD
 [0.32.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.29.0...v0.30.0

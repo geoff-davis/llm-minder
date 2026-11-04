@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallPool,
     LLMCallStrategy,
     LLMWorkItem,
@@ -36,7 +36,7 @@ class _CapacityStrategy(LLMCallStrategy[str]):
 
 def test_owned_openai_model_records_configured_capacity() -> None:
     with (
-        patch("async_batch_llm.models.AsyncOpenAI"),
+        patch("llm_minder.models.AsyncOpenAI"),
         patch("httpx.Limits"),
         patch("httpx.AsyncClient"),
     ):

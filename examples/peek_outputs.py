@@ -15,7 +15,7 @@ Same prompt and thinking settings as the benchmark:
 ## Setup
 
 ```bash
-pip install 'async-batch-llm[deepseek,gemini]'
+pip install 'llm-minder[deepseek,gemini]'
 python examples/download_gsm8k.py
 export DEEPSEEK_API_KEY=sk-...
 export GOOGLE_API_KEY=...        # or GOOGLE_GENAI_USE_VERTEXAI=true + ADC
@@ -70,7 +70,7 @@ def build_models() -> list[tuple[str, Any, dict[str, Any]]]:
     entries: list[tuple[str, Any, dict[str, Any]]] = []
 
     if DEEPSEEK_API_KEY:
-        from async_batch_llm import DeepSeekModel
+        from llm_minder import DeepSeekModel
 
         entries.append(
             (
@@ -83,7 +83,7 @@ def build_models() -> list[tuple[str, Any, dict[str, Any]]]:
     if GOOGLE_API_KEY or GEMINI_USE_VERTEX:
         from google import genai
 
-        from async_batch_llm import GeminiModel
+        from llm_minder import GeminiModel
 
         client = (
             genai.Client(vertexai=True)
@@ -145,7 +145,7 @@ async def main() -> None:
                 print(f"  ({response.output_tokens} output tokens)")
                 print(response.text.strip())
     finally:
-        from async_batch_llm.core.protocols import ManagedLLMModel
+        from llm_minder.core.protocols import ManagedLLMModel
 
         for _, model, _ in entries:
             if isinstance(model, ManagedLLMModel):

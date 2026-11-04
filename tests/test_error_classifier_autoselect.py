@@ -2,7 +2,7 @@
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     DeepSeekStrategy,
     GeminiStrategy,
     LLMWorkItem,
@@ -12,12 +12,12 @@ from async_batch_llm import (
     ProcessorConfig,
     process_prompts,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.classifiers.gemini import GeminiErrorClassifier
-from async_batch_llm.classifiers.openai import OpenAIErrorClassifier
-from async_batch_llm.classifiers.openrouter import OpenRouterErrorClassifier
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.strategies.errors import DefaultErrorClassifier
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.classifiers.gemini import GeminiErrorClassifier
+from llm_minder.classifiers.openai import OpenAIErrorClassifier
+from llm_minder.classifiers.openrouter import OpenRouterErrorClassifier
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.strategies.errors import DefaultErrorClassifier
 
 
 class _NoPreferenceStrategy(LLMCallStrategy[str]):

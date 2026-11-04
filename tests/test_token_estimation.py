@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     CallableStrategy,
     CallOutcome,
     CharacterTokenEstimator,

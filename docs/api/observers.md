@@ -2,19 +2,19 @@
 
 ## ProcessorObserver
 
-::: async_batch_llm.observers.ProcessorObserver
+::: llm_minder.observers.ProcessorObserver
 
 ## BaseObserver
 
-::: async_batch_llm.observers.BaseObserver
+::: llm_minder.observers.BaseObserver
 
 ## MetricsObserver
 
-::: async_batch_llm.observers.MetricsObserver
+::: llm_minder.observers.MetricsObserver
 
 ## ProcessingEvent
 
-::: async_batch_llm.ProcessingEvent
+::: llm_minder.ProcessingEvent
 
 ## Event contracts
 

@@ -5,15 +5,15 @@ import contextlib
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     process_prompts,
     process_stream,
 )
-from async_batch_llm.base import RetryState, TokenUsage, WorkItemResult
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import RetryState, TokenUsage, WorkItemResult
+from llm_minder.llm_strategies import LLMCallStrategy
 
 _TOK: TokenUsage = {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
 
@@ -90,7 +90,7 @@ async def test_process_stream_context_reaches_post_processor():
 
 
 def test_to_work_item_rejects_bad_tuple_length():
-    from async_batch_llm.streaming import _to_work_item
+    from llm_minder.streaming import _to_work_item
 
     with pytest.raises(TypeError, match="item_id, prompt"):
         _to_work_item(("only-one",), 0, _Strategy())  # type: ignore[arg-type]

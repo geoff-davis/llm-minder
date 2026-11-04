@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     DeepSeekModel,
     DefaultErrorClassifier,
     EmptyResponseError,

@@ -1,6 +1,6 @@
 # Release Prep
 
-Prepare a new release of async-batch-llm. This skill handles changelog
+Prepare a new release of llm-minder. This skill handles changelog
 generation, version bumping, and creating the release PR.
 
 ## Arguments
@@ -19,7 +19,7 @@ generation, version bumping, and creating the release PR.
   `tests/test_legacy_fixtures.py` lists it. If not, tell the user and offer to add them first, in their own PR:
 
   ```bash
-  uv run --no-project --python 3.12 --with async-batch-llm==X.Y.Z \
+  uv run --no-project --python 3.12 --with llm-minder==X.Y.Z \
       python scripts/write_legacy_fixtures.py tests/fixtures/vX_Y
   ```
 
@@ -59,7 +59,7 @@ generation, version bumping, and creating the release PR.
   `[#177]: https://...` at its end) under a new `[<version>] - <YYYY-MM-DD>` heading directly below `[Unreleased]`.
   Leave `[Unreleased]` empty.
 - Update the compare links at the end of the file: point `[Unreleased]:` at `compare/v<version>...HEAD` and add
-  `[<version>]: https://github.com/geoff-davis/async-batch-llm/compare/v<previous>...v<version>` above the previous
+  `[<version>]: https://github.com/geoff-davis/llm-minder/compare/v<previous>...v<version>` above the previous
   release's line.
 - Check every link in the new section: each `[#NNN]` has a definition, and each relative link (for example the
   migration guide) points to a file that exists.

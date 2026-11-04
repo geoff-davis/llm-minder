@@ -12,7 +12,7 @@ from uuid import UUID
 import pytest
 from pydantic import BaseModel
 
-from async_batch_llm import (
+from llm_minder import (
     AttemptTiming,
     BatchResult,
     BatchTermination,
@@ -22,8 +22,8 @@ from async_batch_llm import (
     WorkItemTiming,
     process_prompts,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class _OrderedStrategy(LLMCallStrategy[str]):
@@ -361,7 +361,7 @@ def test_jsonl_round_trip_preserves_empty_batch_termination(tmp_path: Path) -> N
 @pytest.mark.parametrize("included", [False, True])
 @pytest.mark.parametrize("output", [None, {"value": 1}])
 def test_art6_decoders_respect_success_presence_and_non_null(success, included, output):
-    from async_batch_llm.serialization import work_item_result_from_dict, work_item_result_to_dict
+    from llm_minder.serialization import work_item_result_from_dict, work_item_result_to_dict
 
     value = work_item_result_to_dict(WorkItemResult("x", success, output=output))
     value["output_included"] = included

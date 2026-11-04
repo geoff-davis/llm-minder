@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, RetryState
-from async_batch_llm.base import TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.strategies.rate_limit import FixedDelayStrategy
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, RetryState
+from llm_minder.base import TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.strategies.rate_limit import FixedDelayStrategy
 
 
 class FastRateLimitStrategy(FixedDelayStrategy):

@@ -26,14 +26,14 @@ import asyncio
 import logging
 import time
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     MetricsObserver,
     ParallelBatchProcessor,
     ProcessorConfig,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 LATENCY_S = 0.005
 NUM_ITEMS = 10_000

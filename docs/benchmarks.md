@@ -29,7 +29,7 @@ section unchanged.
 
 | Field | Value |
 | --- | --- |
-| `async-batch-llm` version | 0.23.0 |
+| `llm-minder` version | 0.23.0 |
 | Dataset | GSM8K **test split**, 1,319 problems |
 | Models | `deepseek-v4-flash`, `gemini-3.5-flash-lite`, `z-ai/glm-5.3-flash` |
 | API paths | DeepSeek direct; Gemini Developer API (AI Studio); GLM through OpenRouter |
@@ -136,7 +136,7 @@ comparison, provider bake-off, and contemporary pricing snapshot.
 | Field | Value |
 | --- | --- |
 | Date | 2026-06-10 |
-| `async-batch-llm` version | 0.12.0 + this release's pre-merge changes (streaming API, 503 per-item backoff) |
+| `llm-minder` version | 0.12.0 + this release's pre-merge changes (streaming API, 503 per-item backoff) |
 | Dataset | GSM8K **test split**, 1,319 problems |
 | Models | `deepseek-v4-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`; judge `gpt-5-nano` |
 | Worker pools | DeepSeek 250, Gemini 3.1 250, **Gemini 2.5 Flash-Lite 5** (throttle-capped — 503s/rate-limits even at 10) |
@@ -153,12 +153,12 @@ judge calls), plus ~30–35 minutes of wall time — dominated by Gemini 2.5's
 ### Wall-time race
 
 The same 30-item workload run three ways per provider — a one-at-a-time
-sequential loop, a naive `asyncio.gather`, and async-batch-llm — to show how much
+sequential loop, a naive `asyncio.gather`, and llm-minder — to show how much
 concurrency collapses wall time.
 
 ![Wall time per orchestration, per provider](assets/benchmark-wall-time.png)
 
-| Provider | Workers | Sequential (s) | `gather` (s) | async-batch-llm (s) | Speedup (seq→abl) |
+| Provider | Workers | Sequential (s) | `gather` (s) | llm-minder (s) | Speedup (seq→abl) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | deepseek-flash | 250 | 65.0 | 5.0 | 4.2 | 15.6× |
 | gemini-3.1 | 250 | 39.1 | 2.6 | 2.1 | 19.1× |
@@ -166,7 +166,7 @@ concurrency collapses wall time.
 
 Concurrency collapses wall time (≈16–19× on the unthrottled providers). The race
 runs only 30 items, so a 250-worker pool never fills — every call fires at once
-regardless of orchestration, which is why `gather` and async-batch-llm are
+regardless of orchestration, which is why `gather` and llm-minder are
 neck-and-neck here. Gemini 2.5 is the exception: the framework respects its
 5-worker cap (and retried a few transient 503s with backoff), while the bare
 `gather` ignores the cap, fires all 30 at once, and got away with it on this
@@ -179,17 +179,17 @@ shows up at scale, below.
 To see what the worker pool buys you once it *does* fill, `--throughput` runs a
 large batch (1,000 items) three ways at the **same** concurrency: a chunked
 `asyncio.gather` (per-chunk barriers), a semaphore-bounded `gather` (continuous
-refill — the fair hand-rolled baseline), and async-batch-llm.
+refill — the fair hand-rolled baseline), and llm-minder.
 
 ![Throughput at the same concurrency, per provider](assets/benchmark-throughput.png)
 
-| Provider | Workers | chunked gather (it/s) | semaphore pool (it/s) | async-batch-llm (it/s) | RL hits (g / s / a) |
+| Provider | Workers | chunked gather (it/s) | semaphore pool (it/s) | llm-minder (it/s) | RL hits (g / s / a) |
 | --- | ---: | ---: | ---: | ---: | :---: |
 | deepseek-flash | 250 | 29.3 | 58.4 | **72.1** | 0 / 0 / 0 |
 | gemini-3.1 | 250 | 20.4 | 55.2 | **108.4** | 0 / 0 / 0 |
 
 With **zero** rate limits on any leg (`RL = 0`), this is a clean comparison — and
-async-batch-llm comes out **ahead of even the fair semaphore pool** (≈1.2× on
+llm-minder comes out **ahead of even the fair semaphore pool** (≈1.2× on
 DeepSeek, ≈2× on Gemini 3.1), with the chunked baseline trailing both. Why the
 worker pool wins: a `Semaphore`-over-`gather` still *schedules all 1,000
 coroutines up front* and lets them contend on the semaphore, whereas the worker
@@ -364,7 +364,7 @@ uploads reports as artifacts.
 ### Report schema
 
 Each run writes one versioned JSON document
-(`schema_name: async-batch-llm-scale-soak`, `schema_version: 2`) containing
+(`schema_name: llm-minder-scale-soak`, `schema_version: 2`) containing
 UTC generation time, environment (package version, git revision, Python,
 platform, CPU count, resource-probe methods — never hostnames or home
 paths), the complete effective configuration, per-scenario counts,

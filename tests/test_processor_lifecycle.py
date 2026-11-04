@@ -4,9 +4,9 @@ import asyncio
 
 import pytest
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.middleware import BaseMiddleware
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.middleware import BaseMiddleware
 
 
 class Echo(LLMCallStrategy):

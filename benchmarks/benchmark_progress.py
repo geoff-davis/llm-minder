@@ -17,8 +17,8 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-import async_batch_llm.streaming as streaming
-from async_batch_llm import LLMCallStrategy, process_prompts
+import llm_minder.streaming as streaming
+from llm_minder import LLMCallStrategy, process_prompts
 
 
 class _ImmediateStrategy(LLMCallStrategy[str]):

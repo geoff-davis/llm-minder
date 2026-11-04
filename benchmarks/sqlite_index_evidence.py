@@ -13,7 +13,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     CallableStrategy,
     CallOutcome,

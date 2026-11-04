@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallStrategy,
     LLMResponse,
     LLMWorkItem,
@@ -19,7 +19,7 @@ from async_batch_llm import (
     TokenUsage,
     call_result,
 )
-from async_batch_llm._internal.executor_host import ExecutorHost
+from llm_minder._internal.executor_host import ExecutorHost
 
 
 class _TimingStrategy(LLMCallStrategy[str]):

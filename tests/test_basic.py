@@ -1,4 +1,4 @@
-"""Basic tests for the async_batch_llm module using MockAgent.
+"""Basic tests for the llm_minder module using MockAgent.
 
 These tests don't require any API keys and can be run in CI/CD.
 """
@@ -8,7 +8,7 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     MetricsObserver,
     ParallelBatchProcessor,
@@ -19,7 +19,7 @@ from async_batch_llm import (
     SimpleResult,
     SimpleWorkItem,
 )
-from async_batch_llm.testing import MockAgent
+from llm_minder.testing import MockAgent
 
 
 class BookSummary(BaseModel):

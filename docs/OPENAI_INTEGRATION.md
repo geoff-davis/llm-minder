@@ -6,7 +6,7 @@ First-class OpenAI support arrived in v0.9.0 via `OpenAIModel`,
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[openai]'
+pip install 'llm-minder[openai]'
 ```
 
 ## Authentication
@@ -18,7 +18,7 @@ Set the `OPENAI_API_KEY` environment variable, or pass `api_key=` directly to
 
 ```python
 import asyncio
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     OpenAIErrorClassifier,
     OpenAIModel,
@@ -171,7 +171,7 @@ retries on the fence characters:
 ```python
 from pydantic import BaseModel
 
-from async_batch_llm import OpenAIModel, OpenAIStrategy, pydantic_json_parser
+from llm_minder import OpenAIModel, OpenAIStrategy, pydantic_json_parser
 
 class Sentiment(BaseModel):
     sentiment: str
@@ -217,7 +217,7 @@ same `name`, `schema`, and `strict` fields:
 ```python
 from pydantic import BaseModel
 
-from async_batch_llm import OpenAIModel, OpenAIStrategy, pydantic_json_parser
+from llm_minder import OpenAIModel, OpenAIStrategy, pydantic_json_parser
 
 class Sentiment(BaseModel):
     model_config = {"extra": "forbid"}  # strict mode needs additionalProperties: false
@@ -257,7 +257,7 @@ Both are part of `input_tokens`, and `BatchResult.total_cached_tokens` and
 `BatchResult.total_cache_write_tokens` add them up across the batch.
 
 ```python
-from async_batch_llm import CachedTokenRates
+from llm_minder import CachedTokenRates
 
 result = await processor.process_all()
 print(f"input={result.total_input_tokens} cached={result.total_cached_tokens}")
@@ -487,7 +487,7 @@ for the full boundary.
 Fireworks, proxies) without subclassing:
 
 ```python
-from async_batch_llm import OpenAICompatibleModel, OpenAIStrategy, llm
+from llm_minder import OpenAICompatibleModel, OpenAIStrategy, llm
 
 model = OpenAICompatibleModel.from_api_key(
     "meta-llama/Llama-3.1-8B-Instruct",
@@ -506,7 +506,7 @@ strategy = llm(
 For a provider you use often, a small subclass keeps the URL in one place:
 
 ```python
-from async_batch_llm import OpenAICompatibleModel
+from llm_minder import OpenAICompatibleModel
 
 class TogetherModel(OpenAICompatibleModel):
     _default_base_url = "https://api.together.xyz/v1"
@@ -523,8 +523,8 @@ a worked example of customizing token extraction.
   multi-provider sibling.
 - `DeepSeekModel` / `DeepSeekStrategy` — direct DeepSeek access with native
   cache-hit tracking (install `[deepseek]`); see
-  [`examples/example_deepseek.py`](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_deepseek.py).
-- [`examples/example_openai.py`](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_openai.py)
+  [`examples/example_deepseek.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_deepseek.py).
+- [`examples/example_openai.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_openai.py)
   — runnable example.
 
 [openai-caching]: https://developers.openai.com/api/docs/guides/prompt-caching

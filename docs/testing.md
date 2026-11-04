@@ -1,12 +1,12 @@
 # Testing
 
-Test code that uses async-batch-llm without spending money on API calls.
+Test code that uses llm-minder without spending money on API calls.
 
 ## Provider-free FakeStrategy
 
 ```python
-from async_batch_llm import process_prompts
-from async_batch_llm.testing import FakeStrategy
+from llm_minder import process_prompts
+from llm_minder.testing import FakeStrategy
 
 batch = await process_prompts(
     FakeStrategy(lambda prompt: prompt.upper(), token_usage={"input_tokens": 2, "output_tokens": 1}),
@@ -20,7 +20,7 @@ assert list(batch.outputs()) == ["HELLO", "WORLD"]
 `latency` in seconds, and canonical or OpenAI-style token counters. It needs no extras.
 `failure_schedule=[FakeRateLimitError(), None]` makes the first physical call raise
 a simulated 429 and the next succeed; import `FakeRateLimitError` from
-`async_batch_llm.testing`. Each entry corresponds to invocation order, including retries.
+`llm_minder.testing`. Each entry corresponds to invocation order, including retries.
 After the schedule ends, calls succeed unless `failure_rate` is set. A nonzero
 `failure_rate` requires `seed=` for reproducibility. Concurrent scheduling can change
 which item receives a scheduled failure. Pass `identity=ArtifactIdentity(...)` for
@@ -46,7 +46,7 @@ async with ParallelBatchProcessor(config=config) as processor:
 no network, so it's far faster than real integration tests.
 
 ```python
-from async_batch_llm.testing import MockAgent
+from llm_minder.testing import MockAgent
 
 mock_agent = MockAgent(
     response_factory=lambda p: Summary(title="Test", key_points=["A", "B"]),

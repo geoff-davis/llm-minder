@@ -26,7 +26,7 @@ async iterable, and persist each result as it arrives:
 ```python
 from collections.abc import AsyncIterator
 
-from async_batch_llm import ProcessorConfig, process_stream
+from llm_minder import ProcessorConfig, process_stream
 
 
 async def prompts_from_database() -> AsyncIterator[tuple[str, str, int]]:
@@ -90,7 +90,7 @@ file, including choosing its encoding, is your code's job. Decode at the source,
 and keep the source lazy so a large file is never loaded into memory at once:
 
 ```python
-from async_batch_llm import ProcessorConfig, process_stream
+from llm_minder import ProcessorConfig, process_stream
 
 
 def prompts_from_file(path):

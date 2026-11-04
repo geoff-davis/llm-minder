@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     ArtifactIdentity,
     AttemptTiming,
@@ -43,8 +43,8 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm._internal.executor_host import ExecutorHost
-from async_batch_llm.base import ProcessingStats
+from llm_minder._internal.executor_host import ExecutorHost
+from llm_minder.base import ProcessingStats
 
 
 @pytest.mark.parametrize("shape", [dict, SimpleNamespace])
@@ -124,7 +124,7 @@ async def test_on_error_usage_is_retained_without_reconciling_again(surface, end
     ["return", "raise", "attempt_timeout", "deadline", "abort", "batch_deadline", "cancel"],
 )
 async def test_late_usage_survives_hook_failure_and_guardrails(hook_outcome):
-    from async_batch_llm._internal.guardrails import AbortCause, AbortController
+    from llm_minder._internal.guardrails import AbortCause, AbortController
 
     entered = asyncio.Event()
 
@@ -399,7 +399,7 @@ async def test_interrupted_provider_usage_is_reconciled_once(stop, usage):
         attempt_timeout=0.05 if stop == "timeout" else 10,
         guardrails=GuardrailConfig(total_timeout_per_item=0.3 if stop == "deadline" else None),
     )
-    from async_batch_llm._internal.guardrails import AbortCause, AbortController
+    from llm_minder._internal.guardrails import AbortCause, AbortController
 
     abort = AbortController(AbortMode.CANCEL_ACTIVE)
     host = ExecutorHost(config, strategy=strategy)
@@ -1074,7 +1074,7 @@ async def test_after_provider_reconciliation_preserves_known_usage(
     monkeypatch, internal_failure
 ) -> None:
     if internal_failure:
-        from async_batch_llm._internal.event_dispatcher import EventDispatcher
+        from llm_minder._internal.event_dispatcher import EventDispatcher
 
         async def fail_dispatch(self, result):
             raise RuntimeError("internal failure after provider reconciliation")
@@ -1245,7 +1245,7 @@ async def test_metrics_observer_aggregates_quota_without_high_cardinality_labels
     assert "must-not-be-a-label" not in exported + prometheus
     assert "also-private" not in exported + prometheus
     assert "quota_scope_id=" not in prometheus
-    assert "async_batch_llm_reserved_tokens 15" in prometheus
+    assert "llm_minder_reserved_tokens 15" in prometheus
 
 
 def test_quota_wait_samples_are_bounded_and_summary_is_quiet_when_disabled() -> None:
@@ -1377,7 +1377,7 @@ async def test_partial_admission_releases_quota_and_capacity(monkeypatch, bounda
 
 async def test_unseen_quota_grant_is_refunded_before_capacity(monkeypatch):
     """Cancellation between a child grant and receipt keeps ownership in admission."""
-    from async_batch_llm._internal import item_executor
+    from llm_minder._internal import item_executor
 
     strategy = _SequenceStrategy([{"total_tokens": 10}], estimate=TokenEstimate(20))
     host = ExecutorHost(_config(), strategy=strategy)
@@ -1456,7 +1456,7 @@ async def test_reused_failure_keeps_per_item_usage_without_framework_stamps(
 
 
 async def test_guard_replacement_keeps_unknown_usage_without_synthetic_zero_stamp():
-    from async_batch_llm._internal.guardrails import AbortCause, AbortController
+    from llm_minder._internal.guardrails import AbortCause, AbortController
 
     entered = asyncio.Event()
 

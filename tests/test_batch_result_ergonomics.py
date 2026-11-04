@@ -2,7 +2,7 @@
 
 import pytest
 
-from async_batch_llm import BatchResult, CachedTokenRates, WorkItemResult
+from llm_minder import BatchResult, CachedTokenRates, WorkItemResult
 
 
 def _result(item_id: str, *, success: bool, inp: int, out: int, cached: int = 0):

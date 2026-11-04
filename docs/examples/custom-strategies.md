@@ -16,7 +16,7 @@ This raw Chat Completions strategy shows the shape of `execute()`. It is named
 Responses API by default.
 
 ```python
-from async_batch_llm import LLMCallStrategy
+from llm_minder import LLMCallStrategy
 
 class RawChatStrategy(LLMCallStrategy[str]):
     def __init__(self, client, model: str):
@@ -76,7 +76,7 @@ Use `on_error()` to track failures and adjust behavior:
 
 ```python
 from pydantic import ValidationError
-from async_batch_llm import RetryState
+from llm_minder import RetryState
 
 class SmartRetryStrategy(LLMCallStrategy[dict]):
     def __init__(self, client):
@@ -143,7 +143,7 @@ class AnthropicStrategy(LLMCallStrategy[str]):
 ## Usage
 
 ```python
-from async_batch_llm import ParallelBatchProcessor, LLMWorkItem, ProcessorConfig
+from llm_minder import ParallelBatchProcessor, LLMWorkItem, ProcessorConfig
 
 async def main():
     # Use your custom strategy

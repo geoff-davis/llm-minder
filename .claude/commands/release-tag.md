@@ -37,7 +37,7 @@ command does, and only after the publish is confirmed.
 - If the run fails, stop. Report the failing job and step (`gh run view <run-id> --log-failed`) and do **not** create
   the GitHub Release. The tag stays pushed; how to recover (re-running the workflow, or deleting and re-pushing the
   tag after a fix) is the user's call.
-- Confirm the version is on PyPI: `curl -sf https://pypi.org/pypi/async-batch-llm/<version>/json` must succeed.
+- Confirm the version is on PyPI: `curl -sf https://pypi.org/pypi/llm-minder/<version>/json` must succeed.
   PyPI's JSON API can lag the upload briefly; retry for a minute or two before giving up.
 
 ### 5. Create GitHub Release
@@ -50,7 +50,7 @@ Only after step 4 confirmed both the green run and the PyPI version.
   the pasted notes, so un-inlined refs render as literal `[#52]`
   text on GitHub (this bit the v0.15.0 release notes).
 - Rewrite relative links (e.g. `docs/migration/v0.27.md`) to absolute
-  `https://github.com/geoff-davis/async-batch-llm/blob/v<version>/...` URLs; relative links break in a release body.
+  `https://github.com/geoff-davis/llm-minder/blob/v<version>/...` URLs; relative links break in a release body.
 - Run `gh release create v<version> --title "v<version>" --latest --notes "<changelog section>"`.
 - Confirm it exists with `gh release view v<version>`.
 
@@ -58,7 +58,7 @@ Only after step 4 confirmed both the green run and the PyPI version.
 
 - Delete the local release branch if it still exists (`release/v<version>`).
 - Report completion only now, with the publish run URL, the PyPI URL
-  (`https://pypi.org/project/async-batch-llm/<version>/`), and the GitHub Release URL.
+  (`https://pypi.org/project/llm-minder/<version>/`), and the GitHub Release URL.
 - Remind the user of the post-release legacy-fixture step (CONTRIBUTING.md, "Release Process"): in a follow-up PR,
   run `scripts/write_legacy_fixtures.py` with the new release installed and add it to `RELEASES` in
   `tests/test_legacy_fixtures.py`.

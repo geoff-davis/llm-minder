@@ -6,13 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from async_batch_llm import RetryState, TokenTrackingError
-from async_batch_llm.base import LLMResponse
-from async_batch_llm.llm_strategies import (
+from llm_minder import RetryState, TokenTrackingError
+from llm_minder.base import LLMResponse
+from llm_minder.llm_strategies import (
     GeminiStrategy,
     LLMCallStrategy,
 )
-from async_batch_llm.models import (
+from llm_minder.models import (
     GeminiCachedModel,
     GeminiModel,
     _extract_metadata,
@@ -250,7 +250,7 @@ class TestGeminiModel:
 
     def test_import_error_when_genai_not_available(self):
         """Test that ImportError is raised when google-genai is not available."""
-        with patch("async_batch_llm.models.genai", None):
+        with patch("llm_minder.models.genai", None):
             with pytest.raises(ImportError) as exc_info:
                 GeminiModel("gemini-test", MagicMock())
             assert "google-genai is required" in str(exc_info.value)
@@ -615,7 +615,7 @@ class TestGeminiCachedModel:
             cache_ttl_seconds=3600,
         )
 
-        from async_batch_llm.models import _encode_tags_to_display_name
+        from llm_minder.models import _encode_tags_to_display_name
 
         existing_cache.display_name = _encode_tags_to_display_name(model._cache_tags)
         await model.prepare()
@@ -627,7 +627,7 @@ class TestGeminiCachedModel:
     @pytest.mark.asyncio
     async def test_find_cache_with_matching_tags(self):
         """Test cache matching with tags (encoded via display_name)."""
-        from async_batch_llm.models import _encode_tags_to_display_name
+        from llm_minder.models import _encode_tags_to_display_name
 
         # Cache with matching tags encoded in display_name.
         matching_cache = self._create_mock_cache(name="matching-cache", create_time=time.time())
@@ -652,7 +652,7 @@ class TestGeminiCachedModel:
             cache_tags={"version": "1.0", "type": "test"},
         )
 
-        from async_batch_llm.models import _encode_tags_to_display_name
+        from llm_minder.models import _encode_tags_to_display_name
 
         matching_cache.display_name = _encode_tags_to_display_name(model._cache_tags)
         await model.prepare()
@@ -868,7 +868,7 @@ class TestGeminiCachedModel:
 
     def test_import_error_when_genai_not_available(self):
         """Test that ImportError is raised when google-genai is not available."""
-        with patch("async_batch_llm.models.genai", None):
+        with patch("llm_minder.models.genai", None):
             with pytest.raises(ImportError) as exc_info:
                 GeminiCachedModel(
                     model="gemini-test",
@@ -1006,7 +1006,7 @@ class TestTokenTrackingErrorIntegration:
 async def test_prov7_thinking_tokens_are_output_and_metadata(thoughts, tools):
     from google.genai import types
 
-    from async_batch_llm import GeminiModel
+    from llm_minder import GeminiModel
 
     response = types.GenerateContentResponse(
         candidates=[
@@ -1035,7 +1035,7 @@ async def test_prov7_thinking_tokens_are_output_and_metadata(thoughts, tools):
 async def test_prov9_empty_response_names_finish_reason():
     from google.genai import types
 
-    from async_batch_llm.strategies.errors import EmptyResponseError
+    from llm_minder.strategies.errors import EmptyResponseError
 
     response = types.GenerateContentResponse(
         candidates=[types.Candidate(finish_reason="MAX_TOKENS")],

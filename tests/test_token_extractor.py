@@ -15,7 +15,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from async_batch_llm.token_extractor import TokenExtractor
+from llm_minder.token_extractor import TokenExtractor
 
 
 @pytest.mark.parametrize("shape", [dict, UserDict, SimpleNamespace])
@@ -292,7 +292,7 @@ def test_extract_from_pydantic_ai_cause_chain(extractor):
 
 
 def test_extract_returns_zeros_for_plain_exception(extractor, caplog):
-    caplog.set_level(logging.DEBUG, logger="async_batch_llm.token_extractor")
+    caplog.set_level(logging.DEBUG, logger="llm_minder.token_extractor")
     result = extractor.extract_from_exception(ValueError("no tokens here"))
     assert result == {
         "input_tokens": 0,
@@ -314,7 +314,7 @@ def test_extract_logs_debug_when_usage_shape_is_weird(extractor, caplog):
     class _ExcBadUsage(Exception):
         usage = _BadUsage()
 
-    caplog.set_level(logging.DEBUG, logger="async_batch_llm.token_extractor")
+    caplog.set_level(logging.DEBUG, logger="llm_minder.token_extractor")
     result = extractor.extract_from_exception(_ExcBadUsage("x"))
     assert result["total_tokens"] == 0
     debug_messages = [r.getMessage() for r in caplog.records if r.levelname == "DEBUG"]

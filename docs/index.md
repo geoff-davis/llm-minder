@@ -1,22 +1,25 @@
-# async-batch-llm
+# llm-minder
 
 Run independent LLM calls concurrently with bounded input and result handoffs,
 coordinated retries, deadlines, checkpoint/replay, and terminal outcomes for
 every accepted item. Use a built-in provider convenience or wrap an async
 client you already have.
 
+> Formerly `async-batch-llm`: releases through v0.32 used that name. See
+> [Renamed in 1.0](stability.md#renamed-in-10).
+
 ## First batch
 
 Install a provider and the optional terminal progress bar:
 
 ```bash
-pip install 'async-batch-llm[openai,progress]'
+pip install 'llm-minder[openai,progress]'
 export OPENAI_API_KEY='...'
 ```
 
 ```python
 import asyncio
-from async_batch_llm import llm, process_prompts
+from llm_minder import llm, process_prompts
 
 async def main():
     batch = await process_prompts(
@@ -38,7 +41,7 @@ conveniences, not requirements.
 internal service without introducing another executor:
 
 ```python
-from async_batch_llm import ArtifactIdentity, CallOutcome, CallableStrategy
+from llm_minder import ArtifactIdentity, CallOutcome, CallableStrategy
 
 async def invoke(prompt, *, attempt, timeout, state):
     response = await client.generate(prompt, timeout=timeout)
@@ -57,7 +60,7 @@ strategy = CallableStrategy(
 )
 ```
 
-The [credential-free application example](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_callable_application.py)
+The [credential-free application example](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_callable_application.py)
 demonstrates a lazy source, stateful recovery, failed-attempt token accounting,
 bounded result handoff, transactional writes, and checkpoint replay.
 
@@ -96,4 +99,4 @@ deprecations.
 
 ## License
 
-MIT License — see [LICENSE](https://github.com/geoff-davis/async-batch-llm/blob/main/LICENSE).
+MIT License — see [LICENSE](https://github.com/geoff-davis/llm-minder/blob/main/LICENSE).

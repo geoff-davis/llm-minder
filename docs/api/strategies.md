@@ -6,15 +6,15 @@ Adapter for an existing asynchronous SDK, gateway client, agent, or application
 service. See [Use Your Existing Async Client](../callable-integration.md) for
 callback and retry-state semantics.
 
-::: async_batch_llm.CallableStrategy
+::: llm_minder.CallableStrategy
 
 ## CallOutcome
 
-::: async_batch_llm.CallOutcome
+::: llm_minder.CallOutcome
 
 ## LLMCallStrategy
 
-::: async_batch_llm.LLMCallStrategy
+::: llm_minder.LLMCallStrategy
 
 The hooks below are the ones a custom strategy overrides.
 
@@ -195,8 +195,8 @@ Called by the framework when `execute()` raises an exception, before deciding wh
 - [examples/example_gemini_smart_retry.py][ex-smart-retry] - Smart retry with
   partial parsing
 
-[ex-escalation]: https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_smart_model_escalation.py
-[ex-smart-retry]: https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_gemini_smart_retry.py
+[ex-escalation]: https://github.com/geoff-davis/llm-minder/blob/main/examples/example_smart_model_escalation.py
+[ex-smart-retry]: https://github.com/geoff-davis/llm-minder/blob/main/examples/example_gemini_smart_retry.py
 
 ### `async def cleanup() -> None`
 
@@ -207,7 +207,7 @@ Clean up resources after all attempts complete (e.g., delete caches, close clien
 **Custom Strategy Example:**
 
 ```python
-from async_batch_llm import LLMCallStrategy, TokenUsage
+from llm_minder import LLMCallStrategy, TokenUsage
 
 class MyCustomStrategy(LLMCallStrategy[str]):
     async def execute(
@@ -231,7 +231,7 @@ Shared base for the provider-named strategies below; delegates to an
 `LLMModel`. Use directly for a custom model you don't want a dedicated
 subclass for.
 
-::: async_batch_llm.ModelStrategy
+::: llm_minder.ModelStrategy
 
 ### Per-attempt config
 
@@ -243,7 +243,7 @@ parse failures and later fixes to `execute()` still apply.
 ```python
 from typing import Any
 
-from async_batch_llm import DeepSeekStrategy, RetryState
+from llm_minder import DeepSeekStrategy, RetryState
 
 
 class GrowingOutputBound(DeepSeekStrategy):
@@ -261,7 +261,7 @@ its first attempt. To retry a truncation with the larger bound, and nothing else
 it retryable in a classifier (new in 1.0 and provisional):
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     DefaultErrorClassifier,
     ErrorInfo,
     ParallelBatchProcessor,
@@ -300,7 +300,7 @@ response fails afterwards, and keeps the exception's type, so classification and
 import json
 from typing import Any
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallStrategy,
     RetryState,
     TokenUsage,
@@ -330,19 +330,19 @@ class MyStrategy(LLMCallStrategy[dict]):
 Setting the `_failed_token_usage` attribute on an exception yourself, which is what
 `attach_token_usage()` does, is also supported.
 
-::: async_batch_llm.provider_call
+::: llm_minder.provider_call
 
-::: async_batch_llm.attach_token_usage
+::: llm_minder.attach_token_usage
 
 ## PydanticAIStrategy
 
-::: async_batch_llm.PydanticAIStrategy
+::: llm_minder.PydanticAIStrategy
 
 ## Structured JSON Parsing
 
-::: async_batch_llm.pydantic_json_parser
+::: llm_minder.pydantic_json_parser
 
-::: async_batch_llm.strip_code_fences
+::: llm_minder.strip_code_fences
 
 `pydantic_json_parser(Model)` strips a normal outer Markdown fence and performs
 strict Pydantic JSON/schema validation. Recovery is disabled by default.
@@ -370,59 +370,59 @@ by `structured_output_recovery_reasons`.
 
 ## GeminiStrategy
 
-::: async_batch_llm.GeminiStrategy
+::: llm_minder.GeminiStrategy
 
 ## OpenAIStrategy
 
-::: async_batch_llm.OpenAIStrategy
+::: llm_minder.OpenAIStrategy
 
 ## OpenRouterStrategy
 
-::: async_batch_llm.OpenRouterStrategy
+::: llm_minder.OpenRouterStrategy
 
 ## DeepSeekStrategy
 
-::: async_batch_llm.DeepSeekStrategy
+::: llm_minder.DeepSeekStrategy
 
 ## Models
 
 ### GeminiModel
 
-::: async_batch_llm.GeminiModel
+::: llm_minder.GeminiModel
 
 ### GeminiCachedModel
 
-::: async_batch_llm.GeminiCachedModel
+::: llm_minder.GeminiCachedModel
 
 ### OpenAICompatibleModel
 
-::: async_batch_llm.OpenAICompatibleModel
+::: llm_minder.OpenAICompatibleModel
 
 ### OpenAIModel
 
-::: async_batch_llm.OpenAIModel
+::: llm_minder.OpenAIModel
 
 ### OpenRouterModel
 
-::: async_batch_llm.OpenRouterModel
+::: llm_minder.OpenRouterModel
 
 ### DeepSeekModel
 
-::: async_batch_llm.DeepSeekModel
+::: llm_minder.DeepSeekModel
 
 ## Protocols
 
 ### LLMModel
 
-::: async_batch_llm.LLMModel
+::: llm_minder.LLMModel
 
 ### ManagedLLMModel
 
-::: async_batch_llm.ManagedLLMModel
+::: llm_minder.ManagedLLMModel
 
 ### LLMResponse
 
-::: async_batch_llm.LLMResponse
+::: llm_minder.LLMResponse
 
 ### MetadataExtractor
 
@@ -430,7 +430,7 @@ A callable that takes the raw provider response and returns extra keys for
 `LLMResponse.metadata`, or `None`. Pass a list of them as a built-in model's
 `metadata_extractors` argument; their keys are merged over the built-in metadata.
 
-::: async_batch_llm.MetadataExtractor
+::: llm_minder.MetadataExtractor
 
 ## Provider notes
 
@@ -442,7 +442,7 @@ result. Pass a Pydantic model class to get that model back directly:
 ```python
 from pydantic import BaseModel
 
-from async_batch_llm import DeepSeekModel, DeepSeekStrategy
+from llm_minder import DeepSeekModel, DeepSeekStrategy
 
 class Verdict(BaseModel):
     valid: bool

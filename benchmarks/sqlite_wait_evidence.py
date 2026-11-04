@@ -13,8 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-import async_batch_llm.sqlite_artifacts as storage
-from async_batch_llm import (
+import llm_minder.sqlite_artifacts as storage
+from llm_minder import (
     ArtifactIdentity,
     CallableStrategy,
     CallOutcome,

@@ -39,7 +39,7 @@ RESULTS_DIR = ROOT / "examples" / "data" / "benchmark_results"
 ASSETS_DIR = ROOT / "docs" / "assets"
 
 # Stable colour per orchestration so the charts read consistently.
-_ORCH_COLORS = {"sequential": "#9e9e9e", "gather": "#90caf9", "async-batch-llm": "#1565c0"}
+_ORCH_COLORS = {"sequential": "#9e9e9e", "gather": "#90caf9", "llm-minder": "#1565c0"}
 _DPI = 140
 
 
@@ -55,7 +55,7 @@ def _load(name: str) -> dict:
 
 
 def wall_time_chart(summary: dict, out: Path) -> None:
-    """Grouped bars per provider: sequential vs naive gather vs async-batch-llm.
+    """Grouped bars per provider: sequential vs naive gather vs llm-minder.
 
     Log y-axis because the sequential leg dwarfs the concurrent ones — the point
     is 'concurrency collapses wall time, and the framework matches a bare gather'.
@@ -69,7 +69,7 @@ def wall_time_chart(summary: dict, out: Path) -> None:
     series = {
         "sequential": [r["sequential_s"] for r in rows],
         "gather": [r["gather_s"] for r in rows],
-        "async-batch-llm": [r["async_batch_llm_s"] for r in rows],
+        "llm-minder": [r["llm_minder_s"] for r in rows],
     }
 
     x = range(len(providers))
@@ -126,7 +126,7 @@ def cost_chart(summary: dict, out: Path) -> None:
 
 
 def throughput_chart(throughput: dict, out: Path) -> None:
-    """Grouped bars per provider: chunked gather vs semaphore pool vs async-batch-llm
+    """Grouped bars per provider: chunked gather vs semaphore pool vs llm-minder
     items/sec, at the same worker count."""
     rows = throughput.get("rows", [])
     if not rows:
@@ -137,7 +137,7 @@ def throughput_chart(throughput: dict, out: Path) -> None:
     series = {
         "chunked gather": ("#9e9e9e", [r["chunked_gather"]["items_per_s"] for r in rows]),
         "semaphore pool": ("#90caf9", [r["semaphore_pool"]["items_per_s"] for r in rows]),
-        "async-batch-llm": ("#1565c0", [r["async_batch_llm"]["items_per_s"] for r in rows]),
+        "llm-minder": ("#1565c0", [r["llm_minder"]["items_per_s"] for r in rows]),
     }
 
     x = range(len(providers))

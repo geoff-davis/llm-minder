@@ -13,7 +13,7 @@ failed-attempt accounting, deadlines, fail-fast behavior, and terminal results.
 ## Minimal Adapter
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     CallOutcome,
     CallableStrategy,
@@ -157,7 +157,7 @@ When a billed response is received but parsing or validation fails, preserve
 that attempt's usage with the existing public exception:
 
 ```python
-from async_batch_llm import TokenTrackingError
+from llm_minder import TokenTrackingError
 
 try:
     output = parse_response(response.text)
@@ -216,7 +216,7 @@ checkpoint-before-publication behavior are the same as for built-in strategies.
 All execution surfaces accept the adapter:
 
 ```python
-from async_batch_llm import LLMCallPool, call, process_stream
+from llm_minder import LLMCallPool, call, process_stream
 
 one = await call(strategy, "one prompt")
 
@@ -232,7 +232,7 @@ executor under a semaphore; it has no background dispatcher. A direct SDK or a
 real third-party gateway can sit beneath `CallableStrategy` or another strategy.
 
 See the runnable, network-free
-[`example_callable_application.py`](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_callable_application.py)
+[`example_callable_application.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_callable_application.py)
 for lazy database-style input, transactional output, validation recovery,
 failed-attempt tokens, bounded input/output handoff, and a zero-call replay run.
 

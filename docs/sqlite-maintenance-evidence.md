@@ -17,7 +17,7 @@ The bridge first appeared in commit `00784ce`, with a 1 ms backup. Commit
 `reports/v0.21_session_a_handoff.md` describes a Python 3.14.2 wheel-smoke hang,
 but supplies neither a standalone reproducer nor a linked CPython issue.
 The repository issue search found the original SQLite feature issue
-[#124](https://github.com/geoff-davis/async-batch-llm/issues/124), not a separate
+[#124](https://github.com/geoff-davis/llm-minder/issues/124), not a separate
 upstream defect record. Targeted upstream searches did not establish a matching
 issue. This is an evidence gap, not proof that the historical hang was impossible.
 

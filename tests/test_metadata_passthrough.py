@@ -24,7 +24,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     JsonlArtifactStore,
     LLMWorkItem,
@@ -36,14 +36,14 @@ from async_batch_llm import (
     SqliteArtifactStore,
     process_prompts,
 )
-from async_batch_llm.base import (
+from llm_minder.base import (
     LLMResponse,
     RetryState,
     TokenUsage,
     WorkItemResult,
     _unpack_strategy_result,
 )
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 def _mock_model_with_metadata(metadata: dict | None) -> AsyncMock:

@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     GuardrailConfig,
     LLMCallStrategy,
@@ -15,8 +15,8 @@ from async_batch_llm import (
     RetryConfig,
     process_prompts,
 )
-from async_batch_llm.base import RetryState, TokenUsage, WorkItemResult
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
+from llm_minder.base import RetryState, TokenUsage, WorkItemResult
+from llm_minder.observers import BaseObserver, ProcessingEvent
 
 WAIT_FLOOR = 0.02  # every scenario holds capacity for 0.15 s or more
 
@@ -145,7 +145,7 @@ async def test_abort_in_capacity_wait_keeps_wait_without_timeout_category() -> N
 
 
 async def _abort_run(strategy: Holder):
-    from async_batch_llm import LLMWorkItem, ParallelBatchProcessor
+    from llm_minder import LLMWorkItem, ParallelBatchProcessor
 
     config = ProcessorConfig(
         max_workers=3,

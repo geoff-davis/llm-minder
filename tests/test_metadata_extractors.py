@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import MetadataExtractor
-from async_batch_llm.models import (
+from llm_minder import MetadataExtractor
+from llm_minder.models import (
     GeminiModel,
     OpenAIModel,
     _run_extractors,

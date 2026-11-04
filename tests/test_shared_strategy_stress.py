@@ -21,14 +21,14 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     RetryState,
 )
-from async_batch_llm.base import TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class _CountingSharedStrategy(LLMCallStrategy[str]):
@@ -114,7 +114,7 @@ async def test_concurrent_delete_cache_does_not_crash():
     """Calling GeminiCachedModel.delete_cache() from many tasks in parallel
     must not raise — the first caller deletes the cache; later callers
     observe `_cache is None` and return silently."""
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     model = GeminiCachedModel.__new__(GeminiCachedModel)
     client = _ConcurrentDeleteClient()

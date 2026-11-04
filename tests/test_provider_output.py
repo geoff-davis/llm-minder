@@ -10,8 +10,8 @@ from __future__ import annotations
 import dataclasses
 import json
 
-from async_batch_llm import Grounding, GroundingSource, ToolCall
-from async_batch_llm.base import LLMResponse, WorkItemResult
+from llm_minder import Grounding, GroundingSource, ToolCall
+from llm_minder.base import LLMResponse, WorkItemResult
 
 WELL_FORMED_METADATA = {
     "finish_reason": "stop",
