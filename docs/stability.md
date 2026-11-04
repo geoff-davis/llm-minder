@@ -122,11 +122,12 @@ to stay provisional after 1.0. The `metadata` dict itself is stable.
 
 ### Exceptions
 
-Every exception type below subclasses `AsyncBatchLLMError`.
+Every exception type below subclasses `LLMMinderError`.
 
 | Name | Status |
 | --- | --- |
-| `AsyncBatchLLMError` | Stable |
+| `LLMMinderError` | Stable |
+| `AsyncBatchLLMError` | Stable (the pre-1.0 name of `LLMMinderError`, kept as an alias through 1.x) |
 | `ItemDeadlineExceeded`, `BatchDeadlineExceeded`, `BatchAbortedError`, `BatchBudgetExceeded` | Stable |
 | `BatchAdmissionClosedError`, `BatchInterruptedError`, `StreamFinalizationError`, `CleanupInterruptedError` | Stable |
 | `FrameworkTimeoutError`, `RateLimitRetriesExceeded`, `TokenTrackingError`, `LLMCallError` | Stable |
@@ -186,6 +187,7 @@ The package was published as `async-batch-llm` through v0.32. From 1.0 it is
 | `import async_batch_llm` | `import llm_minder` |
 | `logging.getLogger("async_batch_llm")` | `logging.getLogger("llm_minder")` |
 | Prometheus metrics `async_batch_llm_*` | `llm_minder_*` |
+| `AsyncBatchLLMError` | `LLMMinderError` (the old name still works as an alias) |
 
 Exported names, signatures and behavior don't change with the rename. Artifact and
 result files keep their format, including the `async-batch-llm-result` schema name,

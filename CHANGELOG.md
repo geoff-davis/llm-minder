@@ -14,7 +14,9 @@ Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected
 **The package is renamed from `async-batch-llm` to `llm-minder`.** Install
 `llm-minder` and import `llm_minder`; v0.32 is the last release published as
 `async-batch-llm`. The library logs under the `llm_minder` logger, and
-`MetricsObserver.export_prometheus()` names its metrics `llm_minder_*`. Artifact and
+`MetricsObserver.export_prometheus()` names its metrics `llm_minder_*`. The common
+exception base is now `LLMMinderError`; `AsyncBatchLLMError` remains as an alias of
+the same class. Artifact and
 result files keep their format, so checkpoints written by earlier releases still
 resume. See [Renamed in 1.0](docs/stability.md#renamed-in-10).
 

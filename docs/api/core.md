@@ -90,12 +90,12 @@
 
 ::: llm_minder.TimeoutCategory
 
-## AsyncBatchLLMError
+## LLMMinderError
 
-::: llm_minder.AsyncBatchLLMError
+::: llm_minder.LLMMinderError
 
 Every exception type the library exports subclasses it, alongside its original
-built-in base, so `except AsyncBatchLLMError` catches the library's own errors
+built-in base, so `except LLMMinderError` catches the library's own errors
 and existing `except TimeoutError` (or `RuntimeError`, `ValueError`) clauses
 keep working.
 
