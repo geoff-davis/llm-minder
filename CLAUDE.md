@@ -573,7 +573,7 @@ src/llm_minder/
 │   ├── config.py         # ProcessorConfig, RateLimitConfig, RetryConfig
 │   └── protocols.py      # LLMModel, ManagedLLMModel
 ├── strategies/
-│   ├── errors.py         # AsyncBatchLLMError, ErrorClassifier, ErrorInfo, TokenTrackingError,
+│   ├── errors.py         # LLMMinderError, ErrorClassifier, ErrorInfo, TokenTrackingError,
 │   │                     # FrameworkTimeoutError, EmptyResponseError,
 │   │                     # ProviderResponseError
 │   └── rate_limit.py     # ExponentialBackoffStrategy, FixedDelayStrategy
@@ -764,7 +764,7 @@ assert result.total_items == result.succeeded + result.failed
 - **GitHub issues** — `gh issue list -R geoff-davis/llm-minder`.
   Cross-referenced from "Future Enhancements" above.
 - **`CHANGELOG.md`** — release-shipped changes.
-- **`~/.claude/projects/-home-geoff-Projects-personal-llm-minder/memory/`**
+- **`~/.claude/projects/-home-geoff-Projects-personal-async-batch-llm/memory/`**
   — auto-memory store; `MEMORY.md` is the index.
 
 ---
@@ -798,7 +798,7 @@ Most recent first. See `CHANGELOG.md` for full per-release detail.
   uses the Responses API by default; built-in models no longer send a default
   temperature; classification trusts exception types and status codes first
   (#177); SDK floors raised and tested by a ten-leg CI matrix (#179/#180). Adds
-  token/cost budgets, `ErrorCategory`/`TimeoutCategory`, the `AsyncBatchLLMError`
+  token/cost budgets, `ErrorCategory`/`TimeoutCategory`, the `LLMMinderError`
   base, `llm("openai-compatible:…")`, macOS CI, and the `docs/stability.md` draft.
   Configuration failures no longer replay (#178); failed admissions keep their
   wait timing (#181); Gemini metadata uses plain enum names. Deprecates the names

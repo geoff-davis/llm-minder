@@ -260,7 +260,7 @@ pipeline. Pass `(item_id, prompt)` pairs to control IDs, or
 `(item_id, prompt, context)` triples to carry application data into each result.
 Results arrive in completion order; pass `preserve_order=True` to
 `process_prompts()`, or call `batch.in_input_order()`, for submission order.
-Exceptions the library defines subclass `AsyncBatchLLMError` and keep their
+Exceptions the library defines subclass `LLMMinderError` and keep their
 built-in bases (for example, `ItemDeadlineExceeded` is still a `TimeoutError`);
 provider SDK errors are not wrapped. See the
 [single-call and shared-call guide](https://geoff-davis.github.io/llm-minder/api/single-call-pool/)

@@ -1,7 +1,7 @@
 # Errors, Classification and Rate Limits
 
 Every exception type the library exports subclasses
-[`AsyncBatchLLMError`](core.md#asyncbatchllmerror) and keeps its built-in base
+[`LLMMinderError`](core.md#asyncbatchllmerror) and keeps its built-in base
 (`TimeoutError`, `RuntimeError` or `ValueError`), so existing `except` clauses
 still match. `BatchBudgetExceeded` is documented with the budget settings on the
 [core page](core.md#batchbudgetexceeded), `LLMCallError` with

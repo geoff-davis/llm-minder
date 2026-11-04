@@ -45,7 +45,7 @@ from .serialization import (
     ValueEncoder,
     to_json_value,
 )
-from .strategies.errors import AsyncBatchLLMError
+from .strategies.errors import LLMMinderError
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ ARTIFACT_SCHEMA_VERSION = 1
 _ReplayKey: TypeAlias = ReplayKey
 
 
-class ArtifactError(RuntimeError, AsyncBatchLLMError):
+class ArtifactError(RuntimeError, LLMMinderError):
     """Base class for artifact preparation, format, and persistence failures."""
 
 

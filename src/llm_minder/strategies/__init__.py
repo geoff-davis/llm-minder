@@ -12,6 +12,7 @@ from .errors import (
     ErrorInfo,
     FrameworkTimeoutError,
     ItemDeadlineExceeded,
+    LLMMinderError,
     MiddlewareContractError,
     ProviderResponseError,
     QuotaScopeError,
@@ -32,6 +33,7 @@ from .rate_limit import (
 
 __all__ = [
     "AsyncBatchLLMError",
+    "LLMMinderError",
     "BatchAbortedError",
     "BatchAdmissionClosedError",
     "BatchBudgetExceeded",

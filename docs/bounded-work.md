@@ -195,7 +195,7 @@ async with ParallelBatchProcessor(config=config) as processor:
 producer reaches end-of-input so `results()` can terminate. The processor wakes
 blocked submissions when `finish()`, shutdown, or a batch abort stops admission;
 rejected work raises public `BatchAdmissionClosedError` (a `RuntimeError` and
-`AsyncBatchLLMError`) and
+`LLMMinderError`) and
 has no submission index. A concurrently committed enqueue wins and remains owned
 by the processor. Always join application-owned producers, as above.
 
@@ -213,7 +213,7 @@ worker, post-processor, and progress callback finished and the artifact store
 closed, or it raises. A worker crash or a finalization failure re-raises the
 original exception; a finalizer cancelled by `shutdown()` before `finish()`
 completed raises `StreamFinalizationError` (a `RuntimeError` and
-`AsyncBatchLLMError`, not a cancellation, with the
+`LLMMinderError`, not a cancellation, with the
 cancellation as `__cause__`), never a clean end of stream. Results published
 before the decision are always delivered first.
 

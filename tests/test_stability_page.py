@@ -33,6 +33,7 @@ def test_every_export_is_classified_once():
 
 def test_removed_names_are_not_exported():
     _, _, removed = PAGE.read_text().partition("### Removed in 1.0")
-    names = set(_first_cell_names(_rows(removed.split("\n## ")[0])))
+    section = removed.split("\n## ")[0].split("\n### ")[0]
+    names = set(_first_cell_names(_rows(section)))
     assert {"LLMGateway", "BatchProcessor", "ProcessingStats"} <= names
     assert names.isdisjoint(llm_minder.__all__)

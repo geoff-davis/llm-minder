@@ -1,4 +1,4 @@
-"""Every exception type the library exports shares AsyncBatchLLMError."""
+"""Every exception type the library exports shares LLMMinderError."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import pickle
 import pytest
 
 import llm_minder
-from llm_minder import AsyncBatchLLMError
+from llm_minder import LLMMinderError
 
 EXPORTED = sorted(
     (
@@ -21,9 +21,19 @@ EXPORTED = sorted(
 
 
 def test_every_exported_exception_type_uses_the_base():
-    missing = [name for name, cls in EXPORTED if not issubclass(cls, AsyncBatchLLMError)]
+    missing = [name for name, cls in EXPORTED if not issubclass(cls, LLMMinderError)]
     assert missing == []
     assert len(EXPORTED) >= 25
+
+
+def test_pre_rename_base_name_is_the_same_class():
+    from llm_minder import AsyncBatchLLMError
+    from llm_minder.strategies import AsyncBatchLLMError as from_strategies
+
+    assert AsyncBatchLLMError is LLMMinderError
+    assert from_strategies is LLMMinderError
+    with pytest.raises(AsyncBatchLLMError):
+        raise llm_minder.ItemDeadlineExceeded("late")
 
 
 @pytest.mark.parametrize(
@@ -44,7 +54,7 @@ def test_existing_builtin_bases_are_kept_first(name, builtin):
     cls = getattr(llm_minder, name)
     assert issubclass(cls, builtin)
     mro = cls.__mro__
-    assert mro.index(builtin) < mro.index(AsyncBatchLLMError)
+    assert mro.index(builtin) < mro.index(LLMMinderError)
 
 
 def test_catching_the_base_and_pickling_still_work():
@@ -53,7 +63,7 @@ def test_catching_the_base_and_pickling_still_work():
         llm_minder.ArtifactIOError("disk full"),
         llm_minder.BatchBudgetExceeded("over budget"),
     ):
-        with pytest.raises(AsyncBatchLLMError):
+        with pytest.raises(LLMMinderError):
             raise exc
         copy = pickle.loads(pickle.dumps(exc))
         assert type(copy) is type(exc) and str(copy) == str(exc)

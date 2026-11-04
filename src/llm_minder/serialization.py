@@ -27,7 +27,7 @@ from .base import (
     WorkItemResult,
     WorkItemTiming,
 )
-from .strategies.errors import AsyncBatchLLMError
+from .strategies.errors import LLMMinderError
 
 # The package was async-batch-llm before 1.0. The schema keeps that name so
 # results written by older releases still load.
@@ -40,7 +40,7 @@ ValueDecoder: TypeAlias = Callable[[JSONValue], Any]
 _MAX_CUSTOM_ENCODER_DEPTH = 32
 
 
-class ResultSerializationError(ValueError, AsyncBatchLLMError):
+class ResultSerializationError(ValueError, LLMMinderError):
     """A result value or serialized payload is not safely supported."""
 
 

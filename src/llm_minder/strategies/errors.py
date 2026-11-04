@@ -186,7 +186,7 @@ def _retry_after_seconds(exception: Exception) -> float | None:
         return None
 
 
-class AsyncBatchLLMError(Exception):
+class LLMMinderError(Exception):
     """Base class for the exception types llm-minder defines.
 
     Catch it to handle the library's own errors in one place. They keep their
@@ -198,7 +198,11 @@ class AsyncBatchLLMError(Exception):
     """
 
 
-class TokenTrackingError(AsyncBatchLLMError):
+# The name before the package became llm-minder; kept as an alias through 1.x.
+AsyncBatchLLMError = LLMMinderError
+
+
+class TokenTrackingError(LLMMinderError):
     """
     Wrapper exception that preserves token usage from failed LLM calls.
 
@@ -233,19 +237,19 @@ class TokenTrackingError(AsyncBatchLLMError):
         self._failed_token_usage = token_usage or {}
 
 
-class MiddlewareContractError(ValueError, AsyncBatchLLMError):
+class MiddlewareContractError(ValueError, LLMMinderError):
     """A preprocessing result violated accepted work-item identity or invariants."""
 
     error_category = "middleware_contract_error"
 
 
-class QuotaScopeError(ValueError, AsyncBatchLLMError):
+class QuotaScopeError(ValueError, LLMMinderError):
     """A strategy quota scope could not be resolved safely before admission."""
 
     error_category = "quota_scope_error"
 
 
-class TokenEstimationError(AsyncBatchLLMError):
+class TokenEstimationError(LLMMinderError):
     """Framework-owned, non-retryable token-estimation failure."""
 
     error_category = "token_estimation_error"
@@ -269,7 +273,7 @@ EmptyResponseReason = Literal[
 """Values of :attr:`EmptyResponseError.reason`."""
 
 
-class EmptyResponseError(ValueError, AsyncBatchLLMError):
+class EmptyResponseError(ValueError, LLMMinderError):
     """The provider returned a billed response with no usable text.
 
     Raised by the built-in models when the API call succeeded (and was
@@ -342,7 +346,7 @@ class TruncatedResponseError(EmptyResponseError):
         )
 
 
-class ProviderResponseError(AsyncBatchLLMError):
+class ProviderResponseError(LLMMinderError):
     """Provider signaled failure inside an HTTP-200 response body.
 
     Some gateways (notably OpenRouter) report upstream failures — no
@@ -374,7 +378,7 @@ class ProviderResponseError(AsyncBatchLLMError):
             self._failed_token_usage = dict(token_usage)
 
 
-class StructuredOutputSchemaError(ValueError, AsyncBatchLLMError):
+class StructuredOutputSchemaError(ValueError, LLMMinderError):
     """A provider rejected a requested structured-output schema.
 
     This is a deterministic request/schema compatibility failure, distinct
@@ -393,7 +397,7 @@ class StructuredOutputSchemaError(ValueError, AsyncBatchLLMError):
             self._failed_token_usage = dict(token_usage)
 
 
-class StructuredOutputValidationError(ValueError, AsyncBatchLLMError):
+class StructuredOutputValidationError(ValueError, LLMMinderError):
     """A provider returned output that failed local structured validation.
 
     Provider-enforced output should normally make this impossible, but a
@@ -402,7 +406,7 @@ class StructuredOutputValidationError(ValueError, AsyncBatchLLMError):
     """
 
 
-class FrameworkTimeoutError(TimeoutError, AsyncBatchLLMError):
+class FrameworkTimeoutError(TimeoutError, LLMMinderError):
     """
     Timeout enforced by the batch-llm framework (asyncio.wait_for).
 
@@ -439,7 +443,7 @@ class FrameworkTimeoutError(TimeoutError, AsyncBatchLLMError):
         self.timeout_limit = timeout_limit
 
 
-class ItemDeadlineExceeded(TimeoutError, AsyncBatchLLMError):
+class ItemDeadlineExceeded(TimeoutError, LLMMinderError):
     """The end-to-end monotonic deadline for one logical item expired."""
 
     def __init__(self, message: str, *, item_id: str | None = None) -> None:
@@ -447,7 +451,7 @@ class ItemDeadlineExceeded(TimeoutError, AsyncBatchLLMError):
         self.item_id = item_id
 
 
-class BatchDeadlineExceeded(TimeoutError, AsyncBatchLLMError):
+class BatchDeadlineExceeded(TimeoutError, LLMMinderError):
     """The batch deadline stopped an accepted item before completion."""
 
     def __init__(self, message: str, *, item_id: str | None = None) -> None:
@@ -455,11 +459,11 @@ class BatchDeadlineExceeded(TimeoutError, AsyncBatchLLMError):
         self.item_id = item_id
 
 
-class BatchAdmissionClosedError(RuntimeError, AsyncBatchLLMError):
+class BatchAdmissionClosedError(RuntimeError, LLMMinderError):
     """The processor no longer accepts work; create a new processor to submit more."""
 
 
-class BatchAbortedError(RuntimeError, AsyncBatchLLMError):
+class BatchAbortedError(RuntimeError, LLMMinderError):
     """An accepted collateral item was stopped by configured fail-fast."""
 
     def __init__(self, message: str, *, item_id: str | None = None) -> None:
@@ -480,7 +484,7 @@ ABORT_RESULT_CATEGORIES = (
 )
 
 
-class RateLimitRetriesExceeded(AsyncBatchLLMError):
+class RateLimitRetriesExceeded(LLMMinderError):
     """A work item was retried after rate limits more than ``max_rate_limit_retries``.
 
     Rate-limit errors don't consume the ``max_attempts`` budget (they're a "wait

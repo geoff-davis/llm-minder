@@ -62,7 +62,7 @@ Cancellation of the task that is closing a resource is counted explicitly.
   therefore always a caller cancellation.
 - A `CancelledError` raised inside a step, or a step task cancelled by a
   third party before it ran, is a cleanup-step interruption. It is reported
-  as `CleanupInterruptedError` (a `RuntimeError` and `AsyncBatchLLMError`, not a
+  as `CleanupInterruptedError` (a `RuntimeError` and `LLMMinderError`, not a
   cancellation), the step is not
   checkpointed, and a later explicit close retries it.
 - `Task.cancelling()`, `Task.uncancel()`, and exception attributes are not
@@ -144,9 +144,9 @@ Cancellation of the task that is closing a resource is counted explicitly.
 
 - A batch whose workers are cancelled before its queue drains, including by
   concurrent shutdown, raises `BatchInterruptedError` from `process_all()`.
-  It is a `RuntimeError` (and `AsyncBatchLLMError`) subclass, not a cancellation;
+  It is a `RuntimeError` (and `LLMMinderError`) subclass, not a cancellation;
   cancellation of the calling task itself remains `asyncio.CancelledError`.
-- `except AsyncBatchLLMError` catches every exception type the library defines,
+- `except LLMMinderError` catches every exception type the library defines,
   including these lifecycle errors. Provider SDK exceptions and exceptions raised
   by your own strategies are not wrapped.
 
