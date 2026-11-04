@@ -12,6 +12,7 @@
 | v0.30.0 | Per-group prompt-cache statistics, a cache hit-rate floor, cache-key and cache-group model options, `CacheGroupTracker`, and a [prompt-caching guide](prompt-caching.md). |
 | v0.31.0 | `LLMCallPool` fail-fast with `pool.resume()`, and fail-fast on expired Google credentials. |
 | v0.32.0 | Last release before 1.0 and the last to support Python 3.10: public provider timing, token attachment and per-attempt config for custom strategies. |
+| v1.0.0rc1 | Release candidate for 1.0: renamed to `llm-minder`, 0.27/0.28 deprecations removed, Python 3.11+, stable provider-output views, and the frozen [stable API](stability.md). See the [migration guide](migration/v1.0.md). |
 | v0.27.0 | OpenAI Responses API by default, raised SDK floors, 1.0 deprecations, and the [API stability](stability.md) draft. See the [migration guide](migration/v0.27.md). |
 
 Deferred executor, storage, and API simplification work is tracked in

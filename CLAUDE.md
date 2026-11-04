@@ -12,8 +12,9 @@ here.
 **strategy pattern** — provider-agnostic at the framework level, with
 first-class support for several providers built in.
 
-**Current version:** v0.32.0, the last release before 1.0 and the last to
-support Python 3.10 (see `CHANGELOG.md`; `pyproject.toml` is bumped
+**Current version:** v1.0.0rc1, the 1.0 release candidate and the first release
+as `llm-minder`; 1.0.0 follows a one-week soak. v0.32.0 was the last release for
+Python 3.10 and the last as `async-batch-llm` (see `CHANGELOG.md`; `pyproject.toml` is bumped
 by the release-prep flow, so it may briefly lag `main` between releases).
 
 **Key features:**
@@ -772,6 +773,13 @@ assert result.total_items == result.succeeded + result.failed
 ## Version history
 
 Most recent first. See `CHANGELOG.md` for full per-release detail.
+
+- **v1.0.0rc1** — release candidate for 1.0.0. Renames the package to `llm-minder`
+  (`LLMMinderError`, with `AsyncBatchLLMError` as an alias), removes everything 0.27
+  and 0.28 deprecated, drops Python 3.10, adds `EmptyResponseError.reason` and the
+  `response_truncated` category (#273), makes the grounding/reasoning/tool-call views
+  stable, and freezes the API with a checked-in snapshot and a strict-typing sample.
+  Read `docs/migration/v1.0.md`.
 
 - **v0.32.0** — the last release before 1.0 and the last for Python 3.10. Adds the
   provisional `provider_call`, `attach_token_usage` and

@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Work toward 1.0.0rc1. It removes everything 0.27 and 0.28 deprecated and drops
+## [1.0.0rc1] - 2026-11-04
+
+The release candidate for 1.0.0, the first release covered by the
+[API stability promise](docs/stability.md). It removes everything 0.27 and 0.28 deprecated and drops
 Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected; the
 [removed-in-1.0 table](docs/stability.md#removed-in-10) lists each replacement.
 
@@ -54,7 +57,7 @@ Read the [1.0 migration guide](docs/migration/v1.0.md) before upgrading.
 ### Removed
 
 - Python 3.10. 1.0 requires Python 3.11 or newer.
-- `LLMGateway` (from `async_batch_llm` and `async_batch_llm.gateway`), `BatchProcessor`,
+- `LLMGateway` (from `llm_minder` and `llm_minder.gateway`), `BatchProcessor`,
   `ProcessingStats` and `grounding_metadata_extractor` as public names. Accessing one
   raises `AttributeError` naming its replacement.
 - `ProcessorConfig(timeout_per_item=...)`, `ProcessorConfig.timeout_per_item` and
@@ -2860,7 +2863,8 @@ See **[Migration Guide](docs/archive/MIGRATION_V0_1.md)** for complete upgrade i
 [#122]: https://github.com/geoff-davis/async-batch-llm/issues/122
 [#125]: https://github.com/geoff-davis/async-batch-llm/issues/125
 
-[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc1...HEAD
+[1.0.0rc1]: https://github.com/geoff-davis/llm-minder/compare/v0.32.0...v1.0.0rc1
 [0.32.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.29.0...v0.30.0
