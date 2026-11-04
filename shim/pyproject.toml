@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "async-batch-llm"
+# Releases independently of llm-minder, from shim-v<version> tags (publish-shim.yml).
+version = "1.0.0rc1"
+description = "Renamed to llm-minder. Installs llm-minder and keeps `import async_batch_llm` working as an alias."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Geoff Davis", email = "geoff@keksi.ai"}
+]
+classifiers = [
+    "Development Status :: 7 - Inactive",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = ["llm-minder==1.0.0rc1"]
+
+# Each llm-minder extra, so `pip install async-batch-llm[openai]` keeps working.
+[project.optional-dependencies]
+pydantic-ai = ["llm-minder[pydantic-ai]==1.0.0rc1"]
+gemini = ["llm-minder[gemini]==1.0.0rc1"]
+openai = ["llm-minder[openai]==1.0.0rc1"]
+openrouter = ["llm-minder[openrouter]==1.0.0rc1"]
+deepseek = ["llm-minder[deepseek]==1.0.0rc1"]
+progress = ["llm-minder[progress]==1.0.0rc1"]
+all = ["llm-minder[all]==1.0.0rc1"]
+
+[project.urls]
+Homepage = "https://github.com/geoff-davis/llm-minder"
+Documentation = "https://geoff-davis.github.io/llm-minder/"
+"Migration guide" = "https://geoff-davis.github.io/llm-minder/migration/v1.0/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/async_batch_llm"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/README.md"]

@@ -203,7 +203,8 @@ and a manual upload would race or fail on auth.
    links such as `[#52]` (their definitions aren't part of the pasted text)
    and rewrite relative links such as `docs/migration/vX.Y.md` to absolute
    `https://github.com/geoff-davis/llm-minder/blob/vX.Y.Z/...` URLs;
-   both render as broken text in a release body.
+   both render as broken text in a release body. For a pre-release such as
+   `1.0.0rc1`, pass `--prerelease --latest=false` instead of `--latest`.
 5. **Verify**: the GitHub release exists and the docs site redeployed
    (happens on the merge to `main`).
 6. **Legacy fixtures** (next PR after the release): record what the new
@@ -217,6 +218,27 @@ and a manual upload would race or fail on auth.
     Then add `"vX_Y": "X.Y.Z"` to `RELEASES` in `tests/test_legacy_fixtures.py`
     and its entry to the expected counts in `test_every_release_has_its_fixtures`.
     Never regenerate a committed fixture directory.
+
+### The async-batch-llm compatibility package
+
+Releases through v0.32 were published as `async-batch-llm`. `shim/` builds a
+package under that name that depends on `llm-minder` and makes `import
+async_batch_llm` (and every submodule) an alias for `llm_minder`, with a
+`DeprecationWarning`. `tests/test_shim.py` covers it, including that its extras match
+llm-minder's.
+
+It releases on its own schedule, usually right after an llm-minder release whose
+version range it should follow:
+
+1. In `shim/pyproject.toml`, set `version` and the `llm-minder` requirement in
+   `dependencies` and every extra. Run `make shim-package-check` and open a PR.
+2. After the merge, tag `shim-vX.Y.Z` and push it. The tag triggers
+   `.github/workflows/publish-shim.yml`, which checks the tag against the version,
+   runs the shim tests, installs the built wheel against PyPI and publishes it.
+   PyPI's trusted publisher for `async-batch-llm` must name this repository,
+   `publish-shim.yml` and the `pypi` environment.
+3. Confirm `https://pypi.org/pypi/async-batch-llm/X.Y.Z/json` resolves. No GitHub
+   release is needed.
 
 ## Questions?
 

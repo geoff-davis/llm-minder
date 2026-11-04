@@ -1,0 +1,87 @@
+name: Publish async-batch-llm shim to PyPI
+
+# The async-batch-llm compatibility package in shim/. It releases independently of
+# llm-minder, from tags named shim-v<version> (publish.yml only handles v* tags).
+on:
+  push:
+    tags:
+      - 'shim-v*'
+
+permissions:
+  contents: read
+  id-token: write  # Required for trusted publishing (OIDC)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7.0.1
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10.3.2
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Verify tag matches shim/pyproject.toml version
+      run: |
+        SHIM_VERSION="$(uv run python -c 'import tomllib; print(tomllib.load(open("shim/pyproject.toml", "rb"))["project"]["version"])')"
+        if [ "shim-v${SHIM_VERSION}" != "${GITHUB_REF_NAME}" ]; then
+          echo "::error::Tag ${GITHUB_REF_NAME} does not match shim/pyproject.toml version ${SHIM_VERSION}."
+          exit 1
+        fi
+
+    - name: Run shim tests
+      run: uv run pytest tests/test_shim.py
+
+    - name: Build and check the package
+      run: make shim-package-check
+
+    - name: Install the built wheel from PyPI dependencies and import it
+      run: |
+        uv venv --python 3.12 /tmp/shim-check
+        uv pip install --python /tmp/shim-check shim/dist/*.whl
+        cd /tmp && /tmp/shim-check/bin/python - <<'PY'
+        import warnings
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            import async_batch_llm
+            import async_batch_llm.testing
+        import llm_minder
+        import llm_minder.testing
+
+        assert any("renamed to llm-minder" in str(w.message) for w in caught)
+        assert async_batch_llm is llm_minder
+        assert async_batch_llm.testing is llm_minder.testing
+        PY
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+    environment:
+      name: pypi
+      url: https://pypi.org/project/async-batch-llm/
+
+    steps:
+    - uses: actions/checkout@v7.0.1
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10.3.2
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Build package and check metadata
+      run: make shim-package-check
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.14.3
+      with:
+        packages-dir: shim/dist/
