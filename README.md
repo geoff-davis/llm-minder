@@ -14,6 +14,7 @@ API may be cheaper.
 
 [![PyPI version](https://img.shields.io/pypi/v/llm-minder)](https://pypi.org/project/llm-minder/)
 [![PyPI Downloads](https://img.shields.io/pepy/dt/llm-minder)](https://pepy.tech/projects/llm-minder)
+[![Downloads as async-batch-llm](https://img.shields.io/pepy/dt/async-batch-llm?label=downloads%20as%20async-batch-llm)](https://pepy.tech/projects/async-batch-llm)
 [![Python 3.11-3.15](https://img.shields.io/badge/python-3.11--3.15-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/github/actions/workflow/status/geoff-davis/llm-minder/test.yml?branch=main&label=tests)](https://github.com/geoff-davis/llm-minder/actions/workflows/test.yml)
 [![Coverage](https://raw.githubusercontent.com/geoff-davis/llm-minder/python-coverage-comment-action-data/badge.svg)](https://github.com/geoff-davis/llm-minder/tree/python-coverage-comment-action-data)
