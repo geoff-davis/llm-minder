@@ -286,7 +286,7 @@ Set `GuardrailConfig(max_total_tokens=...)` on large or unattended runs, and
 Caps are soft: calls already running when the cap is reached can overshoot it by
 at most one call per worker, so pair a cap with a per-call output limit
 (`max_tokens`) if the overshoot must stay small. The budget API is provisional
-and may change in a minor release ([API stability](stability.md#provisional-through-10)).
+and may change in a minor release ([API stability](stability.md#provisional-in-10)).
 See [Token and cost budgets](guardrails.md#token-and-cost-budgets).
 
 ### Prompt-cache hit rate

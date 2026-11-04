@@ -161,7 +161,7 @@ permission categories when reliable status data is unavailable.
 are opt-in soft caps.
 
 Provisional: this API is new in v0.27 and may change in a minor release; see
-[API stability](stability.md#provisional-through-10).
+[API stability](stability.md#provisional-in-10).
 
 ```python
 from llm_minder import AttemptUsage, GuardrailConfig, ProcessorConfig

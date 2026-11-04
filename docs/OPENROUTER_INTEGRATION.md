@@ -226,8 +226,8 @@ DeepSeek-style upstreams), tool calls, and logprobs land under reserved
 batch-level `BatchResult`): `item_result.reasoning`,
 `item_result.tool_calls`, `item_result.logprobs`. See
 [Typed auxiliary output](api/core.md#typed-auxiliary-output-grounding-reasoning-tool-calls-logprobs)
-for shapes and boundaries (**experimental** — shapes may change while they
-stabilize).
+for shapes and boundaries (stable from 1.0, except the provisional
+`logprobs`).
 
 ### Anthropic prompt caching via OpenRouter
 

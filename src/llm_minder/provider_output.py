@@ -1,16 +1,15 @@
 """Typed views over the reserved provider-output keys in ``metadata``.
 
-**Experimental.** This surface is new and hasn't seen production use yet:
-the reserved-key dict shapes and the view APIs may change in a future
-minor release while they stabilize. The underlying ``metadata`` dict
-channel itself is stable — pin exact shapes at your own risk, or read the
-dicts defensively.
+**Stable from 1.0**, except ``logprobs``: the ``grounding``, ``reasoning`` and
+``tool_calls`` views and reserved-key shapes are covered by the stability promise
+(docs/stability.md). ``logprobs`` passes through each provider's own structure and
+stays provisional, so read it defensively.
 
 Provider-specific structured output — Gemini grounding, reasoning traces,
 tool calls, logprobs — and structured-output recovery signals travel through
 the framework as plain values under **reserved keys** of the ``metadata``
 channel (``LLMResponse.metadata`` → ``WorkItemResult.metadata``). Those shapes
-are documented in ``docs/API.md`` and stay JSON-serializable so results can be
+are documented in ``docs/api/core.md`` and stay JSON-serializable so results can be
 persisted as-is.
 
 This module provides the typed, provider-agnostic *read* surface over that
@@ -143,7 +142,7 @@ class ToolCall:
 class ProviderOutputViews:
     """Lazy read-only typed views over the ``metadata`` dict channel.
 
-    **Experimental** — see the module docstring.
+    Stable from 1.0 except ``logprobs`` — see the module docstring.
 
     Mixed into ``LLMResponse`` and ``WorkItemResult``. Each property parses
     the reserved key from ``self.metadata`` on every access — no caching, no

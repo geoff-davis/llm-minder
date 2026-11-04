@@ -230,7 +230,7 @@ Reaching a cap stops new provider calls; calls already running can overshoot
 it, by at most the usage of up to `max_workers` in-flight attempts. Pair a cap
 with a per-call `max_tokens` so the overshoot has a numeric bound. The
 budget API is provisional and may change in a minor release (see
-[API stability](stability.md#provisional-through-10)). Details:
+[API stability](stability.md#provisional-in-10)). Details:
 [token and cost budgets](guardrails.md#token-and-cost-budgets).
 
 ## Worked example: 10k items against a rate-limited provider

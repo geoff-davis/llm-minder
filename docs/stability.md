@@ -1,14 +1,12 @@
-# API stability (draft for 1.0)
+# API stability
 
-This page is a draft. It describes the compatibility promise planned for 1.0 and
-classifies today's public API against it. Until 1.0 ships, a minor release can
-still make breaking changes: each one is announced in that release's migration
-guide, and removals follow the deprecation policy below.
+This page describes llm-minder's compatibility promise from 1.0 and classifies the
+public API against it. Coming from 0.x? Read the [1.0 migration guide](migration/v1.0.md).
 
-## What semver will protect from 1.0
+## What semver protects
 
-After 1.0, a minor or patch release will not break code that uses the following,
-except where a name or field is marked provisional below:
+From 1.0, a minor or patch release won't break code that uses the following, except
+where a name or field is marked provisional below:
 
 - names exported from `llm_minder` (`__all__`) and their documented signatures,
   fields and defaults, wherever the name is defined (for example
@@ -20,7 +18,9 @@ except where a name or field is marked provisional below:
 - the documented behavior of retries, deadlines, admission, replay and cleanup.
 
 Breaking any of these requires a major release. Additions (new names, new optional
-parameters, new category values, new payload keys) can arrive in minor releases.
+parameters, new category values, new payload keys) can arrive in minor releases. A
+checked-in snapshot of the public API and the documented event payloads
+(`tests/api_snapshot.txt`) fails CI on any change that hasn't been reviewed on purpose.
 
 From 1.0, the five configuration classes (`ProcessorConfig`, `RetryConfig`,
 `RateLimitConfig`, `StartupRampConfig` and `GuardrailConfig`) take keyword arguments
@@ -105,12 +105,15 @@ removed in 1.0; see [Removed in 1.0](#removed-in-10).
 | `TokenEstimate`, `TokenEstimator`, `CharacterTokenEstimator` | Stable |
 | `pydantic_json_parser`, `strip_code_fences` | Stable |
 | `provider_call`, `attach_token_usage` | Provisional (new in 0.32, for custom `execute()` overrides) |
-| `Grounding`, `GroundingSource`, `ToolCall` | Provisional (typed provider-output views) |
+| `Grounding`, `GroundingSource`, `ToolCall` | Stable (typed provider-output views) |
 
-Provider metadata keys and the typed provider-output views (`.grounding`,
-`.reasoning`, `.tool_calls`, `.logprobs`) are provisional. They may be promoted to
-stable at 1.0.0rc1 once real-provider runs confirm their shapes; `logprobs` is likely
-to stay provisional after 1.0. The `metadata` dict itself is stable.
+The typed provider-output views `.grounding`, `.reasoning` and `.tool_calls` on
+`LLMResponse` and `WorkItemResult` are stable, and so are the `grounding`, `reasoning`
+and `tool_calls` metadata keys they read. Real Gemini, OpenAI, OpenRouter and DeepSeek
+runs confirmed their shapes before 1.0. `.logprobs` and the `logprobs` key stay
+provisional, because they carry each provider's own structure. Other provider metadata
+keys (such as `finish_reason` or `model`) are provisional diagnostics. The `metadata`
+dict itself is stable.
 
 ### Middleware, observers and artifacts
 
@@ -193,7 +196,7 @@ Exported names, signatures and behavior don't change with the rename. Artifact a
 result files keep their format, including the `async-batch-llm-result` schema name,
 so files written by earlier releases still load and resume.
 
-## Provisional through 1.0
+## Provisional in 1.0
 
 - **Budget API.** `AttemptUsage` and the `GuardrailConfig` fields `max_total_tokens`,
   `max_total_cost` and `cost_function` are new in 0.27 and stay provisional in 1.0,
@@ -214,5 +217,6 @@ so files written by earlier releases still load and resume.
 - **Empty-response reasons.** `EmptyResponseError.reason` and `.provider_reason`,
   `TruncatedResponseError` and `ErrorCategory.RESPONSE_TRUNCATED` are new in 1.0 and
   provisional.
-- **Provider-output views.** Provisional now; they may be promoted to stable at
-  1.0.0rc1 (see above). `logprobs` is the most likely to stay provisional.
+- **Log probabilities.** `.logprobs` and the `logprobs` metadata key pass through each
+  provider's own structure and stay provisional; the other typed views are stable
+  (see above).

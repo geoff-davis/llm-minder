@@ -16,9 +16,10 @@ Python 3.10. Code that ran on v0.32 without a `DeprecationWarning` is unaffected
 `async-batch-llm`. The library logs under the `llm_minder` logger, and
 `MetricsObserver.export_prometheus()` names its metrics `llm_minder_*`. The common
 exception base is now `LLMMinderError`; `AsyncBatchLLMError` remains as an alias of
-the same class. Artifact and
-result files keep their format, so checkpoints written by earlier releases still
-resume. See [Renamed in 1.0](docs/stability.md#renamed-in-10).
+the same class. Artifact and result files keep their format, so checkpoints written by
+earlier releases still resume.
+
+Read the [1.0 migration guide](docs/migration/v1.0.md) before upgrading.
 
 ### Added
 
@@ -29,9 +30,17 @@ resume. See [Renamed in 1.0](docs/stability.md#renamed-in-10).
   raises the new `TruncatedResponseError` subclass. Messages and the `ValueError` base
   are unchanged, and a Gemini prompt blocked before any candidate now reports its block
   reason. Provisional ([#273]).
+- A checked-in snapshot of the public API and the documented event payloads
+  (`tests/api_snapshot.txt`), a test that every `ProcessingEvent` carries its documented
+  keys, and a sample application strictly type-checked with mypy and pyright against
+  the public API (`make typecheck-user`). Any change to the stable surface now fails CI
+  until it is reviewed.
 
 ### Changed
 
+- The typed provider-output views `.grounding`, `.reasoning` and `.tool_calls`, the
+  `Grounding`, `GroundingSource` and `ToolCall` classes, and their reserved metadata
+  keys are stable. `.logprobs` stays provisional. `docs/stability.md` is final for 1.0.
 - A truncated response now has the error category `response_truncated`
   (`ErrorCategory.RESPONSE_TRUNCATED`) instead of `empty_response`. It is still not
   retried. Update `abort_on_error_categories` and any code that matches
@@ -65,7 +74,7 @@ resume. See [Renamed in 1.0](docs/stability.md#renamed-in-10).
   the item with a `ValueError` (category `logic_error`, not retried); its tokens are
   still counted.
 
-[#273]: https://github.com/geoff-davis/async-batch-llm/issues/273
+[#273]: https://github.com/geoff-davis/llm-minder/issues/273
 
 ## [0.32.0] - 2026-10-31
 

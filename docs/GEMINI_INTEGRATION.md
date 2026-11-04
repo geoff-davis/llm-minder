@@ -331,7 +331,7 @@ built-in Gemini models surface the citations **by default** under
 `metadata['grounding']` — no extractor needed. Read them through the typed
 views on the result (see the [typed auxiliary output section in the API
 reference](api/core.md#typed-auxiliary-output-grounding-reasoning-tool-calls-logprobs);
-**experimental** — the shapes may change while they stabilize):
+stable from 1.0):
 
 ```python
 from llm_minder import GeminiModel, GeminiStrategy

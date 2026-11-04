@@ -335,8 +335,8 @@ The OpenAI-compatible models (`OpenAIModel`, `OpenRouterModel`,
 `metadata` keys, readable through typed views on each per-item
 `WorkItemResult` (or `LLMResponse`) — not on the batch-level `BatchResult` — see
 [Typed auxiliary output](api/core.md#typed-auxiliary-output-grounding-reasoning-tool-calls-logprobs)
-for the shapes and boundaries (**experimental** — shapes may change while
-they stabilize):
+for the shapes and boundaries (stable from 1.0, except the provisional
+`logprobs`):
 
 - **`reasoning`** — the model's reasoning/thinking trace. On Chat
   Completions it comes from `message.reasoning_content` (DeepSeek reasoner
