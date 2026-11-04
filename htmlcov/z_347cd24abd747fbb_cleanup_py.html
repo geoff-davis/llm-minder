@@ -67,7 +67,7 @@
             <a id="nextFileLink" class="nav" href="z_347cd24abd747fbb_error_logging_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-04 18:00 +0000
+            created at 2026-11-04 19:12 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -114,7 +114,7 @@
     <p class="run"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t"><span class="key">from</span> <span class="nam">enum</span> <span class="key">import</span> <span class="nam">Enum</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t"><span class="key">from</span> <span class="nam">typing</span> <span class="key">import</span> <span class="nam">Any</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="op">.</span><span class="nam">strategies</span><span class="op">.</span><span class="nam">errors</span> <span class="key">import</span> <span class="nam">AsyncBatchLLMError</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="op">.</span><span class="nam">strategies</span><span class="op">.</span><span class="nam">errors</span> <span class="key">import</span> <span class="nam">LLMMinderError</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t"><span class="com"># Diagnostic only. Cleanup is never cancelled when this elapses: resource</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t36" href="#t36">36</a></span><span class="t"><span class="com"># owners have different durability requirements, so a universal teardown</span>&nbsp;</span><span class="r"></span></p>
@@ -124,7 +124,7 @@
     <p class="run"><span class="n"><a id="t40" href="#t40">40</a></span><span class="t"><span class="nam">_PROCESS_CONTROL_ERRORS</span> <span class="op">=</span> <span class="op">(</span><span class="nam">KeyboardInterrupt</span><span class="op">,</span> <span class="nam">SystemExit</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t41" href="#t41">41</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t42" href="#t42">42</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t43" href="#t43">43</a></span><span class="t"><span class="key">class</span> <span class="nam">CleanupInterruptedError</span><span class="op">(</span><span class="nam">RuntimeError</span><span class="op">,</span> <span class="nam">AsyncBatchLLMError</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t43" href="#t43">43</a></span><span class="t"><span class="key">class</span> <span class="nam">CleanupInterruptedError</span><span class="op">(</span><span class="nam">RuntimeError</span><span class="op">,</span> <span class="nam">LLMMinderError</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t44" href="#t44">44</a></span><span class="t">    <span class="str">&quot;&quot;&quot;A cleanup step was interrupted without the closing caller being cancelled.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t45" href="#t45">45</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t46" href="#t46">46</a></span><span class="t"><span class="str">    Raised when a step&#x27;s private task was cancelled by a third party, or when</span>&nbsp;</span><span class="r"></span></p>
@@ -670,7 +670,7 @@
             <a class="nav" href="z_347cd24abd747fbb_error_logging_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-04 18:00 +0000
+            created at 2026-11-04 19:12 +0000
         </p>
     </div>
 </footer>
