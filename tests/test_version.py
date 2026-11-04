@@ -1,5 +1,6 @@
 """Tests for package version."""
 
+import re
 from importlib.metadata import version
 
 
@@ -15,13 +16,9 @@ def test_version_matches_package():
 
 
 def test_version_format():
-    """Verify version follows semantic versioning."""
+    """Verify the version is X.Y.Z, optionally a PEP 440 pre-release (1.0.0rc1) or +dev."""
     from llm_minder import __version__
 
-    # Should be in format X.Y.Z or X.Y.Z+dev
-    parts = __version__.replace("+dev", "").split(".")
-    assert len(parts) == 3, f"Version should have 3 parts, got: {__version__}"
-
-    # Check each part is a number (or dev suffix)
-    for part in parts:
-        assert part.isdigit(), f"Version part should be numeric, got: {part}"
+    assert re.fullmatch(r"\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?(?:\+dev)?", __version__), (
+        f"Version should be X.Y.Z[aN|bN|rcN][+dev], got: {__version__}"
+    )
