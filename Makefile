@@ -1,7 +1,7 @@
 TWINE_VERSION ?= 7.0.0
 CHECK_WHEEL_CONTENTS_VERSION ?= 0.6.3
 
-.PHONY: help test test-ci coverage lint typecheck typecheck-ty format check-all pre-commit package-check clean
+.PHONY: help test test-ci coverage lint typecheck typecheck-ty typecheck-user format check-all pre-commit package-check clean
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -41,6 +41,11 @@ typecheck:  ## Run mypy type checker
 typecheck-ty:  ## Run ty type checker
 	uv run ty check src/
 
+PYRIGHT_VERSION = 1.1.414
+typecheck-user:  ## Strict-check a sample app that uses only the public API (mypy + pyright)
+	uv run mypy --strict tests/user_typing/sample_app.py
+	uvx pyright@$(PYRIGHT_VERSION) -p tests/user_typing
+
 # Same file set as the prek markdownlint hook: every tracked .md except docs/archive/.
 MARKDOWN_FILES = $$(git ls-files '*.md' ':!:docs/archive/*')
 
@@ -61,13 +66,15 @@ check-all:  ## Run all checks (lint + typecheck + test)
 	@$(MAKE) test-fast
 	@echo "\n==> All checks passed! ✓"
 
-ci:  ## Run local CI checks (lint + mypy + ty + coverage tests + markdown)
+ci:  ## Run local CI checks (lint + mypy + ty + public-API typing + coverage tests + markdown)
 	@echo "==> Running linter..."
 	@$(MAKE) lint
 	@echo "\n==> Running mypy..."
 	@$(MAKE) typecheck
 	@echo "\n==> Running ty..."
 	@$(MAKE) typecheck-ty
+	@echo "\n==> Strict-checking the public API sample..."
+	@$(MAKE) typecheck-user
 	@echo "\n==> Running tests with coverage..."
 	@$(MAKE) test-ci
 	@echo "\n==> Running markdown linter..."
