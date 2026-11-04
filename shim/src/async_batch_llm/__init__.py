@@ -28,12 +28,18 @@ class _AliasLoader(importlib.abc.Loader):
 
     def __init__(self, target: str) -> None:
         self._target = target
+        self._real_spec: importlib.machinery.ModuleSpec | None = None
 
     def create_module(self, spec: importlib.machinery.ModuleSpec) -> ModuleType:
-        return importlib.import_module(self._target)
+        module = importlib.import_module(self._target)
+        self._real_spec = module.__spec__
+        return module
 
     def exec_module(self, module: ModuleType) -> None:
-        pass  # the target module has already run
+        # The target module has already run. importlib just replaced its __spec__
+        # with the alias spec; put the real one back so reload() and other
+        # introspection of llm_minder.<name> keep using its own source loader.
+        module.__spec__ = self._real_spec
 
 
 class _AliasFinder(importlib.abc.MetaPathFinder):
@@ -58,13 +64,32 @@ class _AliasFinder(importlib.abc.MetaPathFinder):
         )
 
 
+def _importer_stacklevel() -> int:
+    """Point the warning at the code doing the import.
+
+    warnings already skips importlib's _bootstrap frames; this also skips
+    importlib.import_module, so a dynamic import is attributed to its caller.
+    """
+    level = 2
+    frame = sys._getframe(2)  # 0 is this function, 1 the module body
+    while frame is not None:
+        filename = frame.f_code.co_filename
+        if "importlib" in filename and "_bootstrap" in filename:
+            pass  # warnings doesn't count these frames
+        elif filename == importlib.__file__:
+            level += 1
+        else:
+            break
+        frame = frame.f_back  # type: ignore[assignment]
+    return level
+
+
 warnings.warn(
     "async-batch-llm has been renamed to llm-minder. Depend on llm-minder and "
     "import llm_minder instead; async_batch_llm is only an alias for it. See "
     "https://geoff-davis.github.io/llm-minder/migration/v1.0/",
     DeprecationWarning,
-    # warnings skips importlib's own frames, so 2 is the line doing the import.
-    stacklevel=2,
+    stacklevel=_importer_stacklevel(),
 )
 
 if not any(isinstance(finder, _AliasFinder) for finder in sys.meta_path):
