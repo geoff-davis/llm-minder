@@ -1,7 +1,7 @@
 TWINE_VERSION ?= 7.0.0
 CHECK_WHEEL_CONTENTS_VERSION ?= 0.6.3
 
-.PHONY: help test test-ci coverage lint typecheck typecheck-ty typecheck-user format check-all pre-commit package-check clean
+.PHONY: help test test-ci coverage lint typecheck typecheck-ty typecheck-user format check-all pre-commit package-check shim-package-check clean
 
 help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -105,6 +105,12 @@ package-check:  ## Build the sdist/wheel and check metadata and wheel contents
 	uv build
 	uvx twine@$(TWINE_VERSION) check --strict dist/*
 	uvx check-wheel-contents@$(CHECK_WHEEL_CONTENTS_VERSION) dist/*.whl
+
+shim-package-check:  ## Build and check the async-batch-llm compatibility package (shim/)
+	rm -rf shim/dist
+	uv build shim --out-dir shim/dist
+	uvx twine@$(TWINE_VERSION) check --strict shim/dist/*
+	uvx check-wheel-contents@$(CHECK_WHEEL_CONTENTS_VERSION) shim/dist/*.whl
 
 clean:  ## Clean up cache files
 	find . -type d -name "__pycache__" -exec rm -rf {} +
