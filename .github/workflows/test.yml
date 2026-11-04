@@ -333,11 +333,12 @@ jobs:
     # No `uv sync` here: `uv export --frozen` reads the lockfile directly and
     # pip-audit runs as an isolated uv tool, so the project env is never used.
     - name: Python security audit
-      # Audit the project's locked runtime deps only, not pip-audit's own
+      # Audit the project's locked runtime deps, including every provider extra,
+      # but not pip-audit's own
       # venv (which pulls in pip and would report CVEs in pip itself —
       # those aren't vulnerabilities users of llm-minder are exposed to).
       run: |
-        uv export --frozen --format requirements.txt --no-dev \
+        uv export --frozen --format requirements.txt --no-dev --all-extras \
           --no-emit-project -o /tmp/abl-deps.txt
         uv tool install pip-audit
         uv tool run pip-audit --disable-pip --require-hashes -r /tmp/abl-deps.txt
