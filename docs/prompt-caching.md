@@ -6,7 +6,7 @@ you look. This guide covers how to get cache hits, how to see them per job, and 
 to stop a run, or alert, when they drop.
 
 The statistics, the floor and `CacheGroupTracker` are provisional: new in 0.30, and
-they may change in a minor release ([API stability](stability.md#provisional-through-10)).
+they may change in a minor release ([API stability](stability.md#provisional-in-10)).
 For the exact rules, see [Cache hit-rate floor](guardrails.md#cache-hit-rate-floor).
 
 A runnable, credential-free walkthrough of everything below is in

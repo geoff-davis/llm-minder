@@ -1,0 +1,681 @@
+# Public API snapshot. Regenerate on purpose with:
+#   uv run python scripts/api_snapshot.py --update
+
+class AbortMode(str, Enum)
+    DRAIN_ACTIVE = 'drain_active'
+    CANCEL_ACTIVE = 'cancel_active'
+class ArtifactError(RuntimeError, LLMMinderError)
+class ArtifactFormatError(ArtifactError)
+class ArtifactIOError(ArtifactError)
+class ArtifactIdentity
+    field provider: str | None = None
+    field model: str | None = None
+    field prompt_version: str | None = None
+    field parser_version: str | None = None
+    field application_version: str | None = None
+    field extra: Mapping[str, JSONValue] = <factory: {}>
+    __init__(self, provider: str | None = None, model: str | None = None, prompt_version: str | None = None, parser_version: str | None = None, application_version: str | None = None, extra: Mapping[str, JSONValue] = <factory>) -> None
+class ArtifactIdentityError(ArtifactError)
+class ArtifactSerializationError(ArtifactError)
+class ArtifactStore(Protocol)
+    async def append(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, result: WorkItemResult[Any, Any]) -> None
+    async def close(self) -> None
+    def iter_results(self, *, successes_only: bool = False) -> AsyncIterator[WorkItemResult]
+    async def lookup(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, policy: ResumePolicy) -> WorkItemResult[Any, Any] | None
+    async def prepare_item(self, work_item: LLMWorkItem[Any, Any, Any]) -> Any
+AsyncBatchLLMError = LLMMinderError
+class AttemptTiming
+    field attempt: int
+    field try_number: int
+    field total_seconds: float = 0.0
+    field admission_wait_seconds: float = 0.0
+    field startup_ramp_wait_seconds: float = 0.0
+    field execution_seconds: float = 0.0
+    field provider_seconds: float | None = None
+    field cooldown_wait_seconds: float = 0.0
+    field retry_backoff_seconds: float = 0.0
+    field success: bool = False
+    field error_type: str | None = None
+    field error_category: str | None = None
+    field timeout_category: str | None = None
+    field quota_wait_seconds: float = 0.0
+    field estimated_input_tokens: int | None = None
+    field estimated_output_tokens: int | None = None
+    field reserved_tokens: int = 0
+    field reported_tokens: int | None = None
+    field reconciliation_delta_tokens: int | None = None
+    field quota_scope_id: int | None = None
+    __init__(self, attempt: int, try_number: int, total_seconds: float = 0.0, admission_wait_seconds: float = 0.0, startup_ramp_wait_seconds: float = 0.0, execution_seconds: float = 0.0, provider_seconds: float | None = None, cooldown_wait_seconds: float = 0.0, retry_backoff_seconds: float = 0.0, success: bool = False, error_type: str | None = None, error_category: str | None = None, timeout_category: str | None = None, quota_wait_seconds: float = 0.0, estimated_input_tokens: int | None = None, estimated_output_tokens: int | None = None, reserved_tokens: int = 0, reported_tokens: int | None = None, reconciliation_delta_tokens: int | None = None, quota_scope_id: int | None = None) -> None
+class AttemptUsage
+    field item_id: str
+    field attempt: int
+    field try_number: int
+    field strategy: Any
+    field usage: Mapping[str, int]
+    field success: bool
+    __init__(self, item_id: str, attempt: int, try_number: int, strategy: Any, usage: Mapping[str, int], success: bool) -> None
+class BaseMiddleware(Middleware)
+    async def after_process(self, result: WorkItemResult[~TOutput, ~TContext]) -> WorkItemResult[~TOutput, ~TContext]
+    async def before_process(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext]) -> LLMWorkItem[~TInput, ~TOutput, ~TContext] | None
+    async def on_error(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext], error: Exception) -> WorkItemResult[~TOutput, ~TContext] | None
+class BaseObserver(ProcessorObserver)
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None
+class BatchAbortedError(RuntimeError, LLMMinderError)
+    __init__(self, message: str, *, item_id: str | None = None) -> None
+class BatchAdmissionClosedError(RuntimeError, LLMMinderError)
+class BatchBudgetExceeded(BatchAbortedError)
+class BatchDeadlineExceeded(TimeoutError, LLMMinderError)
+    __init__(self, message: str, *, item_id: str | None = None) -> None
+class BatchInterruptedError(RuntimeError, LLMMinderError)
+class BatchResult(Generic)
+    field results: list[WorkItemResult[~TOutput, ~TContext]]
+    field total_items: int (init=False) = 0
+    field succeeded: int (init=False) = 0
+    field failed: int (init=False) = 0
+    field total_input_tokens: int (init=False) = 0
+    field total_output_tokens: int (init=False) = 0
+    field total_cached_tokens: int (init=False) = 0
+    field total_cache_write_tokens: int (init=False) = 0
+    field termination: BatchTermination = <factory: BatchTermination(kind='completed', reason=None, error_category=None, triggering_item_id=None)>
+    field wall_time_seconds: float | None = None
+    __init__(self, results: list[WorkItemResult[~TOutput, ~TContext]], termination: BatchTermination = <factory>, wall_time_seconds: float | None = None) -> None
+    def by_id(self) -> dict[str, WorkItemResult[~TOutput, ~TContext]]
+    property cache_hit_rate -> float
+    def effective_input_tokens(self, cached_token_rate: float, *, cache_write_rate: float | None = None) -> int
+    def estimated_cost(self, input_per_mtok: float, output_per_mtok: float, cached_token_rate: float, *, cache_write_rate: float | None = None) -> float
+    property failures -> list[WorkItemResult[~TOutput, ~TContext]]
+    classmethod from_dict(data: Mapping[str, Any], *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
+    classmethod from_json(value: str | bytes, *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
+    classmethod from_jsonl(path: str | Path, *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
+    def in_input_order(self) -> BatchResult[TOutput, TContext]
+    def outputs(self, *, with_ids: bool = False) -> Iterator[~TOutput] | Iterator[tuple[str, ~TOutput]]
+    property successes -> list[WorkItemResult[~TOutput, ~TContext]]
+    def summary(self) -> str
+    def to_dict(self, *, encoder: ValueEncoder | None = None) -> dict[str, Any]
+    def to_json(self, *, encoder: ValueEncoder | None = None, indent: int | None = 2) -> str
+    def to_jsonl(self, path: str | Path, *, encoder: ValueEncoder | None = None) -> None
+class BatchTermination
+    field kind: Literal['completed', 'batch_timeout', 'fail_fast', 'budget_exceeded', 'artifact_error'] = 'completed'
+    field reason: str | None = None
+    field error_category: str | None = None
+    field triggering_item_id: str | None = None
+    __init__(self, kind: Literal['completed', 'batch_timeout', 'fail_fast', 'budget_exceeded', 'artifact_error'] = 'completed', reason: str | None = None, error_category: str | None = None, triggering_item_id: str | None = None) -> None
+class CacheFloorBreach
+    field group: str | None
+    field window_hit_rate: float | None
+    field floor: float
+    field window: int
+    field last_miss_reason: str | None = None
+    field overflow: bool = False
+    __init__(self, group: str | None, window_hit_rate: float | None, floor: float, window: int, last_miss_reason: str | None = None, overflow: bool = False) -> None
+    property message -> str
+class CacheGroupTracker
+    __init__(self, *, window: int = 50) -> None
+    def below_floor(self, floor: float) -> list[CacheFloorBreach]
+    classmethod from_dict(data: Mapping[str, Any]) -> CacheGroupTracker
+    def record(self, group: object, usage: Mapping[str, Any] | None, *, miss_reason: object = None) -> None
+    def record_result(self, result: WorkItemResult[Any, Any]) -> None
+    def reset(self) -> None
+    def stats(self) -> dict[str, Any]
+    def to_dict(self) -> dict[str, Any]
+    property window -> int
+class CachedTokenRates
+    attribute ANTHROPIC_READ = 0.1
+    attribute ANTHROPIC_WRITE = 1.25
+    attribute ANTHROPIC_WRITE_1H = 2.0
+    attribute DEEPSEEK = 0.02
+    attribute GEMINI = 0.1
+    attribute OPENAI = 0.5
+    attribute OPENAI_WRITE = 1.25
+class CallOutcome(Generic)
+    field output: TOutput
+    field token_usage: Mapping[str, int] = <factory: {}>
+    field metadata: Mapping[str, Any] | None = None
+    __init__(self, output: TOutput, token_usage: Mapping[str, int] = <factory>, metadata: Mapping[str, Any] | None = None) -> None
+class CallableStrategy(LLMCallStrategy)
+    __init__(self, invoke: InvokeCallback[TOutput], *, identity: ArtifactIdentity | None = None, error_classifier: ErrorClassifier | None = None, prepare: LifecycleCallback | None = None, cleanup: LifecycleCallback | None = None, on_error: ErrorCallback | None = None, dry_run: DryRunCallback[TOutput] | None = None, max_concurrency: int | None = None, concurrency_scope: object | None = None, quota_scope: object | None = None, token_estimator: TokenEstimator | None = None, request_concurrency: RequestConcurrencyCallback | None = None) -> None
+    property artifact_identity -> ArtifactIdentity | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier | None
+    async def request_concurrency(self, concurrency: int) -> bool
+class CharacterTokenEstimator
+    field characters_per_token: float = 4.0
+    field expected_output_tokens: int = 256
+    field minimum_input_tokens: int = 1
+    __init__(self, characters_per_token: float = 4.0, expected_output_tokens: int = 256, minimum_input_tokens: int = 1) -> None
+class CleanupInterruptedError(RuntimeError, LLMMinderError)
+    __init__(self, step_name: str, *, cause: BaseException | None = None) -> None
+class DeepSeekModel(_ResponsesSurface, OpenAICompatibleModel)
+    __init__(self, model: str, client: AsyncOpenAI, *, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, thinking: bool | None = None, api_surface: str = 'chat_completions', response_schema: type[pydantic.main.BaseModel] | Mapping[str, Any] | None = None, schema_name: str | None = None, json_mode: bool = False, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None)
+    property artifact_identity_extra -> dict[str, Any]
+    async def cleanup(self) -> None
+    classmethod from_api_key(model: str, api_key: str | None = None, *, base_url: str | None = None, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, json_mode: bool = False, max_connections: int | None = None, thinking: bool | None = None, api_surface: str = 'chat_completions', response_schema: type[pydantic.main.BaseModel] | Mapping[str, Any] | None = None, schema_name: str | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None, **client_kwargs: Any) -> DeepSeekModel
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    def parse_structured_response(self, response: LLMResponse) -> Any
+    async def prepare(self) -> None
+    async def request_concurrency(self, concurrency: int) -> bool
+    attribute response_schema = None
+    attribute response_schema_hash = None
+    attribute response_schema_identity = None
+    attribute response_schema_name = None
+class DeepSeekStrategy(ModelStrategy)
+    __init__(self, model: LLMModel, response_parser: Callable[[LLMResponse], ~TOutput] | None = None, *, temperature: float | None = None, generation_config: dict[str, Any] | None = None, quota_scope: object | None = None, token_estimator: TokenEstimator | None = None) -> None
+    property artifact_identity -> Any
+    def attempt_generation_config(self, attempt: int, state: RetryState | None) -> dict[str, Any] | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier
+    async def request_concurrency(self, concurrency: int) -> bool
+class DefaultErrorClassifier(ErrorClassifier)
+    def classify(self, exception: Exception) -> ErrorInfo
+class EmptyResponseError(ValueError, LLMMinderError)
+    __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None, reason: EmptyResponseReason = 'unknown', provider_reason: str | None = None)
+class ErrorCategory(_StrValueEnum)
+    RATE_LIMIT = 'rate_limit'
+    INSUFFICIENT_BALANCE = 'insufficient_balance'
+    QUOTA_EXHAUSTED = 'quota_exhausted'
+    USAGE_LIMIT_EXCEEDED = 'usage_limit_exceeded'
+    AUTHENTICATION = 'authentication'
+    PERMISSION_DENIED = 'permission_denied'
+    CLIENT_ERROR = 'client_error'
+    SERVER_ERROR = 'server_error'
+    SERVER_OVERLOAD = 'server_overload'
+    SERVER_TIMEOUT = 'server_timeout'
+    UPSTREAM_ERROR = 'upstream_error'
+    API_ERROR = 'api_error'
+    API_TIMEOUT = 'api_timeout'
+    TIMEOUT = 'timeout'
+    NETWORK_ERROR = 'network_error'
+    CONNECTION_ERROR = 'connection_error'
+    VALIDATION_ERROR = 'validation_error'
+    STRUCTURED_OUTPUT_VALIDATION_ERROR = 'structured_output_validation_error'
+    STRUCTURED_OUTPUT_SCHEMA_REJECTED = 'structured_output_schema_rejected'
+    LOGIC_ERROR = 'logic_error'
+    EMPTY_RESPONSE = 'empty_response'
+    RESPONSE_TRUNCATED = 'response_truncated'
+    UNKNOWN = 'unknown'
+    CLASSIFIER_ERROR = 'classifier_error'
+    FRAMEWORK_TIMEOUT = 'framework_timeout'
+    RATE_LIMIT_RETRIES_EXCEEDED = 'rate_limit_retries_exceeded'
+    FRAMEWORK_TOTAL_ITEM_TIMEOUT = 'framework_total_item_timeout'
+    BATCH_DEADLINE_EXCEEDED = 'batch_deadline_exceeded'
+    BATCH_ABORTED = 'batch_aborted'
+    BATCH_BUDGET_EXCEEDED = 'batch_budget_exceeded'
+    CACHE_HIT_RATE_BELOW_FLOOR = 'cache_hit_rate_below_floor'
+    TOKEN_ESTIMATOR_REQUIRED = 'token_estimator_required'
+    TOKEN_ESTIMATION_ERROR = 'token_estimation_error'
+    TOKEN_ESTIMATE_EXCEEDS_LIMIT = 'token_estimate_exceeds_limit'
+    QUOTA_SCOPE_ERROR = 'quota_scope_error'
+    MIDDLEWARE_CONTRACT_ERROR = 'middleware_contract_error'
+    MIDDLEWARE_FILTERED = 'middleware_filtered'
+    ARTIFACT_PREPARATION_ERROR = 'artifact_preparation_error'
+    ARTIFACT_SERIALIZATION_ERROR = 'artifact_serialization_error'
+class ErrorClassifier(ABC)
+    def classify(self, exception: Exception) -> ErrorInfo
+class ErrorInfo
+    field is_retryable: bool
+    field is_rate_limit: bool
+    field is_timeout: bool
+    field error_category: str
+    field suggested_wait: float | None = None
+    field hint: str | None = None
+    __init__(self, is_retryable: bool, is_rate_limit: bool, is_timeout: bool, error_category: str, suggested_wait: float | None = None, hint: str | None = None) -> None
+class ExponentialBackoffStrategy(RateLimitStrategy)
+    __init__(self, initial_cooldown: float = 300.0, max_cooldown: float = 600.0, backoff_multiplier: float = 1.5, slow_start_items: int = 50, slow_start_initial_delay: float = 2.0, slow_start_final_delay: float = 0.1)
+    async def on_rate_limit(self, worker_id: int, consecutive_limit_count: int) -> float
+    def should_apply_slow_start(self, items_since_resume: int) -> tuple[bool, float]
+class FixedDelayStrategy(RateLimitStrategy)
+    __init__(self, cooldown: float = 300.0, delay_between_requests: float = 1.0)
+    async def on_rate_limit(self, worker_id: int, consecutive_limit_count: int) -> float
+    def should_apply_slow_start(self, items_since_resume: int) -> tuple[bool, float]
+class FrameworkTimeoutError(TimeoutError, LLMMinderError)
+    __init__(self, message: str, *, item_id: str | None = None, elapsed: float | None = None, timeout_limit: float | None = None)
+class GeminiCachedModel
+    __init__(self, model: str, client: genai.Client, cached_content: list['Content'], *, cache_ttl_seconds: int = 3600, cache_renewal_buffer_seconds: int = 300, auto_renew: bool = True, cache_tags: dict[str, str] | None = None, safety_settings: list[dict[str, Any]] | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None)
+    property cache_name -> str | None
+    async def cleanup(self) -> None
+    async def delete_cache(self) -> None
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+class GeminiErrorClassifier(ErrorClassifier)
+    def classify(self, exception: Exception) -> ErrorInfo
+class GeminiModel
+    __init__(self, model: str, client: genai.Client, *, safety_settings: list[dict[str, Any]] | None = None, system_instruction: str | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None)
+    async def cleanup(self) -> None
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+class GeminiStrategy(ModelStrategy)
+    def attempt_generation_config(self, attempt: int, state: RetryState | None) -> dict[str, Any] | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier
+    async def request_concurrency(self, concurrency: int) -> bool
+class Grounding
+    field sources: list[GroundingSource] = <factory: []>
+    field queries: list[str] = <factory: []>
+    field supports: list[dict[str, Any]] = <factory: []>
+    __init__(self, sources: list[GroundingSource] = <factory>, queries: list[str] = <factory>, supports: list[dict[str, Any]] = <factory>) -> None
+    classmethod from_metadata(data: Any) -> Grounding | None
+class GroundingSource
+    field uri: str
+    field title: str | None = None
+    field snippet: str | None = None
+    __init__(self, uri: str, title: str | None = None, snippet: str | None = None) -> None
+    classmethod from_metadata(data: Any) -> GroundingSource | None
+class GuardrailConfig
+    field total_timeout_per_item: float | None (kw_only) = None
+    field batch_timeout: float | None (kw_only) = None
+    field abort_on_error_categories: frozenset[str] (kw_only) = <factory: frozenset()>
+    field abort_mode: AbortMode (kw_only) = <AbortMode.DRAIN_ACTIVE: 'drain_active'>
+    field max_total_tokens: int | None (kw_only) = None
+    field max_total_cost: float | None (kw_only) = None
+    field cost_function: Callable[[AttemptUsage], float] | None (kw_only) = None
+    field min_cache_hit_rate: float | None (kw_only) = None
+    field cache_hit_window: int (kw_only) = 50
+    __init__(self, *, total_timeout_per_item: float | None = None, batch_timeout: float | None = None, abort_on_error_categories: frozenset[str] = <factory>, abort_mode: AbortMode = <AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens: int | None = None, max_total_cost: float | None = None, cost_function: Callable[[AttemptUsage], float] | None = None, min_cache_hit_rate: float | None = None, cache_hit_window: int = 50) -> None
+    property budget_configured -> bool
+    def validate(self) -> None
+class ItemDeadlineExceeded(TimeoutError, LLMMinderError)
+    __init__(self, message: str, *, item_id: str | None = None) -> None
+class JsonlArtifactStore
+    __init__(self, path: str | Path, *, identity: ArtifactIdentity | None = None, user_metadata: Mapping[str, JSONValue] | None = None, include_output: bool = True, include_metadata: bool = True, include_prompt: bool = False, include_context: bool = False, context_in_identity: bool = True, encoder: ValueEncoder | None = None, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None, context_fingerprinter: ContextFingerprinter | None = None, cost_calculator: CostCalculator | None = None, fsync: bool = False) -> None
+    async def append(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, result: WorkItemResult[Any, Any]) -> None
+    async def close(self) -> None
+    def iter_results(self, *, successes_only: bool = False) -> AsyncIterator[WorkItemResult[Any, Any]]
+    async def lookup(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, policy: ResumePolicy) -> WorkItemResult[Any, Any] | None
+    async def prepare_item(self, work_item: LLMWorkItem[Any, Any, Any]) -> _ItemFingerprint
+    classmethod read_results(path: str | Path, *, successes_only: bool = False, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
+class LLMCallError(RuntimeError, LLMMinderError)
+    __init__(self, message: str, *, result: WorkItemResult[Any, Any]) -> None
+class LLMCallPool(Generic)
+    __init__(self, strategy: LLMCallStrategy[TOutput], *, config: ProcessorConfig | None = None, error_classifier: Any = None, max_pending: int | None = None, submit_timeout: float | None = None, cache_tracker: CacheGroupTracker | None = None) -> None
+    async def aclose(self) -> None
+    def cache_stats(self) -> dict[str, Any]
+    property cache_tracker -> CacheGroupTracker
+    def reset_cache_stats(self) -> None
+    def resume(self) -> BatchTermination | None
+    async def submit(self, prompt: str, *, timeout: float | None = None) -> TOutput
+    async def submit_result(self, prompt: str, *, timeout: float | None = None) -> WorkItemResult[TOutput, Any]
+    property termination -> BatchTermination | None
+class LLMCallStrategy(ABC, Generic)
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier | None
+class LLMMinderError(Exception)
+class LLMModel(Protocol)
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+class LLMResponse(ProviderOutputViews)
+    field text: str
+    field input_tokens: int
+    field output_tokens: int
+    field total_tokens: int
+    field cached_input_tokens: int = 0
+    field metadata: dict[str, Any] | None = None
+    field raw: Any = None
+    field cache_write_input_tokens: int = 0
+    __init__(self, text: str, input_tokens: int, output_tokens: int, total_tokens: int, cached_input_tokens: int = 0, metadata: dict[str, Any] | None = None, raw: Any = None, cache_write_input_tokens: int = 0) -> None
+    property grounding -> Grounding | None
+    property logprobs -> Any | None
+    property reasoning -> str | None
+    property structured_output_recovered -> bool
+    property structured_output_recovery_reason -> str | None
+    property structured_output_retries_avoided -> int
+    property token_usage -> TokenUsage
+    property tool_calls -> list[ToolCall] | None
+class LLMWorkItem(Generic)
+    field item_id: str
+    field strategy: LLMCallStrategy[TOutput]
+    field prompt: str = ''
+    field context: ~TContext | None = None
+    field submission_index: int | None = None
+    __init__(self, item_id: str, strategy: LLMCallStrategy[TOutput], prompt: str = '', context: ~TContext | None = None, submission_index: int | None = None) -> None
+class ManagedLLMModel(LLMModel, Protocol)
+    async def cleanup(self) -> None
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+MetadataExtractor: Callable[[Any], dict[str, Any] | None]
+class MetricsObserver(BaseObserver)
+    __init__(self, *, max_processing_samples: int = 100)
+    async def export_dict(self) -> dict[str, Any]
+    async def export_json(self) -> str
+    async def export_prometheus(self) -> str
+    async def get_metrics(self) -> dict[str, Any]
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None
+    async def reset(self) -> None
+class Middleware(ABC, Generic)
+    async def after_process(self, result: WorkItemResult[~TOutput, ~TContext]) -> WorkItemResult[~TOutput, ~TContext]
+    async def before_process(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext]) -> LLMWorkItem[~TInput, ~TOutput, ~TContext] | None
+    async def on_error(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext], error: Exception) -> WorkItemResult[~TOutput, ~TContext] | None
+class MiddlewareContractError(ValueError, LLMMinderError)
+    attribute error_category = 'middleware_contract_error'
+class ModelStrategy(LLMCallStrategy)
+    __init__(self, model: LLMModel, response_parser: Callable[[LLMResponse], ~TOutput] | None = None, *, temperature: float | None = None, generation_config: dict[str, Any] | None = None, quota_scope: object | None = None, token_estimator: TokenEstimator | None = None) -> None
+    def attempt_generation_config(self, attempt: int, state: RetryState | None) -> dict[str, Any] | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier | None
+    async def request_concurrency(self, concurrency: int) -> bool
+class OpenAICompatibleModel
+    __init__(self, model: str, client: AsyncOpenAI, *, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, prompt_cache_key: str | None = None, cache_group: str | None = None)
+    async def cleanup(self) -> None
+    classmethod from_api_key(model: str, api_key: str | None = None, *, base_url: str | None = None, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, json_mode: bool = False, max_connections: int | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, prompt_cache_key: str | None = None, cache_group: str | None = None, **client_kwargs: Any) -> ~TM
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+    async def request_concurrency(self, concurrency: int) -> bool
+class OpenAIErrorClassifier(ErrorClassifier)
+    def classify(self, exception: Exception) -> ErrorInfo
+class OpenAIModel(_ResponsesSurface, OpenAICompatibleModel)
+    __init__(self, model: str, client: AsyncOpenAI, *, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, api_surface: str = 'responses', prompt_cache_key: str | None = None, cache_group: str | None = None)
+    property artifact_identity_extra -> dict[str, Any]
+    async def cleanup(self) -> None
+    classmethod from_api_key(model: str, api_key: str | None = None, *, base_url: str | None = None, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, json_mode: bool = False, max_connections: int | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, api_surface: str = 'responses', prompt_cache_key: str | None = None, cache_group: str | None = None, **client_kwargs: Any) -> OpenAIModel
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+    async def request_concurrency(self, concurrency: int) -> bool
+    attribute response_schema = None
+    attribute response_schema_hash = None
+    attribute response_schema_identity = None
+    attribute response_schema_name = None
+class OpenAIStrategy(ModelStrategy)
+    def attempt_generation_config(self, attempt: int, state: RetryState | None) -> dict[str, Any] | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier
+    async def request_concurrency(self, concurrency: int) -> bool
+class OpenRouterErrorClassifier(OpenAIErrorClassifier)
+    def classify(self, exception: Exception) -> ErrorInfo
+class OpenRouterModel(OpenAICompatibleModel)
+    async def cleanup(self) -> None
+    classmethod from_api_key(model: str, api_key: str | None = None, *, base_url: str | None = None, system_instruction: str | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, json_mode: bool = False, max_connections: int | None = None, referer: str | None = None, title: str | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, prompt_cache_key: str | None = None, cache_group: str | None = None, **client_kwargs: Any) -> OpenRouterModel
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+    async def request_concurrency(self, concurrency: int) -> bool
+class OpenRouterStrategy(ModelStrategy)
+    def attempt_generation_config(self, attempt: int, state: RetryState | None) -> dict[str, Any] | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier
+    async def request_concurrency(self, concurrency: int) -> bool
+class ParallelBatchProcessor(BatchProcessor, Generic)
+    __init__(self, *, post_processor: Callable[[WorkItemResult[~TOutput, ~TContext]], Awaitable[None] | None] | None = None, config: ProcessorConfig | None = None, error_classifier: ErrorClassifier | None = None, rate_limit_strategy: RateLimitStrategy | None = None, middlewares: list[Middleware[~TInput, ~TOutput, ~TContext]] | None = None, observers: list[ProcessorObserver] | None = None, progress_callback: ProgressCallbackFunc | None = None, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>)
+    property aborted -> bool
+    async def add_work(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext]) -> None
+    async def cleanup(self)
+    async def finish(self) -> None
+    async def get_stats(self) -> dict
+    async def process_all(self) -> BatchResult[~TOutput, ~TContext]
+    def results(self) -> AsyncIterator[WorkItemResult[~TOutput, ~TContext]]
+    async def shutdown(self)
+    def start(self) -> None
+    async def wait_for_abort(self) -> None
+PostProcessorFunc: Callable[[WorkItemResult[~TOutput, ~TContext]], Awaitable[None] | None]
+class ProcessingEvent(Enum)
+    ITEM_STARTED = 'item_started'
+    ITEM_ADMITTED = 'item_admitted'
+    QUOTA_ADMITTED = 'quota_admitted'
+    QUOTA_RECONCILED = 'quota_reconciled'
+    ITEM_COMPLETED = 'item_completed'
+    ITEM_FAILED = 'item_failed'
+    ITEM_REPLAYED = 'item_replayed'
+    ITEM_DEADLINE_EXCEEDED = 'item_deadline_exceeded'
+    RATE_LIMIT_HIT = 'rate_limit_hit'
+    COOLDOWN_STARTED = 'cooldown_started'
+    COOLDOWN_ENDED = 'cooldown_ended'
+    WORKER_STARTED = 'worker_started'
+    WORKER_STOPPED = 'worker_stopped'
+    BATCH_STARTED = 'batch_started'
+    BATCH_COMPLETED = 'batch_completed'
+    BATCH_ABORTED = 'batch_aborted'
+class ProcessorConfig
+    field max_workers: int | None (kw_only) = None
+    field post_processor_timeout: float (kw_only) = 90.0
+    field concurrent_post_processing: bool (kw_only) = False
+    field retry: RetryConfig (kw_only) = <factory: RetryConfig(max_attempts=3, initial_wait=1.0, max_wait=60.0, exponential_base=2.0, jitter=True, max_rate_limit_retries=20)>
+    field rate_limit: RateLimitConfig (kw_only) = <factory: RateLimitConfig(cooldown_seconds=300.0, slow_start_items=50, slow_start_initial_delay=2.0, slow_start_final_delay=0.1, backoff_multiplier=1.5, max_cooldown_seconds=600.0)>
+    field max_requests_per_minute: float | None (kw_only) = None
+    field progress_interval: int (kw_only) = 10
+    field progress_callback_timeout: float | None (kw_only) = 5.0
+    field max_queue_size: int (kw_only) = 0
+    field dry_run: bool (kw_only) = False
+    field max_provider_concurrency: int | None (kw_only) = None
+    field startup_ramp: StartupRampConfig | None (kw_only) = None
+    field guardrails: GuardrailConfig (kw_only) = <factory: GuardrailConfig(total_timeout_per_item=None, batch_timeout=None, abort_on_error_categories=frozenset(), abort_mode=<AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens=None, max_total_cost=None, cost_function=None, min_cache_hit_rate=None, cache_hit_window=50)>
+    field attempt_timeout: float | None (kw_only) = None
+    field concurrency: int | None (kw_only) = None
+    field max_result_queue_size: int (kw_only) = 0
+    field progress_refresh_interval_seconds: float (kw_only) = 0.1
+    field max_tokens_per_minute: int | None (kw_only) = None
+    field token_estimator: TokenEstimator | None (kw_only) = None
+    field quota_burst_seconds: float | None (kw_only) = None
+    __init__(self, *, max_workers: int | None = None, post_processor_timeout: float = 90.0, concurrent_post_processing: bool = False, retry: RetryConfig = <factory>, rate_limit: RateLimitConfig = <factory>, max_requests_per_minute: float | None = None, progress_interval: int = 10, progress_callback_timeout: float | None = 5.0, max_queue_size: int = 0, dry_run: bool = False, max_provider_concurrency: int | None = None, startup_ramp: StartupRampConfig | None = None, guardrails: GuardrailConfig = <factory>, attempt_timeout: float | None = None, concurrency: int | None = None, max_result_queue_size: int = 0, progress_refresh_interval_seconds: float = 0.1, max_tokens_per_minute: int | None = None, token_estimator: TokenEstimator | None = None, quota_burst_seconds: float | None = None) -> None
+    def validate(self) -> None
+class ProcessorObserver(ABC)
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None
+ProgressCallbackFunc: Callable[[int, int, str], Awaitable[None] | None]
+class ProviderResponseError(LLMMinderError)
+    __init__(self, message: str, *, code: int | None = None, provider_error: Any = None, token_usage: TokenUsage | dict[str, int] | None = None)
+class PydanticAIErrorClassifier(OpenAIErrorClassifier)
+    def classify(self, exception: Exception) -> ErrorInfo
+class PydanticAIStrategy(LLMCallStrategy)
+    __init__(self, agent: Agent[None, TOutput])
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier
+class QuotaScopeError(ValueError, LLMMinderError)
+    attribute error_category = 'quota_scope_error'
+class RateLimitConfig
+    field cooldown_seconds: float (kw_only) = 300.0
+    field slow_start_items: int (kw_only) = 50
+    field slow_start_initial_delay: float (kw_only) = 2.0
+    field slow_start_final_delay: float (kw_only) = 0.1
+    field backoff_multiplier: float (kw_only) = 1.5
+    field max_cooldown_seconds: float (kw_only) = 600.0
+    __init__(self, *, cooldown_seconds: float = 300.0, slow_start_items: int = 50, slow_start_initial_delay: float = 2.0, slow_start_final_delay: float = 0.1, backoff_multiplier: float = 1.5, max_cooldown_seconds: float = 600.0) -> None
+    def validate(self) -> None
+class RateLimitRetriesExceeded(LLMMinderError)
+    __init__(self, message: str, *, item_id: str | None = None, rate_limit_retries: int | None = None)
+class RateLimitStrategy(ABC)
+    async def on_rate_limit(self, worker_id: int, consecutive_limit_count: int) -> float
+    def should_apply_slow_start(self, items_since_resume: int) -> tuple[bool, float]
+class ResultSerializationError(ValueError, LLMMinderError)
+class ResumePolicy(str, Enum)
+    NONE = 'none'
+    REUSE_SUCCESSES = 'reuse_successes'
+    REUSE_ALL = 'reuse_all'
+class RetryConfig
+    field max_attempts: int (kw_only) = 3
+    field initial_wait: float (kw_only) = 1.0
+    field max_wait: float (kw_only) = 60.0
+    field exponential_base: float (kw_only) = 2.0
+    field jitter: bool (kw_only) = True
+    field max_rate_limit_retries: int (kw_only) = 20
+    __init__(self, *, max_attempts: int = 3, initial_wait: float = 1.0, max_wait: float = 60.0, exponential_base: float = 2.0, jitter: bool = True, max_rate_limit_retries: int = 20) -> None
+    def validate(self) -> None
+class RetryState
+    field data: dict[str, Any] = <factory: {}>
+    __init__(self, data: dict[str, Any] = <factory>) -> None
+    def clear(self) -> None
+    def delete(self, key: str, raise_if_missing: bool = False) -> None
+    def get(self, key: str, default: Any = None) -> Any
+    def set(self, key: str, value: Any) -> None
+SimpleBatchProcessor: ParallelBatchProcessor[str, ~_T, None]
+SimpleResult: WorkItemResult[~_T, None]
+SimpleWorkItem: LLMWorkItem[str, ~_T, None]
+class SqliteArtifactStore
+    __init__(self, path: str | Path, *, identity: ArtifactIdentity | None = None, user_metadata: Mapping[str, JSONValue] | None = None, include_output: bool = True, include_metadata: bool = True, include_prompt: bool = False, include_context: bool = False, context_in_identity: bool = True, encoder: ValueEncoder | None = None, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None, context_fingerprinter: ContextFingerprinter | None = None, cost_calculator: CostCalculator | None = None, durability: SqliteDurability = <SqliteDurability.BALANCED: 'balanced'>, commit_batch_size: int = 100, commit_interval_seconds: float = 0.01, busy_timeout_seconds: float = 5.0, read_batch_size: int = 1000) -> None
+    async def append(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, result: WorkItemResult[Any, Any]) -> None
+    async def close(self) -> None
+    def iter_results(self, *, successes_only: bool = False) -> AsyncIterator[WorkItemResult[Any, Any]]
+    async def lookup(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, policy: ResumePolicy) -> WorkItemResult[Any, Any] | None
+    async def prepare_item(self, work_item: LLMWorkItem[Any, Any, Any]) -> PreparedArtifactItem
+    classmethod read_results(path: str | Path, *, successes_only: bool = False, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None, read_batch_size: int = 1000) -> BatchResult[Any, Any]
+class SqliteDurability(str, Enum)
+    BALANCED = 'balanced'
+    FULL = 'full'
+class StartupRampConfig
+    field initial_concurrency: int (kw_only) = 1
+    field concurrency_step: int (kw_only) = 1
+    field ramp_interval_seconds: float (kw_only) = 1.0
+    field max_concurrency: int | None (kw_only) = None
+    field jitter_seconds: float (kw_only) = 0.0
+    __init__(self, *, initial_concurrency: int = 1, concurrency_step: int = 1, ramp_interval_seconds: float = 1.0, max_concurrency: int | None = None, jitter_seconds: float = 0.0) -> None
+    def validate(self) -> None
+class StreamFinalizationError(RuntimeError, LLMMinderError)
+    __init__(self, message: str, *, cause: BaseException | None = None) -> None
+class StructuredOutputSchemaError(ValueError, LLMMinderError)
+    __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None) -> None
+class StructuredOutputValidationError(ValueError, LLMMinderError)
+class TimeoutCategory(_StrValueEnum)
+    FRAMEWORK_EXECUTION_TIMEOUT = 'framework_execution_timeout'
+    FRAMEWORK_TOTAL_ITEM_TIMEOUT = 'framework_total_item_timeout'
+    PROVIDER_OR_TRANSPORT_TIMEOUT = 'provider_or_transport_timeout'
+    ADMISSION_TIMEOUT = 'admission_timeout'
+class TokenEstimate
+    field input_tokens: int
+    field output_tokens: int = 0
+    __init__(self, input_tokens: int, output_tokens: int = 0) -> None
+    property total_tokens -> int
+class TokenEstimateExceedsLimit(TokenEstimationError)
+    attribute error_category = 'token_estimate_exceeds_limit'
+class TokenEstimationError(LLMMinderError)
+    attribute error_category = 'token_estimation_error'
+class TokenEstimator(Protocol)
+class TokenEstimatorRequired(TokenEstimationError)
+    attribute error_category = 'token_estimator_required'
+class TokenTrackingError(LLMMinderError)
+    __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None)
+class TokenUsage(dict)
+    key input_tokens: int (optional)
+    key output_tokens: int (optional)
+    key total_tokens: int (optional)
+    key cached_input_tokens: int (optional)
+    key cache_write_input_tokens: int (optional)
+class ToolCall
+    field id: str | None
+    field name: str
+    field arguments: str
+    __init__(self, id: str | None, name: str, arguments: str) -> None
+    classmethod from_metadata(data: Any) -> ToolCall | None
+class TruncatedResponseError(EmptyResponseError)
+    __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None, provider_reason: str | None = None)
+class WorkItemResult(ProviderOutputViews, Generic)
+    field item_id: str
+    field success: bool
+    field output: ~TOutput | None = None
+    field error: str | None = None
+    field context: ~TContext | None = None
+    field token_usage: TokenUsage = <factory: {'input_tokens': 0, 'output_tokens': 0, 'total_tokens': 0}>
+    field metadata: dict[str, Any] | None = None
+    field exception: Exception | None = None
+    field admission_wait_seconds: float = 0.0
+    field timing: WorkItemTiming = <factory: WorkItemTiming(total_seconds=0.0, attempts=[], timeout_category=None)>
+    field submission_index: int | None = None
+    field error_category: str | None = None
+    field replayed_from_artifact: bool = False
+    __init__(self, item_id: str, success: bool, output: ~TOutput | None = None, error: str | None = None, context: ~TContext | None = None, token_usage: TokenUsage = <factory>, metadata: dict[str, Any] | None = None, exception: Exception | None = None, admission_wait_seconds: float = 0.0, timing: WorkItemTiming = <factory>, submission_index: int | None = None, error_category: str | None = None, replayed_from_artifact: bool = False) -> None
+    classmethod from_dict(data: Mapping[str, Any], *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> WorkItemResult[Any, Any]
+    property grounding -> Grounding | None
+    property logprobs -> Any | None
+    property quota_wait_seconds -> float
+    property reasoning -> str | None
+    property structured_output_recovered -> bool
+    property structured_output_recovery_reason -> str | None
+    property structured_output_retries_avoided -> int
+    def to_dict(self, *, encoder: ValueEncoder | None = None) -> dict[str, Any]
+    property tool_calls -> list[ToolCall] | None
+class WorkItemTiming
+    field total_seconds: float = 0.0
+    field attempts: list[AttemptTiming] = <factory: []>
+    field timeout_category: str | None = None
+    __init__(self, total_seconds: float = 0.0, attempts: list[AttemptTiming] = <factory>, timeout_category: str | None = None) -> None
+    property admission_wait_seconds -> float
+    property cooldown_wait_seconds -> float
+    property execution_seconds -> float
+    property provider_seconds -> float
+    property quota_wait_seconds -> float
+    property retry_backoff_seconds -> float
+    property startup_ramp_wait_seconds -> float
+def attach_token_usage(exception: BaseException, tokens: TokenUsage | Mapping[str, int]) -> None
+async def call(strategy: LLMCallStrategy[TOutput], prompt: str, *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> TOutput
+async def call_result(strategy: LLMCallStrategy[TOutput], prompt: str, *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> WorkItemResult[TOutput, Any]
+def llm(spec: str, *, response_parser: Callable[[LLMResponse], Any] | None = None, temperature: float | None = None, generation_config: dict[str, Any] | None = None, **model_kwargs: Any) -> ModelStrategy[Any]
+async def process_prompts(strategy: LLMCallStrategy[TOutput], prompts: PromptSource, *, config: ProcessorConfig | None = None, concurrency: int | None = None, progress: bool | ProgressCallbackFunc = False, preserve_order: bool = False, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>, **processor_kwargs: Any) -> BatchResult[TOutput, Any]
+def process_stream(strategy: LLMCallStrategy[TOutput], prompts: PromptSource, *, config: ProcessorConfig | None = None, concurrency: int | None = None, progress: bool | ProgressCallbackFunc = False, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>, **processor_kwargs: Any) -> AsyncIterator[WorkItemResult[TOutput, Any]]
+class provider_call
+    __init__(self, state: RetryState | None) -> None
+def pydantic_json_parser(model_cls: type[TModel], *, recover_trailing_markdown: bool = False) -> Callable[[LLMResponse], TModel]
+def strip_code_fences(text: str) -> str
+
+event BATCH_ABORTED: {kind, reason, error_category, triggering_item_id, abort_mode}
+event BATCH_COMPLETED: {processed, succeeded, failed, total, total_tokens, cached_input_tokens, total_admission_wait_seconds, max_admission_wait_seconds, total_quota_wait_seconds, max_quota_wait_seconds, quota_wait_p50/p95/p99_seconds, estimated_input_tokens, estimated_output_tokens, reserved_tokens, reported_reconciliation_tokens, refunded_tokens, underestimated_tokens, unknown_usage_attempts, known_zero_usage_attempts, token_estimation_failures, quota_scope_count, admission_wait_p50/p95/p99_seconds, execution_p50/p95/p99_seconds, structured_output_recoveries, structured_output_retries_avoided, structured_output_recovery_reasons, input_queue_high_water_mark, result_queue_high_water_mark, cache_groups, cache_groups_overflow, duration}
+event BATCH_STARTED: {total, max_workers, start_time}
+event COOLDOWN_ENDED: {duration, error?}
+event COOLDOWN_STARTED: {worker_id, duration, consecutive, quota_scope_id?, strategy_type?}
+event ITEM_ADMITTED: {item_id, worker_id, attempt, wait_seconds, capacity, startup_ramp_wait_seconds}
+event ITEM_COMPLETED: {item_id, duration, tokens, admission_wait_seconds, structured_output_recovered, structured_output_recovery_reason, structured_output_retries_avoided}
+event ITEM_DEADLINE_EXCEEDED: {item_id}
+event ITEM_FAILED: {item_id, submission_index, error_type, error_category}
+event ITEM_REPLAYED: {item_id, submission_index, success, error_type, error_category}
+event ITEM_STARTED: {item_id, worker_id}
+event QUOTA_ADMITTED: {item_id, worker_id, attempt, try_number, quota_scope_id, wait_seconds, request_reserved, estimated_input_tokens, estimated_output_tokens, estimated_total_tokens, reserved_tokens, rpm_configured, tpm_configured, limited_by}
+event QUOTA_RECONCILED: {item_id, worker_id, attempt, try_number, quota_scope_id, reserved_tokens, reported_tokens, known_usage, delta_tokens, disposition}
+event RATE_LIMIT_HIT: {item_id, worker_id, quota_scope_id, strategy_type}
+event WORKER_STARTED: {worker_id}
+event WORKER_STOPPED: {worker_id}

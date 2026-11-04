@@ -132,6 +132,11 @@ jobs:
     - name: Run type checker (ty)
       run: uv run ty check src/
 
+    # A sample app written only against the public API, checked the way a user's
+    # strictly typed code would be. A library change that breaks it breaks them.
+    - name: Strict-check the public API sample (mypy + pyright)
+      run: make typecheck-user
+
     - name: Check package metadata and wheel contents
       run: make package-check
 

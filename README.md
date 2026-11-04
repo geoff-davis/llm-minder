@@ -26,10 +26,8 @@ API may be cheaper.
 [Changelog](https://github.com/geoff-davis/llm-minder/blob/main/CHANGELOG.md)
 
 > **Renamed:** this project was published as `async-batch-llm` through v0.32. From 1.0
-> it is `llm-minder`, imported as `llm_minder`.
->
-> **v0.32 is the last release before 1.0.** Upgrading from v0.27 or earlier? Read the
-> [v0.28 migration guide](https://geoff-davis.github.io/llm-minder/migration/v0.28/)
+> it is `llm-minder`, imported as `llm_minder`. Upgrading? Read the
+> [1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/)
 > and see [Upgrading](#upgrading) below.
 
 ## Quick start
@@ -461,6 +459,13 @@ grounding, and the benchmark.
 - [API Stability (draft for 1.0)](https://geoff-davis.github.io/llm-minder/stability/)
 
 ## Upgrading
+
+From v0.32, read the
+[1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/). The
+package is renamed to `llm-minder`, Python 3.11 is required, everything 0.27 and 0.28
+deprecated is removed, truncated responses get their own error category, and a
+cut-off or blocked empty reply now fails instead of succeeding. Coming from an older
+release, upgrade to v0.32 first with the guides below.
 
 From v0.27, read the
 [v0.28 migration guide](https://geoff-davis.github.io/llm-minder/migration/v0.28/):

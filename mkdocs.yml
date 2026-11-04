@@ -98,6 +98,7 @@ nav:
   - Release Roadmap: roadmap.md
   - API Stability (draft): stability.md
   - Migration Guides:
+    - 1.0 Migration: migration/v1.0.md
     - v0.28 Migration: migration/v0.28.md
     - v0.27 Migration: migration/v0.27.md
     - v0.26 Migration: migration/v0.26.md

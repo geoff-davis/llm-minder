@@ -198,12 +198,10 @@ set `cache_group`; see [Cache hit-rate floor](../guardrails.md#cache-hit-rate-fl
 
 ### Typed auxiliary output (grounding, reasoning, tool calls, logprobs)
 
-> **Provisional.** The shapes were adjusted in v0.27 for OpenAI's Responses API.
-> The views and the reserved keys' shapes may be promoted to stable at 1.0.0rc1 if
-> real-provider runs fill them in correctly; until then they can change in a minor
-> release, and `logprobs` is likely to stay provisional after 1.0. The `metadata`
-> dict channel itself is stable. If you persist these shapes, read them back
-> defensively. See [API stability](../stability.md#provisional-through-10).
+> **Stable from 1.0**, except `logprobs`. The `grounding`, `reasoning` and
+> `tool_calls` views and reserved keys are covered by the
+> [stability promise](../stability.md). `logprobs` carries each provider's own
+> structure and stays provisional, so read it defensively.
 
 Provider-specific structured output travels through `metadata` under four
 **reserved keys** with documented plain-dict shapes (JSON-serializable, so
