@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     BatchResult,
     CachedTokenRates,
     CallableStrategy,
@@ -29,8 +29,8 @@ from async_batch_llm import (
     PydanticAIStrategy,
     WorkItemResult,
 )
-from async_batch_llm.serialization import work_item_result_from_dict, work_item_result_to_dict
-from async_batch_llm.token_extractor import TokenExtractor, _coerce_usage
+from llm_minder.serialization import work_item_result_from_dict, work_item_result_to_dict
+from llm_minder.token_extractor import TokenExtractor, _coerce_usage
 
 # ── Provider extraction ──────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ async def test_responses_api_empty_response_carries_cache_writes(model_factory) 
 
 
 def test_mapping_details_from_older_sdks_are_read() -> None:
-    from async_batch_llm.models import _openai_cache_write_tokens
+    from llm_minder.models import _openai_cache_write_tokens
 
     response = SimpleNamespace(
         usage=SimpleNamespace(input_tokens_details={"cached_tokens": 1, "cache_write_tokens": 9})

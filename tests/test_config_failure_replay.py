@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIOError,
     JsonlArtifactStore,
     LLMCallStrategy,
@@ -19,13 +19,13 @@ from async_batch_llm import (
     TokenEstimate,
     WorkItemResult,
 )
-from async_batch_llm._internal.artifact_codec import (
+from llm_minder._internal.artifact_codec import (
     BEST_EFFORT_AUDIT_CATEGORIES,
     CONFIGURATION_FAILURE_CATEGORIES,
     GUARDRAIL_AUDIT_CATEGORIES,
     NON_REPLAYABLE_CATEGORIES,
 )
-from async_batch_llm.middleware import BaseMiddleware
+from llm_minder.middleware import BaseMiddleware
 
 CATEGORIES = (
     "token_estimator_required",
@@ -161,7 +161,7 @@ async def test_configuration_record_does_not_mask_older_success(
     store_factory, category, legacy, monkeypatch
 ):
     """A v0.26 record (marked replay-eligible) is excluded; the older success replays."""
-    from async_batch_llm._internal import artifact_codec
+    from llm_minder._internal import artifact_codec
 
     strategy = Strategy()
     assert (await _run(store_factory(), strategy, FIXED)).success

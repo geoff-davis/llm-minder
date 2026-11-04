@@ -8,7 +8,7 @@ version is supported; upgrade to receive fixes.
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately through GitHub:
-[Report a vulnerability](https://github.com/geoff-davis/async-batch-llm/security/advisories/new).
+[Report a vulnerability](https://github.com/geoff-davis/llm-minder/security/advisories/new).
 Don't open a public issue for a suspected vulnerability.
 
 Include the affected version, a minimal reproduction if you have one, and the impact
@@ -17,7 +17,7 @@ a week. Fixes are released as a new patch version with a GitHub security advisor
 
 ## Scope
 
-async-batch-llm runs inside your process and calls the provider SDKs you configure.
+llm-minder runs inside your process and calls the provider SDKs you configure.
 Reports are most useful for problems in the library itself, for example:
 
 - artifact or result files written with content the privacy settings say is omitted

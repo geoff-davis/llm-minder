@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     ArtifactIdentityError,
     CallableStrategy,
@@ -25,9 +25,9 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.base import RetryState
-from async_batch_llm.core import RateLimitConfig, RetryConfig
-from async_batch_llm.strategies import ErrorClassifier, ErrorInfo
+from llm_minder.base import RetryState
+from llm_minder.core import RateLimitConfig, RetryConfig
+from llm_minder.strategies import ErrorClassifier, ErrorInfo
 
 
 def _config(*, attempts: int = 3, workers: int = 2, timeout: float = 1.0) -> ProcessorConfig:

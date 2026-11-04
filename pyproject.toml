@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "async-batch-llm"
+name = "llm-minder"
 version = "0.32.0"
 description = "Provider-neutral asyncio toolkit for concurrent LLM calls with retries, scoped RPM/TPM admission, bounded streaming, resumable checkpoints, and deadlines."
 readme = "README.md"
@@ -119,13 +119,13 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/geoff-davis/async-batch-llm"
-Documentation = "https://geoff-davis.github.io/async-batch-llm/"
-Repository = "https://github.com/geoff-davis/async-batch-llm"
-Issues = "https://github.com/geoff-davis/async-batch-llm/issues"
+Homepage = "https://github.com/geoff-davis/llm-minder"
+Documentation = "https://geoff-davis.github.io/llm-minder/"
+Repository = "https://github.com/geoff-davis/llm-minder"
+Issues = "https://github.com/geoff-davis/llm-minder/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/async_batch_llm"]
+packages = ["src/llm_minder"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -186,7 +186,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["async_batch_llm"]
+known-first-party = ["llm_minder"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -200,11 +200,11 @@ warn_redundant_casts = true
 warn_unused_ignores = false  # Allow unused ignores for optional dependencies
 
 [[tool.mypy.overrides]]
-module = "async_batch_llm.llm_strategies"
+module = "llm_minder.llm_strategies"
 disable_error_code = ["override", "arg-type", "attr-defined", "assignment"]
 
 [[tool.mypy.overrides]]
-module = "async_batch_llm.base"
+module = "llm_minder.base"
 disable_error_code = ["assignment"]  # TypedDict default_factory limitation
 
 # numpy arrives only with the docs extra (matplotlib) and is reached through
@@ -241,7 +241,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["src/async_batch_llm"]
+source = ["src/llm_minder"]
 omit = [
     "*/tests/*",
     "*/testing/*",

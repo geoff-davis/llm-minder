@@ -15,19 +15,19 @@ import warnings
 import pytest
 from pydantic import BaseModel
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     MetricsObserver,
     ParallelBatchProcessor,
     ProcessorConfig,
     PydanticAIStrategy,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.classifiers.gemini import GeminiErrorClassifier
-from async_batch_llm.classifiers.openai import OpenAIErrorClassifier
-from async_batch_llm.core import RetryConfig
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.strategies.errors import DefaultErrorClassifier
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.classifiers.gemini import GeminiErrorClassifier
+from llm_minder.classifiers.openai import OpenAIErrorClassifier
+from llm_minder.core import RetryConfig
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.strategies.errors import DefaultErrorClassifier
 
 
 class _EchoStrategy(LLMCallStrategy[str]):

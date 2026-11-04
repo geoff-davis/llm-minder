@@ -8,13 +8,13 @@ import platform
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from .monitor import resource_methods
 
-REPORT_SCHEMA_NAME = "async-batch-llm-scale-soak"
+REPORT_SCHEMA_NAME = "llm-minder-scale-soak"
 REPORT_SCHEMA_VERSION = 2
 
 DEFERRED_FEATURES = [
@@ -121,7 +121,7 @@ def _package_version() -> str:
     try:
         from importlib.metadata import version
 
-        return version("async-batch-llm")
+        return version("llm-minder")
     except Exception:
         return "unknown"
 
@@ -160,7 +160,7 @@ def build_report(profile: str, scenarios: list[ScenarioResult]) -> dict[str, Any
     return {
         "schema_name": REPORT_SCHEMA_NAME,
         "schema_version": REPORT_SCHEMA_VERSION,
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "environment": environment(),
         "profile": profile,
         "scenarios": [scenario.to_json() for scenario in scenarios],

@@ -15,31 +15,31 @@ For which category each built-in classifier assigns, see
 
 ### ErrorClassifier
 
-::: async_batch_llm.strategies.ErrorClassifier
+::: llm_minder.strategies.ErrorClassifier
 
 ### ErrorInfo
 
-::: async_batch_llm.ErrorInfo
+::: llm_minder.ErrorInfo
 
 ### DefaultErrorClassifier
 
-::: async_batch_llm.DefaultErrorClassifier
+::: llm_minder.DefaultErrorClassifier
 
 ### GeminiErrorClassifier
 
-::: async_batch_llm.GeminiErrorClassifier
+::: llm_minder.GeminiErrorClassifier
 
 ### OpenAIErrorClassifier
 
-::: async_batch_llm.OpenAIErrorClassifier
+::: llm_minder.OpenAIErrorClassifier
 
 ### OpenRouterErrorClassifier
 
-::: async_batch_llm.OpenRouterErrorClassifier
+::: llm_minder.OpenRouterErrorClassifier
 
 ### PydanticAIErrorClassifier
 
-::: async_batch_llm.PydanticAIErrorClassifier
+::: llm_minder.PydanticAIErrorClassifier
 
 ## Rate-limit strategies
 
@@ -48,52 +48,52 @@ decides how long each cooldown lasts.
 
 ### RateLimitStrategy
 
-::: async_batch_llm.RateLimitStrategy
+::: llm_minder.RateLimitStrategy
 
 ### ExponentialBackoffStrategy
 
-::: async_batch_llm.ExponentialBackoffStrategy
+::: llm_minder.ExponentialBackoffStrategy
 
 ### FixedDelayStrategy
 
-::: async_batch_llm.FixedDelayStrategy
+::: llm_minder.FixedDelayStrategy
 
 ## Deadlines, aborts and interruptions
 
-::: async_batch_llm.ItemDeadlineExceeded
+::: llm_minder.ItemDeadlineExceeded
 
-::: async_batch_llm.BatchDeadlineExceeded
+::: llm_minder.BatchDeadlineExceeded
 
-::: async_batch_llm.BatchAbortedError
+::: llm_minder.BatchAbortedError
 
-::: async_batch_llm.BatchInterruptedError
+::: llm_minder.BatchInterruptedError
 
-::: async_batch_llm.FrameworkTimeoutError
+::: llm_minder.FrameworkTimeoutError
 
-::: async_batch_llm.RateLimitRetriesExceeded
+::: llm_minder.RateLimitRetriesExceeded
 
 ## Provider responses and structured output
 
-::: async_batch_llm.EmptyResponseError
+::: llm_minder.EmptyResponseError
 
-::: async_batch_llm.TruncatedResponseError
+::: llm_minder.TruncatedResponseError
 
-::: async_batch_llm.ProviderResponseError
+::: llm_minder.ProviderResponseError
 
-::: async_batch_llm.StructuredOutputSchemaError
+::: llm_minder.StructuredOutputSchemaError
 
-::: async_batch_llm.StructuredOutputValidationError
+::: llm_minder.StructuredOutputValidationError
 
-::: async_batch_llm.TokenTrackingError
+::: llm_minder.TokenTrackingError
 
 ## Configuration errors
 
-::: async_batch_llm.MiddlewareContractError
+::: llm_minder.MiddlewareContractError
 
-::: async_batch_llm.QuotaScopeError
+::: llm_minder.QuotaScopeError
 
-::: async_batch_llm.TokenEstimationError
+::: llm_minder.TokenEstimationError
 
-::: async_batch_llm.TokenEstimatorRequired
+::: llm_minder.TokenEstimatorRequired
 
-::: async_batch_llm.TokenEstimateExceedsLimit
+::: llm_minder.TokenEstimateExceedsLimit

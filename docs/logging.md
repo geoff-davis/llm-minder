@@ -1,10 +1,10 @@
 # Logging
 
-async-batch-llm logs through Python's standard `logging` module. Every logger
-is named after its module and sits under the `async_batch_llm` parent (for
-example `async_batch_llm.parallel` or
-`async_batch_llm._internal.item_executor`), so configuring
-`logging.getLogger("async_batch_llm")` controls all of them.
+llm-minder logs through Python's standard `logging` module. Every logger
+is named after its module and sits under the `llm_minder` parent (for
+example `llm_minder.parallel` or
+`llm_minder._internal.item_executor`), so configuring
+`logging.getLogger("llm_minder")` controls all of them.
 
 Logs are for people reading a run. Their wording isn't part of the API (see
 [API stability](stability.md#what-it-doesnt-cover)); for anything a program
@@ -35,7 +35,7 @@ Hide retries, cooldowns and progress, and keep errors:
 ```python
 import logging
 
-logging.getLogger("async_batch_llm").setLevel(logging.ERROR)
+logging.getLogger("llm_minder").setLevel(logging.ERROR)
 ```
 
 ERROR isn't only terminal failures (see the table): an attempt timeout is logged
@@ -57,14 +57,14 @@ Configure a handler (here, the root one) and lower the library's level:
 import logging
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-logging.getLogger("async_batch_llm").setLevel(logging.INFO)  # or logging.DEBUG
+logging.getLogger("llm_minder").setLevel(logging.INFO)  # or logging.DEBUG
 ```
 
 INFO adds progress lines and cooldown detail; DEBUG adds per-attempt detail and is
 best kept for diagnosing a specific problem on a small run.
 
 To send the library's logs somewhere separate, attach a handler to the
-`async_batch_llm` logger and set `propagate = False` on it.
+`llm_minder` logger and set `propagate = False` on it.
 
 ## Alternatives to logs
 

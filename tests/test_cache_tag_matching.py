@@ -55,7 +55,7 @@ def _make_mock_client(caches: list[Any]) -> Any:
 
 def test_encode_decode_round_trip():
     _genai_or_skip()
-    from async_batch_llm.models import (
+    from llm_minder.models import (
         _decode_tags_from_display_name,
         _encode_tags_to_display_name,
     )
@@ -68,7 +68,7 @@ def test_encode_is_deterministic_regardless_of_key_order():
     """Equal tag sets must produce equal display_names — otherwise cache lookup
     would miss tagged caches created in a different insertion order."""
     _genai_or_skip()
-    from async_batch_llm.models import _encode_tags_to_display_name
+    from llm_minder.models import _encode_tags_to_display_name
 
     a = _encode_tags_to_display_name({"a": "1", "b": "2"})
     b = _encode_tags_to_display_name({"b": "2", "a": "1"})
@@ -77,7 +77,7 @@ def test_encode_is_deterministic_regardless_of_key_order():
 
 def test_decode_returns_none_for_unprefixed_display_name():
     _genai_or_skip()
-    from async_batch_llm.models import _decode_tags_from_display_name
+    from llm_minder.models import _decode_tags_from_display_name
 
     assert _decode_tags_from_display_name(None) is None
     assert _decode_tags_from_display_name("") is None
@@ -86,7 +86,7 @@ def test_decode_returns_none_for_unprefixed_display_name():
 
 def test_decode_returns_none_for_malformed_prefix_payload():
     _genai_or_skip()
-    from async_batch_llm.models import _decode_tags_from_display_name
+    from llm_minder.models import _decode_tags_from_display_name
 
     assert _decode_tags_from_display_name("abl-tags:not-json") is None
     assert _decode_tags_from_display_name('abl-tags:["list","not","dict"]') is None
@@ -98,7 +98,7 @@ def test_encoded_display_name_passes_genai_validation():
     _genai_or_skip()
     from google.genai.types import CreateCachedContentConfig
 
-    from async_batch_llm.models import _encode_tags_to_display_name
+    from llm_minder.models import _encode_tags_to_display_name
 
     cfg = CreateCachedContentConfig(
         contents=[],
@@ -114,7 +114,7 @@ def test_encoded_display_name_passes_genai_validation():
 @pytest.mark.asyncio
 async def test_find_existing_cache_via_display_name_tags():
     _genai_or_skip()
-    from async_batch_llm.models import GeminiCachedModel, _encode_tags_to_display_name
+    from llm_minder.models import GeminiCachedModel, _encode_tags_to_display_name
 
     want = {"customer": "acme", "version": "v1"}
     other = {"customer": "globex", "version": "v1"}
@@ -140,7 +140,7 @@ async def test_cache_without_display_name_tags_is_skipped_when_model_has_tags():
     """A legacy cache (no abl-tags display_name) must NOT be reused by a tagged model —
     otherwise we'd silently reuse a cache whose contents may not match the intended tags."""
     _genai_or_skip()
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     legacy = _make_mock_cache("legacy", display_name=None)
     client = _make_mock_client([legacy])
@@ -163,7 +163,7 @@ async def test_cache_without_display_name_tags_is_skipped_when_model_has_tags():
 async def test_model_without_user_tags_rejects_cache_without_content_tag():
     """Content identity is required even when no user tags are supplied."""
     _genai_or_skip()
-    from async_batch_llm.models import GeminiCachedModel, _encode_tags_to_display_name
+    from llm_minder.models import GeminiCachedModel, _encode_tags_to_display_name
 
     tagged = _make_mock_cache(
         "tagged", display_name=_encode_tags_to_display_name({"version": "v1"})
@@ -183,7 +183,7 @@ async def test_model_without_user_tags_rejects_cache_without_content_tag():
 @pytest.mark.asyncio
 async def test_tag_match_is_case_and_type_sensitive():
     _genai_or_skip()
-    from async_batch_llm.models import GeminiCachedModel, _encode_tags_to_display_name
+    from llm_minder.models import GeminiCachedModel, _encode_tags_to_display_name
 
     # Cache encodes uppercase + numeric-string.
     cache = _make_mock_cache(
@@ -214,7 +214,7 @@ async def test_create_cache_forwards_tags_as_display_name_only():
     CreateCachedContentConfig (google-genai rejects it), but SHOULD pass
     `display_name=` encoded with our sentinel prefix."""
     _genai_or_skip()
-    from async_batch_llm.models import GeminiCachedModel, _encode_tags_to_display_name
+    from llm_minder.models import GeminiCachedModel, _encode_tags_to_display_name
 
     tags = {"prompt_version": "v1"}
 
@@ -242,7 +242,7 @@ async def test_create_cache_forwards_tags_as_display_name_only():
 @pytest.mark.asyncio
 async def test_create_cache_without_user_tags_includes_content_tag():
     _genai_or_skip()
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     client = _make_mock_client([])
 
@@ -266,7 +266,7 @@ async def test_prov2_cache_requires_exact_content_identity(case):
 
     from google.genai.types import CachedContent, Content, Part
 
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     stored = []
     client = _make_mock_client([])
@@ -304,7 +304,7 @@ async def test_prov2_cache_requires_exact_content_identity(case):
 
 @pytest.mark.parametrize("tags", [{"abl-content": "forged"}, {"long": "x" * 128}])
 def test_prov2_cache_tag_budget_and_reserved_key(tags):
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     with pytest.raises(ValueError, match="abl-content|128-character"):
         GeminiCachedModel("gemini-test", _make_mock_client([]), [], cache_tags=tags)
@@ -314,7 +314,7 @@ def test_prov2_cache_tag_budget_and_reserved_key(tags):
 def test_sc2_sc3_cache_fingerprints_follow_request_content(kind):
     from google.genai import types
 
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     if kind == "nested":
         left = [["doc", types.Part(text="more")]]
@@ -360,7 +360,7 @@ def test_sc2_sc3_cache_fingerprints_follow_request_content(kind):
 def test_sc2_sc3_cache_fallback_without_sdk_transformer(monkeypatch):
     from google.genai import _transformers, types
 
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     monkeypatch.delattr(_transformers, "t_contents")
     file = types.File(uri="https://test/files/a", mime_type="application/pdf", state="PROCESSING")

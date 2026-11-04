@@ -2,7 +2,7 @@
 
 import pytest
 
-from async_batch_llm.strategies.rate_limit import ExponentialBackoffStrategy, FixedDelayStrategy
+from llm_minder.strategies.rate_limit import ExponentialBackoffStrategy, FixedDelayStrategy
 
 
 @pytest.mark.asyncio
@@ -163,7 +163,7 @@ async def test_adm5_exponential_backoff_never_overflows():
 
 
 def test_adm5_bare_defaults_match_config():
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     config = RateLimitConfig()
     strategy = ExponentialBackoffStrategy()

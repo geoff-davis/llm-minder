@@ -2,97 +2,97 @@
 
 ## ParallelBatchProcessor
 
-::: async_batch_llm.ParallelBatchProcessor
+::: llm_minder.ParallelBatchProcessor
     options:
       show_bases: false
 
 ## LLMWorkItem
 
-::: async_batch_llm.LLMWorkItem
+::: llm_minder.LLMWorkItem
 
 ## WorkItemResult
 
-::: async_batch_llm.WorkItemResult
+::: llm_minder.WorkItemResult
 
 ## AttemptTiming
 
-::: async_batch_llm.AttemptTiming
+::: llm_minder.AttemptTiming
 
 ## WorkItemTiming
 
-::: async_batch_llm.WorkItemTiming
+::: llm_minder.WorkItemTiming
 
 ## ProcessorConfig
 
-::: async_batch_llm.ProcessorConfig
+::: llm_minder.ProcessorConfig
 
 ## RetryConfig
 
-::: async_batch_llm.core.RetryConfig
+::: llm_minder.core.RetryConfig
 
 ## RateLimitConfig
 
-::: async_batch_llm.core.RateLimitConfig
+::: llm_minder.core.RateLimitConfig
 
 ## GuardrailConfig
 
-::: async_batch_llm.GuardrailConfig
+::: llm_minder.GuardrailConfig
 
 ## AbortMode
 
-::: async_batch_llm.AbortMode
+::: llm_minder.AbortMode
 
 ## AttemptUsage
 
-::: async_batch_llm.AttemptUsage
+::: llm_minder.AttemptUsage
 
 ## CacheGroupTracker
 
-::: async_batch_llm.CacheGroupTracker
+::: llm_minder.CacheGroupTracker
 
 ## CacheFloorBreach
 
-::: async_batch_llm.CacheFloorBreach
+::: llm_minder.CacheFloorBreach
 
 ## BatchBudgetExceeded
 
-::: async_batch_llm.BatchBudgetExceeded
+::: llm_minder.BatchBudgetExceeded
 
 ## StartupRampConfig
 
-::: async_batch_llm.StartupRampConfig
+::: llm_minder.StartupRampConfig
 
 ## BatchResult
 
-::: async_batch_llm.BatchResult
+::: llm_minder.BatchResult
 
 ## BatchTermination
 
-::: async_batch_llm.BatchTermination
+::: llm_minder.BatchTermination
 
 ## Grounding
 
-::: async_batch_llm.Grounding
+::: llm_minder.Grounding
 
 ## GroundingSource
 
-::: async_batch_llm.GroundingSource
+::: llm_minder.GroundingSource
 
 ## ToolCall
 
-::: async_batch_llm.ToolCall
+::: llm_minder.ToolCall
 
 ## ErrorCategory
 
-::: async_batch_llm.ErrorCategory
+::: llm_minder.ErrorCategory
 
 ## TimeoutCategory
 
-::: async_batch_llm.TimeoutCategory
+::: llm_minder.TimeoutCategory
 
 ## AsyncBatchLLMError
 
-::: async_batch_llm.AsyncBatchLLMError
+::: llm_minder.AsyncBatchLLMError
 
 Every exception type the library exports subclasses it, alongside its original
 built-in base, so `except AsyncBatchLLMError` catches the library's own errors
@@ -101,13 +101,13 @@ keep working.
 
 ## Lifecycle exceptions
 
-::: async_batch_llm.StreamFinalizationError
+::: llm_minder.StreamFinalizationError
 
-::: async_batch_llm.CleanupInterruptedError
+::: llm_minder.CleanupInterruptedError
 
 ## Admission closure
 
-::: async_batch_llm.BatchAdmissionClosedError
+::: llm_minder.BatchAdmissionClosedError
 
 `add_work()` raises `BatchAdmissionClosedError` after finish, shutdown, or abort.
 Rejected submissions receive no submission index. Use a new processor for further work.
@@ -258,11 +258,11 @@ change degrades to `None` views rather than errors.
 
 ## TokenUsage
 
-::: async_batch_llm.TokenUsage
+::: llm_minder.TokenUsage
 
 ## CachedTokenRates
 
-::: async_batch_llm.CachedTokenRates
+::: llm_minder.CachedTokenRates
 
 ## Type aliases
 
@@ -271,15 +271,15 @@ generic types for string prompts with no context. `PostProcessorFunc` and
 `ProgressCallbackFunc` are the callable types accepted by `post_processor` and
 `progress_callback`.
 
-::: async_batch_llm.SimpleBatchProcessor
+::: llm_minder.SimpleBatchProcessor
 
-::: async_batch_llm.SimpleWorkItem
+::: llm_minder.SimpleWorkItem
 
-::: async_batch_llm.SimpleResult
+::: llm_minder.SimpleResult
 
-::: async_batch_llm.PostProcessorFunc
+::: llm_minder.PostProcessorFunc
 
-::: async_batch_llm.ProgressCallbackFunc
+::: llm_minder.ProgressCallbackFunc
 
 ## Removed names
 

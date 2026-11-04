@@ -19,10 +19,10 @@ test-ci:  ## Run CI test suite with coverage reporting
 	uv run pytest tests/ -v --tb=short --cov --cov-report=term-missing --cov-report=xml
 
 coverage:  ## Run tests with coverage report
-	uv run pytest --cov=async_batch_llm --cov-report=term-missing --cov-report=html
+	uv run pytest --cov=llm_minder --cov-report=term-missing --cov-report=html
 
 coverage-report:  ## Generate and open HTML coverage report
-	uv run pytest --cov=async_batch_llm --cov-report=html
+	uv run pytest --cov=llm_minder --cov-report=html
 	@echo "\n==> Opening coverage report..."
 	open htmlcov/index.html || xdg-open htmlcov/index.html || echo "Please open htmlcov/index.html manually"
 
@@ -36,7 +36,7 @@ format:  ## Format code with ruff
 	uv run ruff format src/ tests/
 
 typecheck:  ## Run mypy type checker
-	uv run mypy src/async_batch_llm/ --ignore-missing-imports
+	uv run mypy src/llm_minder/ --ignore-missing-imports
 
 typecheck-ty:  ## Run ty type checker
 	uv run ty check src/

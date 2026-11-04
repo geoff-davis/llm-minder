@@ -4,15 +4,15 @@ import logging
 
 import pytest
 
-from async_batch_llm import ProcessorConfig
-from async_batch_llm.core import RateLimitConfig, RetryConfig, StartupRampConfig
+from llm_minder import ProcessorConfig
+from llm_minder.core import RateLimitConfig, RetryConfig, StartupRampConfig
 
 
 @pytest.mark.parametrize("rpm", [10.0, 59.9, 1.0, 0.25])
 def test_low_positive_rpm_with_multiple_workers_is_valid_and_quiet(
     rpm: float, caplog: pytest.LogCaptureFixture
 ) -> None:
-    with caplog.at_level(logging.WARNING, logger="async_batch_llm.core.config"):
+    with caplog.at_level(logging.WARNING, logger="llm_minder.core.config"):
         config = ProcessorConfig(max_workers=2, max_requests_per_minute=rpm)
 
     assert config.max_requests_per_minute == rpm
@@ -71,7 +71,7 @@ def test_adm3_burst_validation(value):
 
 
 def test_adm4_processor_does_not_repeat_validation_warning(caplog):
-    from async_batch_llm import ParallelBatchProcessor
+    from llm_minder import ParallelBatchProcessor
 
     with caplog.at_level(logging.WARNING):
         config = ProcessorConfig(max_workers=5, max_queue_size=2)

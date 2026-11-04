@@ -1,4 +1,4 @@
-# Git hooks for async-batch-llm, run via prek (Rust reimplementation of
+# Git hooks for llm-minder, run via prek (Rust reimplementation of
 # pre-commit; same config format).
 # Install: uv run prek install
 # (installs both the pre-commit and pre-push hook types; see
@@ -46,7 +46,7 @@ repos:
         additional_dependencies:
           - pydantic>=2.0.0
           - types-aiofiles
-        files: ^src/async_batch_llm/
+        files: ^src/llm_minder/
 
   # Ty - Additional static type checking
   - repo: local

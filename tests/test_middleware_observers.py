@@ -6,15 +6,15 @@ from typing import Annotated, Any
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     PydanticAIStrategy,
 )
-from async_batch_llm.middleware import BaseMiddleware
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
-from async_batch_llm.testing import MockAgent
+from llm_minder.middleware import BaseMiddleware
+from llm_minder.observers import BaseObserver, ProcessingEvent
+from llm_minder.testing import MockAgent
 
 
 class TestOutput(BaseModel):
@@ -289,7 +289,7 @@ async def test_observer_receives_failure_events():
     # Create custom error classifier that marks as non-retryable
     class NonRetryableClassifier:
         def classify(self, exception):
-            from async_batch_llm.strategies import ErrorInfo
+            from llm_minder.strategies import ErrorInfo
 
             return ErrorInfo(
                 is_retryable=False,
@@ -402,9 +402,7 @@ async def test_observer_timeout_doesnt_break_processing(monkeypatch):
 
     The observer timeout is shrunk via monkeypatch — with the production
     5s value this test burned ~30s of real sleep (5s per emitted event)."""
-    monkeypatch.setattr(
-        "async_batch_llm._internal.event_dispatcher.OBSERVER_CALLBACK_TIMEOUT", 0.05
-    )
+    monkeypatch.setattr("llm_minder._internal.event_dispatcher.OBSERVER_CALLBACK_TIMEOUT", 0.05)
 
     class SlowObserver(BaseObserver):
         async def on_event(self, event: ProcessingEvent, data: dict[str, Any]):
@@ -526,7 +524,7 @@ async def test_metrics_observer_export_json():
     """Test MetricsObserver export_json method."""
     import json
 
-    from async_batch_llm.observers.metrics import MetricsObserver
+    from llm_minder.observers.metrics import MetricsObserver
 
     observer = MetricsObserver()
 
@@ -560,7 +558,7 @@ async def test_metrics_observer_export_json():
 @pytest.mark.asyncio
 async def test_metrics_observer_export_prometheus():
     """Test MetricsObserver export_prometheus method."""
-    from async_batch_llm.observers.metrics import MetricsObserver
+    from llm_minder.observers.metrics import MetricsObserver
 
     observer = MetricsObserver()
 
@@ -575,22 +573,22 @@ async def test_metrics_observer_export_prometheus():
     prom_text = await observer.export_prometheus()
 
     # Verify Prometheus format
-    assert "# HELP async_batch_llm_items_processed Total items processed" in prom_text
-    assert "# TYPE async_batch_llm_items_processed counter" in prom_text
-    assert "async_batch_llm_items_processed 3" in prom_text
-    assert "async_batch_llm_items_succeeded 2" in prom_text
-    assert "async_batch_llm_items_failed 1" in prom_text
-    assert "async_batch_llm_rate_limits_hit 1" in prom_text
-    assert "# HELP async_batch_llm_avg_processing_time" in prom_text
-    assert "# TYPE async_batch_llm_avg_processing_time gauge" in prom_text
-    assert "async_batch_llm_total_cooldown_time 120.0" in prom_text
-    assert 'async_batch_llm_errors_total{error_type="ConnectionError"} 1' in prom_text
+    assert "# HELP llm_minder_items_processed Total items processed" in prom_text
+    assert "# TYPE llm_minder_items_processed counter" in prom_text
+    assert "llm_minder_items_processed 3" in prom_text
+    assert "llm_minder_items_succeeded 2" in prom_text
+    assert "llm_minder_items_failed 1" in prom_text
+    assert "llm_minder_rate_limits_hit 1" in prom_text
+    assert "# HELP llm_minder_avg_processing_time" in prom_text
+    assert "# TYPE llm_minder_avg_processing_time gauge" in prom_text
+    assert "llm_minder_total_cooldown_time 120.0" in prom_text
+    assert 'llm_minder_errors_total{error_type="ConnectionError"} 1' in prom_text
 
 
 @pytest.mark.asyncio
 async def test_metrics_observer_export_dict():
     """Test MetricsObserver export_dict method."""
-    from async_batch_llm.observers.metrics import MetricsObserver
+    from llm_minder.observers.metrics import MetricsObserver
 
     observer = MetricsObserver()
 
@@ -614,7 +612,7 @@ async def test_metrics_observer_export_dict():
 @pytest.mark.asyncio
 async def test_metrics_observer_reset():
     """Test MetricsObserver reset method."""
-    from async_batch_llm.observers.metrics import MetricsObserver
+    from llm_minder.observers.metrics import MetricsObserver
 
     observer = MetricsObserver()
 
@@ -643,7 +641,7 @@ async def test_metrics_observer_reset():
 @pytest.mark.asyncio
 async def test_metrics_observer_processing_times_bounded():
     """Processing time storage should remain bounded to avoid unbounded memory."""
-    from async_batch_llm.observers.metrics import MetricsObserver
+    from llm_minder.observers.metrics import MetricsObserver
 
     observer = MetricsObserver(max_processing_samples=32)
 
@@ -717,8 +715,8 @@ async def test_raising_on_error_middleware_falls_back_to_default_handling(caplog
     handling — the item is still recorded as failed."""
     import logging
 
-    from async_batch_llm.core import RetryConfig
-    from async_batch_llm.llm_strategies import LLMCallStrategy
+    from llm_minder.core import RetryConfig
+    from llm_minder.llm_strategies import LLMCallStrategy
 
     class AlwaysFails(LLMCallStrategy[TestOutput]):
         async def execute(self, prompt, attempt, timeout, state=None):

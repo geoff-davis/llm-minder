@@ -5,7 +5,7 @@ import warnings
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallStrategy,
     OpenAIModel,
     OpenAIStrategy,
@@ -99,7 +99,7 @@ class TestModelPoolResize:
 
 class TestProcessorWiring:
     async def test_add_work_resizes_factory_model_without_warning(self, fast_retry):
-        from async_batch_llm import LLMWorkItem
+        from llm_minder import LLMWorkItem
 
         model = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-test")
         strategy = OpenAIStrategy(model)
@@ -112,7 +112,7 @@ class TestProcessorWiring:
         await model.cleanup()
 
     async def test_add_work_warns_on_real_contradiction(self, fast_retry):
-        from async_batch_llm import LLMWorkItem
+        from llm_minder import LLMWorkItem
 
         model = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-test", max_connections=2)
         strategy = OpenAIStrategy(model)

@@ -1,1 +1,1 @@
-"""Developer benchmark tooling for async-batch-llm (not shipped in the wheel)."""
+"""Developer benchmark tooling for llm-minder (not shipped in the wheel)."""

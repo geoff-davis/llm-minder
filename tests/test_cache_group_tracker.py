@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     CacheFloorBreach,
     CacheGroupTracker,
     GuardrailConfig,
@@ -17,7 +17,7 @@ from async_batch_llm import (
     ProcessorConfig,
     WorkItemResult,
 )
-from async_batch_llm._internal.cache_groups import MAX_CACHE_GROUPS, CacheHitTracker
+from llm_minder._internal.cache_groups import MAX_CACHE_GROUPS, CacheHitTracker
 
 from .test_cache_groups import _FAST_RETRY, _NO_COOLDOWN, _Cached, _prompts
 

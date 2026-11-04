@@ -75,7 +75,7 @@ def _render(lines: list[str]) -> Image.Image:
     draw.ellipse((30, 29, 45, 44), fill="#ff5f57")
     draw.ellipse((53, 29, 68, 44), fill="#febc2e")
     draw.ellipse((76, 29, 91, 44), fill="#28c840")
-    draw.text((112, 27), "async-batch-llm · local demo", font=title_font, fill="#c9d1d9")
+    draw.text((112, 27), "llm-minder · local demo", font=title_font, fill="#c9d1d9")
     y = 76
     for index, line in enumerate(lines):
         color = "#7ee787" if index == 0 else "#d6deeb"

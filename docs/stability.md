@@ -10,7 +10,7 @@ guide, and removals follow the deprecation policy below.
 After 1.0, a minor or patch release will not break code that uses the following,
 except where a name or field is marked provisional below:
 
-- names exported from `async_batch_llm` (`__all__`) and their documented signatures,
+- names exported from `llm_minder` (`__all__`) and their documented signatures,
   fields and defaults, wherever the name is defined (for example
   `CleanupInterruptedError`, which lives in a private module);
 - the error and timeout category values in `ErrorCategory` and `TimeoutCategory`;
@@ -30,10 +30,10 @@ appended with defaults. Provisional dataclasses follow their provisional status.
 
 ## What it doesn't cover
 
-- Anything in `async_batch_llm._internal`, and underscore-prefixed names anywhere.
-- Submodule import paths such as `async_batch_llm.llm_strategies`,
-  `async_batch_llm.observers` or `async_batch_llm.classifiers`. The names work there
-  today, but import them from `async_batch_llm`; only the top-level path is covered.
+- Anything in `llm_minder._internal`, and underscore-prefixed names anywhere.
+- Submodule import paths such as `llm_minder.llm_strategies`,
+  `llm_minder.observers` or `llm_minder.classifiers`. The names work there
+  today, but import them from `llm_minder`; only the top-level path is covered.
 - Log messages, warning text and exception message text. Match on types and
   categories, not strings.
 - Exact timing, retry scheduling jitter and performance characteristics.
@@ -50,10 +50,10 @@ release before it is removed; after 1.0, removals happen only in a major release
 lists its deprecations.
 
 Deprecated names stay in `__all__` until they are removed, so
-`from async_batch_llm import *` warns once for each of them, even if your code uses
+`from llm_minder import *` warns once for each of them, even if your code uses
 none, and raises under `-W error::DeprecationWarning`. Import the names you use
 explicitly instead. On Python 3.14 an installed `google-genai` also emits its own
-`DeprecationWarning` when `async_batch_llm` is imported; add
+`DeprecationWarning` when `llm_minder` is imported; add
 `-W "ignore::DeprecationWarning:google.genai.types"` after the error filter.
 
 ## Support policy
@@ -144,9 +144,9 @@ is provisional (below).
 
 ### Testing helpers
 
-`async_batch_llm.testing` exports `MockAgent`, `MockResult`, `FakeStrategy`,
+`llm_minder.testing` exports `MockAgent`, `MockResult`, `FakeStrategy`,
 `mock_strategy` and `FakeRateLimitError`. They are Provisional: import them from
-`async_batch_llm.testing` (they aren't in the top-level `__all__`), and expect
+`llm_minder.testing` (they aren't in the top-level `__all__`), and expect
 possible changes in a minor release, announced in the changelog.
 
 ### Removed in 1.0
@@ -157,7 +157,7 @@ and `ParallelBatchProcessor` keyword arguments raise `TypeError` with one.
 
 | Removed | Replacement |
 | --- | --- |
-| `LLMGateway` (also from `async_batch_llm.gateway`) | `LLMCallPool` |
+| `LLMGateway` (also from `llm_minder.gateway`) | `LLMCallPool` |
 | `BatchProcessor` | `ParallelBatchProcessor` |
 | `ProcessingStats` | The dict from `get_stats()` |
 | `grounding_metadata_extractor` | Nothing: built-in Gemini models already emit grounding |
@@ -169,11 +169,27 @@ and `ParallelBatchProcessor` keyword arguments raise `TypeError` with one.
 | 2-tuple return from `LLMCallStrategy.execute()` | `(output, tokens, metadata)`; it now fails the item |
 | `effective_input_tokens()` / `estimated_cost()` with no cached-token rate | Pass a `CachedTokenRates` constant as `cached_token_rate` |
 | Positional arguments to `ProcessorConfig`, `RetryConfig`, `RateLimitConfig`, `StartupRampConfig`, `GuardrailConfig` | Keyword arguments |
-| `ProcessorConfig(enable_detailed_logging=True)` (it never had an effect) | Set the `async_batch_llm` logger's level ([Logging](logging.md)) |
+| `ProcessorConfig(enable_detailed_logging=True)` (it never had an effect) | Set the `llm_minder` logger's level ([Logging](logging.md)) |
 
 `ParallelBatchProcessor` takes keyword arguments only. Removing
 `gemini_safety_ratings` shifts the positional order of the `WorkItemResult` fields
 after it; build results by keyword.
+
+### Renamed in 1.0
+
+The package was published as `async-batch-llm` through v0.32. From 1.0 it is
+`llm-minder`:
+
+| Before | From 1.0 |
+| --- | --- |
+| `pip install async-batch-llm` | `pip install llm-minder` |
+| `import async_batch_llm` | `import llm_minder` |
+| `logging.getLogger("async_batch_llm")` | `logging.getLogger("llm_minder")` |
+| Prometheus metrics `async_batch_llm_*` | `llm_minder_*` |
+
+Exported names, signatures and behavior don't change with the rename. Artifact and
+result files keep their format, including the `async-batch-llm-result` schema name,
+so files written by earlier releases still load and resume.
 
 ## Provisional through 1.0
 

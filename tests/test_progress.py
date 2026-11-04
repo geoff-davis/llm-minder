@@ -5,8 +5,8 @@ import logging
 
 import pytest
 
-import async_batch_llm.streaming as streaming_module
-from async_batch_llm import (
+import llm_minder.streaming as streaming_module
+from llm_minder import (
     AbortMode,
     GuardrailConfig,
     LLMCallStrategy,
@@ -15,7 +15,7 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.streaming import _ProgressReporter
+from llm_minder.streaming import _ProgressReporter
 
 
 class EchoStrategy(LLMCallStrategy[str]):

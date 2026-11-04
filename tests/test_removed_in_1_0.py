@@ -9,8 +9,8 @@ import sys
 
 import pytest
 
-import async_batch_llm
-from async_batch_llm import (
+import llm_minder
+from llm_minder import (
     BatchResult,
     GuardrailConfig,
     LLMCallPool,
@@ -23,7 +23,7 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.testing import FakeStrategy
+from llm_minder.testing import FakeStrategy
 
 REMOVED_ROOT_NAMES = {
     "LLMGateway": "use LLMCallPool",
@@ -35,25 +35,25 @@ REMOVED_ROOT_NAMES = {
 
 @pytest.mark.parametrize(("name", "hint"), sorted(REMOVED_ROOT_NAMES.items()))
 def test_removed_root_names_raise_with_a_hint(name, hint):
-    assert name not in async_batch_llm.__all__
+    assert name not in llm_minder.__all__
     with pytest.raises(AttributeError, match="removed") as caught:
-        getattr(async_batch_llm, name)
+        getattr(llm_minder, name)
     assert hint in str(caught.value)
     namespace: dict[str, object] = {}
     with pytest.raises(ImportError):
-        exec(f"from async_batch_llm import {name}", namespace)  # noqa: S102
+        exec(f"from llm_minder import {name}", namespace)  # noqa: S102
 
 
 def test_internal_modules_keep_their_names():
     # Leaving the public API is not a deletion: the library still uses them.
-    base = importlib.import_module("async_batch_llm.base")
-    models = importlib.import_module("async_batch_llm.models")
+    base = importlib.import_module("llm_minder.base")
+    models = importlib.import_module("llm_minder.models")
     assert base.BatchProcessor is not None and base.ProcessingStats is not None
     assert callable(models.grounding_metadata_extractor)
 
 
 def test_gateway_module_keeps_llm_call_pool_only():
-    gateway = importlib.import_module("async_batch_llm.gateway")
+    gateway = importlib.import_module("llm_minder.gateway")
     assert gateway.LLMCallPool is LLMCallPool
     assert gateway.__all__ == ["LLMCallPool"]
     with pytest.raises(AttributeError, match="LLMGateway was removed in 1.0"):
@@ -61,7 +61,7 @@ def test_gateway_module_keeps_llm_call_pool_only():
     with pytest.raises(AttributeError, match="no attribute 'Nope'"):
         gateway.Nope  # noqa: B018
     with pytest.raises(AttributeError, match="no attribute 'Nope'"):
-        async_batch_llm.Nope  # noqa: B018
+        llm_minder.Nope  # noqa: B018
 
 
 def test_plain_and_star_imports_are_silent():
@@ -69,9 +69,9 @@ def test_plain_and_star_imports_are_silent():
         "import warnings\n"
         "warnings.simplefilter('error', DeprecationWarning)\n"
         "warnings.filterwarnings('ignore', category=DeprecationWarning, module='google')\n"
-        "import async_batch_llm\n"
-        "from async_batch_llm import *\n"
-        "from async_batch_llm.gateway import *\n"
+        "import llm_minder\n"
+        "from llm_minder import *\n"
+        "from llm_minder.gateway import *\n"
         "assert 'LLMGateway' not in dir()\n"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

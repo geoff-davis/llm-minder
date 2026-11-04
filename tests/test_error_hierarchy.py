@@ -7,14 +7,14 @@ import pickle
 
 import pytest
 
-import async_batch_llm
-from async_batch_llm import AsyncBatchLLMError
+import llm_minder
+from llm_minder import AsyncBatchLLMError
 
 EXPORTED = sorted(
     (
         (name, obj)
-        for name in async_batch_llm.__all__
-        if inspect.isclass(obj := getattr(async_batch_llm, name)) and issubclass(obj, BaseException)
+        for name in llm_minder.__all__
+        if inspect.isclass(obj := getattr(llm_minder, name)) and issubclass(obj, BaseException)
     ),
     key=lambda pair: pair[0],
 )
@@ -41,7 +41,7 @@ def test_every_exported_exception_type_uses_the_base():
     ],
 )
 def test_existing_builtin_bases_are_kept_first(name, builtin):
-    cls = getattr(async_batch_llm, name)
+    cls = getattr(llm_minder, name)
     assert issubclass(cls, builtin)
     mro = cls.__mro__
     assert mro.index(builtin) < mro.index(AsyncBatchLLMError)
@@ -49,9 +49,9 @@ def test_existing_builtin_bases_are_kept_first(name, builtin):
 
 def test_catching_the_base_and_pickling_still_work():
     for exc in (
-        async_batch_llm.ItemDeadlineExceeded("item deadline"),
-        async_batch_llm.ArtifactIOError("disk full"),
-        async_batch_llm.BatchBudgetExceeded("over budget"),
+        llm_minder.ItemDeadlineExceeded("item deadline"),
+        llm_minder.ArtifactIOError("disk full"),
+        llm_minder.BatchBudgetExceeded("over budget"),
     ):
         with pytest.raises(AsyncBatchLLMError):
             raise exc

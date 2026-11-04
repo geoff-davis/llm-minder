@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-import async_batch_llm.sqlite_artifacts as storage
+import llm_minder.sqlite_artifacts as storage
 from benchmarks.sqlite_wait_evidence import VARIANTS
 
 

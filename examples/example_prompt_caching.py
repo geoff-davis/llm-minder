@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from async_batch_llm import (
+from llm_minder import (
     CacheGroupTracker,
     CallableStrategy,
     CallOutcome,

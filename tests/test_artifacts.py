@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactFormatError,
     ArtifactIdentity,
     ArtifactIOError,
@@ -23,8 +23,8 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.base import RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class _CountingStrategy(LLMCallStrategy[str]):
@@ -867,7 +867,7 @@ async def test_iter_results_streams_without_building_replay_history(
     def fail_full_read(*args: Any, **kwargs: Any) -> None:
         raise AssertionError("iter_results must not build the replay history")
 
-    from async_batch_llm import artifacts as artifacts_module
+    from llm_minder import artifacts as artifacts_module
 
     page_calls = 0
     original_page_reader = artifacts_module._read_artifact_page
@@ -877,8 +877,8 @@ async def test_iter_results_streams_without_building_replay_history(
         page_calls += 1
         return original_page_reader(*args, **kwargs)
 
-    monkeypatch.setattr("async_batch_llm.artifacts._read_artifact_records", fail_full_read)
-    monkeypatch.setattr("async_batch_llm.artifacts._read_artifact_page", track_page)
+    monkeypatch.setattr("llm_minder.artifacts._read_artifact_records", fail_full_read)
+    monkeypatch.setattr("llm_minder.artifacts._read_artifact_page", track_page)
     store = JsonlArtifactStore(path)
     results = [result async for result in store.iter_results(successes_only=True)]
     assert [result.item_id for result in results] == [str(index) for index in range(20)]
@@ -950,7 +950,7 @@ async def test_iter_results_rejects_malformed_middle_and_ignores_truncated_tail(
 async def test_context_free_records_use_null_and_replay_legacy_v020_hashes(
     tmp_path: Path,
 ) -> None:
-    from async_batch_llm._internal.artifact_codec import fingerprint_json
+    from llm_minder._internal.artifact_codec import fingerprint_json
 
     path = tmp_path / "legacy-null-context.jsonl"
     await process_prompts(
@@ -990,7 +990,7 @@ async def test_context_free_records_use_null_and_replay_legacy_v020_hashes(
 async def test_context_free_legacy_replay_uses_custom_v020_fingerprinter(
     tmp_path: Path,
 ) -> None:
-    from async_batch_llm._internal.artifact_codec import fingerprint_json
+    from llm_minder._internal.artifact_codec import fingerprint_json
 
     def custom_fingerprinter(value: Any) -> str:
         return "custom:none" if value is None else f"custom:{value}"
@@ -1309,7 +1309,7 @@ async def test_art1_torn_manifest_recovers_but_foreign_file_is_untouched(tmp_pat
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 @pytest.mark.parametrize("mode", ["error", "metadata", "cost"])
 async def test_art3_surrogate_diagnostics_and_bad_metadata_are_isolated(tmp_path, store_type, mode):
-    from async_batch_llm.core import RetryConfig
+    from llm_minder.core import RetryConfig
 
     class Output(_CountingStrategy):
         async def execute(self, prompt, attempt, timeout, state=None):
@@ -1366,7 +1366,7 @@ async def test_art3_surrogate_diagnostics_and_bad_metadata_are_isolated(tmp_path
     ],
 )
 async def test_art4_guardrail_fallback_preserves_category(tmp_path, store_type, category):
-    from async_batch_llm import ParallelBatchProcessor
+    from llm_minder import ParallelBatchProcessor
 
     path = tmp_path / "audit"
     async with ParallelBatchProcessor(
@@ -1405,8 +1405,8 @@ async def test_art4_guardrail_fallback_preserves_category(tmp_path, store_type, 
 
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 async def test_art4_unprepared_key_is_not_a_recoverable_record_error(tmp_path, store_type):
-    from async_batch_llm import ArtifactSerializationError
-    from async_batch_llm.artifacts import _RecordSerializationError
+    from llm_minder import ArtifactSerializationError
+    from llm_minder.artifacts import _RecordSerializationError
 
     store = store_type(tmp_path / "unprepared", identity=_identity())
     try:
@@ -1423,7 +1423,7 @@ async def test_art4_unprepared_key_is_not_a_recoverable_record_error(tmp_path, s
 
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 async def test_art4_custom_store_without_private_fallback_stays_fatal(tmp_path, store_type):
-    from async_batch_llm.artifacts import _RecordSerializationError
+    from llm_minder.artifacts import _RecordSerializationError
 
     backing = store_type(tmp_path / "custom", identity=_identity())
 
@@ -1458,7 +1458,7 @@ async def test_art4_custom_store_without_private_fallback_stays_fatal(tmp_path, 
 async def test_art4_fallback_io_keeps_existing_fatal_vs_best_effort_policy(
     tmp_path, store_type, category
 ):
-    from async_batch_llm import ParallelBatchProcessor
+    from llm_minder import ParallelBatchProcessor
 
     store = store_type(tmp_path / "fallback-io", identity=_identity())
 
@@ -1486,7 +1486,7 @@ async def test_art4_fallback_io_keeps_existing_fatal_vs_best_effort_policy(
 
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 async def test_art4_fail_fast_runs_after_failure_checkpoint(tmp_path, store_type):
-    from async_batch_llm import GuardrailConfig
+    from llm_minder import GuardrailConfig
 
     class Output(_CountingStrategy):
         async def execute(self, prompt, attempt, timeout, state=None):
@@ -1598,7 +1598,7 @@ async def test_art8_decode_error_sequence_messages_are_one_based(tmp_path, store
 
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 async def test_art3_manifest_metadata_is_validated_before_open(tmp_path, store_type):
-    from async_batch_llm import ArtifactSerializationError
+    from llm_minder import ArtifactSerializationError
 
     path = tmp_path / "manifest"
     with pytest.raises(ArtifactSerializationError, match="user_metadata"):

@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from async_batch_llm import RetryState
-from async_batch_llm.llm_strategies import PydanticAIStrategy
-from async_batch_llm.testing import MockAgent
+from llm_minder import RetryState
+from llm_minder.llm_strategies import PydanticAIStrategy
+from llm_minder.testing import MockAgent
 
 
 class SimpleOutput(BaseModel):
@@ -121,7 +121,7 @@ class TestPydanticAIStrategy:
         """Test that ImportError is raised when pydantic-ai is not available."""
         from typing import Any
 
-        with patch("async_batch_llm.llm_strategies.Agent", Any):
+        with patch("llm_minder.llm_strategies.Agent", Any):
             with pytest.raises(ImportError) as exc_info:
                 PydanticAIStrategy(agent=MagicMock())
             assert "pydantic-ai is required" in str(exc_info.value)

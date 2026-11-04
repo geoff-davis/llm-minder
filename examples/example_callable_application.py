@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     BatchResult,
     CallableStrategy,

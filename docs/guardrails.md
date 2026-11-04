@@ -4,7 +4,7 @@ Guardrails are opt-in. Their defaults preserve normal completion-order,
 retry, streaming, token-accounting, and cancellation behavior.
 
 ```python
-from async_batch_llm import AbortMode, ErrorCategory, GuardrailConfig, ProcessorConfig
+from llm_minder import AbortMode, ErrorCategory, GuardrailConfig, ProcessorConfig
 
 config = ProcessorConfig(
     max_workers=20,
@@ -120,7 +120,7 @@ pool; a new failure in a configured category stops it again. `call()` and
 `call_result()` run one request, so the setting has nothing to stop there.
 
 ```python
-from async_batch_llm import ErrorCategory, GuardrailConfig, LLMCallPool, ProcessorConfig
+from llm_minder import ErrorCategory, GuardrailConfig, LLMCallPool, ProcessorConfig
 
 config = ProcessorConfig(
     max_workers=5,
@@ -164,7 +164,7 @@ Provisional: this API is new in v0.27 and may change in a minor release; see
 [API stability](stability.md#provisional-through-10).
 
 ```python
-from async_batch_llm import AttemptUsage, GuardrailConfig, ProcessorConfig
+from llm_minder import AttemptUsage, GuardrailConfig, ProcessorConfig
 
 def price(usage: AttemptUsage) -> float:
     # Your prices, in your currency. ABL ships no price table.
@@ -255,7 +255,7 @@ including which providers support what and how to choose the values.
 Provisional: new in 0.30; it may change in a minor release.
 
 ```python
-from async_batch_llm import GuardrailConfig, ProcessorConfig
+from llm_minder import GuardrailConfig, ProcessorConfig
 
 config = ProcessorConfig(
     max_workers=20,
@@ -341,7 +341,7 @@ across a restart, or to apply a floor where the processor can't:
 ```python
 import json
 
-from async_batch_llm import CacheGroupTracker, LLMCallPool
+from llm_minder import CacheGroupTracker, LLMCallPool
 
 # On startup: continue the saved statistics, if any.
 tracker = CacheGroupTracker.from_dict(json.loads(saved)) if saved else None
@@ -376,7 +376,7 @@ starts with a fresh tracker; it doesn't take a saved one.
 
 ```python
 from pathlib import Path
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     ArtifactIdentity,
     ErrorCategory,

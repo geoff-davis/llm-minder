@@ -15,14 +15,14 @@ import logging
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     RetryState,
 )
-from async_batch_llm.base import TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class _OkStrategy(LLMCallStrategy[str]):
@@ -127,12 +127,12 @@ async def test_cleanup_is_idempotent():
 def test_extract_tokens_missing_metadata_logs_debug(caplog):
     """When a response has no usage_metadata, we return zeros but emit DEBUG
     so users can diagnose why their token counts are empty."""
-    from async_batch_llm import models as models_mod
+    from llm_minder import models as models_mod
 
     class _NoUsage:
         pass
 
-    caplog.set_level(logging.DEBUG, logger="async_batch_llm.models")
+    caplog.set_level(logging.DEBUG, logger="llm_minder.models")
     result = models_mod._extract_tokens(_NoUsage())
     assert result == (0, 0, 0, 0)
 
@@ -144,9 +144,9 @@ def test_extract_tokens_missing_metadata_logs_debug(caplog):
 async def test_delete_cache_error_logged_with_traceback(caplog):
     """GeminiCachedModel.delete_cache() must log with exc_info so the
     underlying error is debuggable, not just stringified."""
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
-    caplog.set_level(logging.WARNING, logger="async_batch_llm.models")
+    caplog.set_level(logging.WARNING, logger="llm_minder.models")
 
     class _FailingCaches:
         async def delete(self, *, name):

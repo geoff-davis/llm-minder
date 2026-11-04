@@ -39,13 +39,14 @@ buffer that can grow without a safe bound.
 ## JSON result serialization
 
 Result mappings use the named `async-batch-llm-result` schema and an integer
-schema version. They include terminal status, submission index, error category,
+schema version. The schema keeps the package's pre-1.0 name, so results written by
+older releases still load. They include terminal status, submission index, error category,
 replay state, token usage, complete attempt/item timing, and batch termination
 metadata.
 
 ```python
 from pathlib import Path
-from async_batch_llm import BatchResult
+from llm_minder import BatchResult
 
 value = result.to_json()
 Path("summary.json").write_text(value, encoding="utf-8")
@@ -172,7 +173,7 @@ eligibility, and optional caller-calculated cost.
 The minimal form needs only a path (v0.20.0):
 
 ```python
-from async_batch_llm import JsonlArtifactStore, ResumePolicy, process_prompts
+from llm_minder import JsonlArtifactStore, ResumePolicy, process_prompts
 
 result = await process_prompts(
     strategy,
@@ -231,7 +232,7 @@ unchanged (e.g. context assembled outside the prompt, or a new parser reading
 the same outputs):
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     JsonlArtifactStore,
     ResumePolicy,
@@ -423,7 +424,7 @@ context persistence must be explicitly enabled.
 Artifacts support a provider-free review/apply phase:
 
 ```python
-from async_batch_llm import JsonlArtifactStore
+from llm_minder import JsonlArtifactStore
 
 review = JsonlArtifactStore.read_results(
     "runs/customer-tagging.jsonl",
@@ -468,7 +469,7 @@ retaining a JSONL history on open becomes the bottleneck; JSONL remains the
 recommended portable, human-inspectable audit format.
 
 ```python
-from async_batch_llm import ResumePolicy, SqliteArtifactStore, process_stream
+from llm_minder import ResumePolicy, SqliteArtifactStore, process_stream
 
 store = SqliteArtifactStore("runs/customer-tagging.sqlite")
 async for item in process_stream(
@@ -565,7 +566,7 @@ counterpart, it is an **async** classmethod because SQLite I/O stays off the
 event loop:
 
 ```python
-from async_batch_llm import SqliteArtifactStore
+from llm_minder import SqliteArtifactStore
 
 review = await SqliteArtifactStore.read_results(
     "runs/customer-tagging.sqlite",

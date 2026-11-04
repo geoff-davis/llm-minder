@@ -9,7 +9,7 @@ This example demonstrates two advanced patterns for handling Pydantic validation
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[gemini]'
+pip install 'llm-minder[gemini]'
 export GOOGLE_API_KEY=your_api_key_here
 ```
 
@@ -29,15 +29,15 @@ from google import genai
 from google.genai.types import GenerateContentConfig
 from pydantic import BaseModel, Field, ValidationError
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     RetryState,
     TokenUsage,
 )
-from async_batch_llm.core import RetryConfig
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.core import RetryConfig
+from llm_minder.llm_strategies import LLMCallStrategy
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
 

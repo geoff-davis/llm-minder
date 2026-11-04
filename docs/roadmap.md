@@ -15,4 +15,4 @@
 | v0.27.0 | OpenAI Responses API by default, raised SDK floors, 1.0 deprecations, and the [API stability](stability.md) draft. See the [migration guide](migration/v0.27.md). |
 
 Deferred executor, storage, and API simplification work is tracked in
-[#176](https://github.com/geoff-davis/async-batch-llm/issues/176).
+[#176](https://github.com/geoff-davis/llm-minder/issues/176).

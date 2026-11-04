@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ErrorCategory,
     GuardrailConfig,
     LLMCallStrategy,
@@ -17,7 +17,7 @@ from async_batch_llm import (
     process_prompts,
 )
 
-SRC = Path(__file__).parents[1] / "src" / "async_batch_llm"
+SRC = Path(__file__).parents[1] / "src" / "llm_minder"
 
 # Categories the library assigns through a variable rather than a literal at the
 # point of use (_internal/guardrails.py, item_executor.py, artifact_codec.py).
@@ -137,7 +137,7 @@ async def test_enum_members_drive_fail_fast():
 
 
 def _classified():
-    from async_batch_llm import (
+    from llm_minder import (
         DefaultErrorClassifier,
         EmptyResponseError,
         FrameworkTimeoutError,
@@ -174,7 +174,7 @@ def test_classifier_outputs_are_enum_members():
 
 def test_pydantic_ai_usage_limit_is_an_enum_member():
     exceptions = pytest.importorskip("pydantic_ai.exceptions")
-    from async_batch_llm import PydanticAIErrorClassifier
+    from llm_minder import PydanticAIErrorClassifier
 
     info = PydanticAIErrorClassifier().classify(exceptions.UsageLimitExceeded("limit"))
     assert info.error_category == ErrorCategory.USAGE_LIMIT_EXCEEDED

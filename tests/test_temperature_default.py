@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     DeepSeekModel,
     DeepSeekStrategy,
     GeminiCachedModel,
@@ -20,8 +20,8 @@ from async_batch_llm import (
     OpenRouterStrategy,
     llm,
 )
-from async_batch_llm.core.protocols import LLMModel
-from async_batch_llm.models import OpenAICompatibleModel
+from llm_minder.core.protocols import LLMModel
+from llm_minder.models import OpenAICompatibleModel
 
 _TEMPERATURE_SITES = [
     LLMModel.generate,

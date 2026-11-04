@@ -1,0 +1,1055 @@
+"""Parallel batch processor"""
+
+import asyncio
+import contextlib
+import functools
+import logging
+import time
+from dataclasses import dataclass, field
+from typing import Generic, cast
+
+from ._internal.admission import AdmissionGateClosed, AdmissionRegistry
+from ._internal.artifact_codec import (
+    BEST_EFFORT_AUDIT_CATEGORIES,
+    GUARDRAIL_AUDIT_CATEGORIES,
+    serialization_failure_result,
+)
+from ._internal.budget import BudgetTracker
+from ._internal.cache_groups import CacheHitTracker
+from ._internal.capacity import (
+    CapacityLimiter,
+    capture_capacity_warning_source,
+    warn_if_worker_capacity_exceeded,
+)
+from ._internal.classifier_resolver import StrategyClassifierResolver
+from ._internal.cleanup import CleanupAction, CleanupStep
+from ._internal.event_dispatcher import EventDispatcher
+from ._internal.guardrails import (
+    AbortCause,
+    AbortController,
+    BatchAdmissionStopped,
+    await_with_guardrails,
+)
+from ._internal.input_validation import REMOVED_PROCESSOR_KEYWORDS, suggest_keyword_errors
+from ._internal.item_executor import ItemExecutor, _detach_traceback
+from ._internal.rate_limit_coordinator import RateLimitCoordinator
+from ._internal.strategy_lifecycle import StrategyLifecycle
+from .artifacts import (
+    ArtifactError,
+    ArtifactIdentityError,
+    ArtifactSerializationError,
+    ArtifactStore,
+    ResumePolicy,
+    _RecordSerializationError,
+)
+from .base import (
+    BatchAdmissionClosedError,
+    BatchProcessor,
+    BatchTermination,
+    LLMWorkItem,
+    PostProcessorFunc,
+    ProgressCallbackFunc,
+    RetryState,
+    TContext,
+    TInput,
+    TOutput,
+    WorkItemResult,
+)
+from .core import ProcessorConfig
+from .llm_strategies import LLMCallStrategy
+from .middleware import Middleware
+from .observers import ProcessingEvent, ProcessorObserver
+from .strategies import (
+    BatchAbortedError,
+    BatchDeadlineExceeded,
+    ErrorClassifier,
+    ExponentialBackoffStrategy,
+    ItemDeadlineExceeded,
+    QuotaScopeError,
+    RateLimitStrategy,
+)
+from .strategies.errors import ABORT_RESULT_CATEGORIES
+from .token_extractor import TokenExtractor
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _StrategyConfiguration:
+    strategy: LLMCallStrategy
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    configured: bool = False
+
+
+# Maximum length for error messages in logs / result payloads.
+# Longer errors get truncated to keep logs readable.
+ERROR_MESSAGE_MAX_LENGTH = 200
+# Larger truncation used for detailed diagnostic logs (final attempt, validation traces).
+ERROR_MESSAGE_DETAILED_LENGTH = 500
+
+# Warn when the soft open-file limit leaves less than this many fds of headroom
+# above max_workers (each in-flight request typically holds a socket).
+_FD_LIMIT_HEADROOM = 128
+# Docs section explaining the open-file-limit footgun and how to fix it.
+_FD_LIMIT_DOCS_URL = (
+    "https://geoff-davis.github.io/llm-minder/getting-started/"
+    "#open-file-limits-and-high-concurrency"
+)
+
+
+def _warn_if_fd_limit_low(max_workers: int) -> None:
+    """Warn if ``max_workers`` is close to the process's soft open-file limit.
+
+    Each in-flight request typically holds a socket (a file descriptor), so a
+    ``max_workers`` near the OS soft limit (``RLIMIT_NOFILE`` — 256 by default
+    on macOS) risks ``OSError: [Errno 24] Too many open files`` once the
+    connection pools, workers, and the app's own fds are all drawing from it.
+
+    This only *warns* — raising the limit mutates process-global state, which is
+    the operator's call, not the library's. No-op on non-Unix platforms (no
+    ``RLIMIT_NOFILE``) or when the limit is unlimited / comfortably high.
+    """
+    try:
+        import resource
+    except ImportError:
+        return  # non-Unix (e.g. Windows): no RLIMIT_NOFILE
+    try:
+        soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    except (ValueError, OSError):
+        return
+    if soft == resource.RLIM_INFINITY or soft - max_workers >= _FD_LIMIT_HEADROOM:
+        return
+
+    import warnings
+
+    warnings.warn(
+        f"max_workers={max_workers} is close to this process's soft open-file "
+        f"limit (RLIMIT_NOFILE={soft}); high-concurrency runs may fail with "
+        f"'OSError: [Errno 24] Too many open files'. Raise the limit "
+        f"(e.g. `ulimit -n {max(8192, max_workers * 4)}`, or resource.setrlimit "
+        f"in-process) or lower max_workers. See {_FD_LIMIT_DOCS_URL}",
+        UserWarning,
+        stacklevel=3,
+    )
+
+
+class ParallelBatchProcessor(
+    BatchProcessor[TInput, TOutput, TContext], Generic[TInput, TOutput, TContext]
+):
+    """
+    Batch processor that executes items in parallel as individual agent calls.
+
+    This refactored version uses:
+    - Pluggable error classification (provider-agnostic)
+    - Pluggable rate limit strategies
+    - Middleware pipeline for extensibility
+    - Observer pattern for monitoring
+    - Configuration objects for easier setup
+    """
+
+    @functools.partial(suggest_keyword_errors, removed=REMOVED_PROCESSOR_KEYWORDS)
+    def __init__(
+        self,
+        *,
+        post_processor: PostProcessorFunc[TOutput, TContext] | None = None,
+        config: ProcessorConfig | None = None,
+        error_classifier: ErrorClassifier | None = None,
+        rate_limit_strategy: RateLimitStrategy | None = None,
+        middlewares: list[Middleware[TInput, TOutput, TContext]] | None = None,
+        observers: list[ProcessorObserver] | None = None,
+        progress_callback: "ProgressCallbackFunc | None" = None,
+        artifact_store: ArtifactStore | None = None,
+        resume: ResumePolicy = ResumePolicy.NONE,
+    ):
+        """
+        Initialize the parallel batch processor.
+
+        Args:
+            post_processor: Optional async function called after each successful item
+            config: Processor configuration; ``ProcessorConfig()`` defaults when
+                omitted. All arguments are keyword-only since 1.0, which also
+                removed three parameters: use ``ProcessorConfig(max_workers=...)``,
+                ``ProcessorConfig(attempt_timeout=...)`` and
+                ``ProcessorConfig(rate_limit=RateLimitConfig(cooldown_seconds=...))``
+                instead of ``max_workers``, ``timeout_per_item`` and
+                ``rate_limit_cooldown``.
+            error_classifier: Optional global classifier override. When omitted,
+                each strategy's recommendation is resolved independently.
+            rate_limit_strategy: Strategy for handling rate limits
+            middlewares: List of middleware to apply
+            observers: List of observers for events
+            progress_callback: Optional callback(completed, total, current_item_id) for progress updates
+        """
+        if config is None:
+            config = ProcessorConfig()
+
+        # Always an int after ProcessorConfig.__post_init__ resolution.
+        resolved_max_workers = cast(int, config.max_workers)
+
+        super().__init__(
+            resolved_max_workers,
+            post_processor,
+            max_queue_size=config.max_queue_size,
+            progress_callback=progress_callback,
+            progress_callback_timeout=config.progress_callback_timeout,
+            max_result_queue_size=config.max_result_queue_size,
+        )
+        self.config = config
+        self.artifact_store = artifact_store
+        self._artifact_store_closed = False
+        # Steps an owning surface (e.g. the streaming API's progress reporter)
+        # appends so they run inside the same ordered close, last.
+        self._extra_cleanup_steps: list[CleanupStep] = []
+        self.resume = ResumePolicy(resume)
+        self._abort_controller: AbortController | None = AbortController(
+            config.guardrails.abort_mode
+        )
+        self._guardrails_started = False
+        self._batch_timeout_task: asyncio.Task[None] | None = None
+        # One tracker per processor run; a reused config gets a fresh budget.
+        self._budget_tracker: BudgetTracker | None = (
+            BudgetTracker(
+                config.guardrails,
+                trip_now=self._trip_abort_now,
+                announce=self._announce_abort,
+            )
+            if config.guardrails.budget_configured
+            else None
+        )
+        # Always created, so per-group cache stats work without a floor.
+        self._cache_tracker: CacheHitTracker | None = CacheHitTracker(
+            config.guardrails,
+            trip_now=self._trip_abort_now,
+            announce=self._announce_abort,
+        )
+
+        # Diagnostic: high max_workers can outrun the OS open-file limit.
+        _warn_if_fd_limit_low(resolved_max_workers)
+
+        # Automatic classifiers are resolved per actual strategy. Keep the old
+        # host-wide attribute only as a compatibility/debug alias.
+        self._classifier_resolver = StrategyClassifierResolver(error_classifier)
+        self.error_classifier: ErrorClassifier = self._classifier_resolver.compatibility_classifier
+        self._strategy_configurations: dict[int, _StrategyConfiguration] = {}
+        self._capacity_warning_source: tuple[str, int, str] | None = None
+        self.rate_limit_strategy = rate_limit_strategy or ExponentialBackoffStrategy(
+            initial_cooldown=config.rate_limit.cooldown_seconds,
+            max_cooldown=config.rate_limit.max_cooldown_seconds,
+            backoff_multiplier=config.rate_limit.backoff_multiplier,
+            slow_start_items=config.rate_limit.slow_start_items,
+            slow_start_initial_delay=config.rate_limit.slow_start_initial_delay,
+            slow_start_final_delay=config.rate_limit.slow_start_final_delay,
+        )
+
+        # Set up middleware and observers
+        self.middlewares = middlewares or []
+        self.observers = list(observers or [])
+
+        # Event + middleware dispatch. Delegates observer emits and the
+        # middleware chain (before/after/on_error) to a stateless helper.
+        self._events: EventDispatcher[TInput, TOutput, TContext] = EventDispatcher(
+            observers=self.observers, middlewares=self.middlewares
+        )
+
+        self._admission_registry = AdmissionRegistry(
+            rate_limit_strategy=self.rate_limit_strategy,
+            events=self._events,
+            max_requests_per_minute=config.max_requests_per_minute,
+            max_tokens_per_minute=config.max_tokens_per_minute,
+            max_cooldown_seconds=config.rate_limit.max_cooldown_seconds,
+            quota_burst_seconds=config.quota_burst_seconds,
+            max_workers=config.max_workers,
+            fallback_cooldown_seconds=config.rate_limit.cooldown_seconds,
+        )
+        # A private compatibility coordinator serves direct legacy calls made
+        # before a strategy exists. Once the first item is admitted, the old
+        # `_rate_limit_coord` alias points at that item's real scoped state.
+        self._compatibility_rate_limit_coord = RateLimitCoordinator(
+            rate_limit_strategy=self.rate_limit_strategy,
+            events=self._events,
+            max_cooldown_seconds=config.rate_limit.max_cooldown_seconds,
+            fallback_cooldown_seconds=config.rate_limit.cooldown_seconds,
+        )
+        self._rate_limit_coord = self._compatibility_rate_limit_coord
+        self._compatibility_scope_bound = False
+
+        # Thread-safety locks (_stats_lock / _results_lock) live on the base
+        # class so both batch and streaming modes share them.
+
+        # Strategy lifecycle management (v0.2.0, extracted in v0.7.0).
+        # Tracks prepared strategies via a WeakSet so sharing one instance
+        # across work items invokes prepare() exactly once.
+        self._strategy_lifecycle: StrategyLifecycle[TOutput] = StrategyLifecycle()
+        # Back-compat aliases used by existing private methods and tests.
+        self._prepared_strategies = self._strategy_lifecycle._prepared
+        self._strategy_lock = self._strategy_lifecycle._lock
+        self._capacity_limiter = CapacityLimiter(
+            config.max_provider_concurrency,
+            max_workers=resolved_max_workers,
+            startup_ramp=config.startup_ramp,
+        )
+
+        # Centralized token-usage extraction across all exception shapes.
+        self._token_extractor = TokenExtractor()
+
+        # Per-item execution engine (extracted so the single-call helper and the
+        # gateway can share the exact same retry/rate-limit/token pipeline). The
+        # processor is one host for the executor; it reads its deps live from
+        # `self`, so it must be built here, before start(), and the worker keeps
+        # calling the instance methods below (which delegate to it) so tests that
+        # monkeypatch them still take effect.
+        self._executor: ItemExecutor[TInput, TOutput, TContext] = ItemExecutor(self)
+
+    @property
+    def _strategies_cleaned_up(self) -> bool:
+        return self._strategy_lifecycle.cleanup_complete
+
+    # Back-compat attribute accessors for tests and subclasses that read
+    # the rate-limit coordinator's state directly.
+
+    @property
+    def _rate_limit_event(self) -> asyncio.Event:
+        return self._rate_limit_coord._rate_limit_event
+
+    @property
+    def _current_generation_event(self) -> asyncio.Event:
+        return self._rate_limit_coord._current_generation_event
+
+    @property
+    def _rate_limit_lock(self) -> asyncio.Lock:
+        return self._rate_limit_coord._lock
+
+    @property
+    def _in_cooldown(self) -> bool:
+        return self._rate_limit_coord._in_cooldown
+
+    @property
+    def _cooldown_generation(self) -> int:
+        return self._rate_limit_coord._cooldown_generation
+
+    @property
+    def _cooldown_complete_generation(self) -> int:
+        return self._rate_limit_coord._cooldown_complete_generation
+
+    @property
+    def _consecutive_rate_limits(self) -> int:
+        return self._rate_limit_coord._consecutive_rate_limits
+
+    @property
+    def _slow_start_active(self) -> bool:
+        return self._rate_limit_coord._slow_start_active
+
+    @property
+    def _items_since_resume(self) -> int:
+        return self._rate_limit_coord._items_since_resume
+
+    async def _cleanup_strategies(self) -> None:
+        """Delegate to StrategyLifecycle (see _internal/strategy_lifecycle.py)."""
+        await self._strategy_lifecycle.cleanup_all()
+
+    async def _ensure_strategy_prepared(self, strategy: LLMCallStrategy[TOutput]) -> None:
+        """Delegate to StrategyLifecycle.ensure_prepared."""
+        await self._strategy_lifecycle.ensure_prepared(strategy)
+
+    def _start_guardrail_run(self) -> None:
+        if self._guardrails_started:
+            return
+        self._guardrails_started = True
+        timeout = self.config.guardrails.batch_timeout
+        if timeout is not None:
+            self._batch_timeout_task = asyncio.create_task(self._expire_batch_after(timeout))
+
+    async def _expire_batch_after(self, timeout: float) -> None:
+        try:
+            await asyncio.sleep(timeout)
+            await self._trip_abort(
+                AbortCause(
+                    kind="batch_timeout",
+                    reason=f"Batch deadline exceeded after {timeout:g}s",
+                    error_category="batch_deadline_exceeded",
+                )
+            )
+        except asyncio.CancelledError:
+            raise
+
+    async def _trip_abort(self, cause: AbortCause) -> bool:
+        controller = self._abort_controller
+        assert controller is not None
+        tripped = await controller.trip(cause)
+        if tripped:
+            self._after_abort_tripped()
+            await self._announce_abort(cause)
+        return tripped
+
+    def _trip_abort_now(self, cause: AbortCause) -> bool:
+        """Synchronously stop the run (budget guardrail); announce separately."""
+        controller = self._abort_controller
+        assert controller is not None
+        tripped = controller.trip_now(cause)
+        if tripped:
+            self._after_abort_tripped()
+        return tripped
+
+    def _after_abort_tripped(self) -> None:
+        controller = self._abort_controller
+        assert controller is not None
+        self._admission_closed.set()
+        self.termination = controller.termination()
+
+    async def _announce_abort(self, cause: AbortCause) -> None:
+        await self._emit_event(
+            ProcessingEvent.BATCH_ABORTED,
+            {
+                "kind": cause.kind,
+                "reason": cause.reason,
+                "error_category": cause.error_category,
+                "triggering_item_id": cause.triggering_item_id,
+                "abort_mode": self.config.guardrails.abort_mode.value,
+            },
+        )
+
+    async def wait_for_abort(self) -> None:
+        """Wait until a configured batch deadline or fail-fast abort trips."""
+        assert self._abort_controller is not None
+        await self._abort_controller.event.wait()
+
+    @property
+    def aborted(self) -> bool:
+        """Whether this run has entered controlled guardrail termination."""
+        return self._abort_controller is not None and self._abort_controller.aborted
+
+    async def _cancel_batch_timeout(self) -> None:
+        task = self._batch_timeout_task
+        if task is None or task.done() or task is asyncio.current_task():
+            return
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    def _cleanup_steps(self) -> list[CleanupAction]:
+        """Runtime tasks, then admission resources, then strategies, then the store."""
+        steps: list[CleanupAction] = [
+            CleanupStep("batch timeout", self._cancel_batch_timeout),
+            *super()._cleanup_steps(),
+            self._strategy_lifecycle.resource_cleanup_phase(
+                self._admission_registry,
+                self._compatibility_rate_limit_coord,
+                self._clear_classifier_cache,
+            ),
+        ]
+        if self.artifact_store is not None and not self._artifact_store_closed:
+            steps.append(CleanupStep("artifact store", self._close_artifact_store))
+        steps.extend(self._extra_cleanup_steps)
+        return steps
+
+    async def _clear_classifier_cache(self) -> None:
+        self._executor.summarize_failures()
+        self._classifier_resolver.clear()
+        self._strategy_configurations.clear()
+
+    async def _close_artifact_store(self) -> None:
+        """Close the store once; a failed close stays retryable by a later close."""
+        assert self.artifact_store is not None
+        await self.artifact_store.close()
+        self._artifact_store_closed = True
+
+    def start(self) -> None:
+        """Start streaming workers and the batch deadline clock."""
+        super().start()
+        self._start_guardrail_run()
+
+    async def get_stats(self) -> dict:
+        """
+        Get processor statistics (thread-safe).
+
+        Returns:
+            Dictionary containing processing statistics including:
+            - processed: Number of items processed
+            - succeeded: Number of successful items
+            - failed: Number of failed items
+            - rate_limit_count: Number of rate limit errors encountered
+            - error_counts: Dictionary of error types and their counts
+            - total: Total number of items queued
+            - start_time: Timestamp when processing started
+        """
+        async with self._stats_lock:
+            stats = self._stats.copy()
+        if self._budget_tracker is not None:
+            stats.update(self._budget_tracker.stats())
+        if self._cache_tracker is not None:
+            stats.update(self._cache_tracker.stats())
+        return stats
+
+    async def add_work(self, work_item: LLMWorkItem[TInput, TOutput, TContext]) -> None:
+        """Queue a work item and register its identity-scoped admission state."""
+        self._check_accepting_work()
+        assert self._abort_controller is not None
+        if self._abort_controller.aborted:
+            raise BatchAdmissionStopped("Batch is no longer accepting work")
+        has_preprocessing = bool(self._events.middlewares) or (
+            type(self)._run_middlewares_before is not ParallelBatchProcessor._run_middlewares_before
+        )
+        # Capture before a worker can replace the strategy. Direct configuration
+        # retains the caller's stack already; streaming captures once before its
+        # producer task is spawned. Neither path creates a warning registry here.
+        work_item._capacity_warning_source = self._capacity_warning_source
+        if has_preprocessing and work_item._capacity_warning_source is None:
+            work_item._capacity_warning_source = capture_capacity_warning_source()
+        if not has_preprocessing:
+            try:
+                await self._configure_item_strategy(work_item)
+            except AdmissionGateClosed as exc:
+                raise BatchAdmissionClosedError(
+                    "Batch admission is closed; create a new processor for additional work"
+                ) from exc
+        await super().add_work(work_item)
+
+    def _check_accepting_work(self) -> None:
+        super()._check_accepting_work()
+        if self._abort_controller is not None and self._abort_controller.aborted:
+            raise BatchAdmissionStopped("Batch stopped accepting work; create a new processor")
+
+    def _configuration_for(self, strategy: LLMCallStrategy) -> _StrategyConfiguration:
+        entry = self._strategy_configurations.get(id(strategy))
+        if entry is None or entry.strategy is not strategy:
+            entry = _StrategyConfiguration(strategy)
+            self._strategy_configurations[id(strategy)] = entry
+        return entry
+
+    async def _configure_item_strategy(
+        self, work_item: LLMWorkItem[TInput, TOutput, TContext]
+    ) -> None:
+        """Configure capacity and compatibility aliases for the effective strategy."""
+        entry = self._configuration_for(work_item.strategy)
+        async with entry.lock:
+            await self._configure_item_strategy_locked(work_item)
+
+    async def _configure_item_strategy_locked(
+        self, work_item: LLMWorkItem[TInput, TOutput, TContext]
+    ) -> None:
+        entry = self._configuration_for(work_item.strategy)
+        if not entry.configured:
+            if self.config.concurrency is not None:
+                # Let built-in models right-size
+                # their connection pools before the first request. Runs before
+                # the capacity check so a successful resize (advertised
+                # capacity == concurrency == workers) produces no warning;
+                # an explicit smaller max_connections refuses the resize and
+                # the warning below surfaces the real contradiction.
+                hook = getattr(work_item.strategy, "request_concurrency", None)
+                if hook is not None:
+                    try:
+                        await hook(self.config.concurrency)
+                    except Exception as e:
+                        logger.warning(
+                            "request_concurrency(%s) failed for %s: %s",
+                            self.config.concurrency,
+                            type(work_item.strategy).__name__,
+                            e,
+                        )
+            warn_if_worker_capacity_exceeded(
+                strategy=work_item.strategy,
+                max_workers=cast(int, self.config.max_workers),
+                surface="ParallelBatchProcessor",
+                stacklevel=5,
+                source=work_item._capacity_warning_source,
+            )
+            entry.configured = True
+        admission_state = self._admission_registry.resolve(work_item.strategy)
+        if not self._compatibility_scope_bound:
+            self._rate_limit_coord = admission_state.cooldown
+            self._compatibility_scope_bound = True
+
+    async def _on_batch_started(self) -> None:
+        """Emit batch start event with initial stats snapshot."""
+        self._start_guardrail_run()
+
+        async with self._stats_lock:
+            stats_snapshot = self._stats.copy()
+
+        await self._emit_event(
+            ProcessingEvent.BATCH_STARTED,
+            {
+                "total": stats_snapshot["total"],
+                "max_workers": self.max_workers,
+                "start_time": stats_snapshot["start_time"],
+            },
+        )
+
+    async def _on_batch_completed(self) -> None:
+        """Emit batch completion event with final stats snapshot."""
+        self._executor.summarize_failures()
+        await self._cancel_batch_timeout()
+        async with self._stats_lock:
+            stats_snapshot = self._stats.copy()
+
+        duration = 0.0
+        if stats_snapshot.get("start_time"):
+            duration = time.time() - float(stats_snapshot["start_time"])
+        cache_stats = self._cache_tracker.stats() if self._cache_tracker is not None else {}
+
+        await self._emit_event(
+            ProcessingEvent.BATCH_COMPLETED,
+            {
+                **cache_stats,
+                "processed": stats_snapshot["processed"],
+                "succeeded": stats_snapshot["succeeded"],
+                "failed": stats_snapshot["failed"],
+                "total": stats_snapshot["total"],
+                "total_tokens": stats_snapshot["total_tokens"],
+                "cached_input_tokens": stats_snapshot.get("cached_input_tokens", 0),
+                "total_admission_wait_seconds": stats_snapshot.get(
+                    "total_admission_wait_seconds", 0.0
+                ),
+                "max_admission_wait_seconds": stats_snapshot.get("max_admission_wait_seconds", 0.0),
+                "total_quota_wait_seconds": stats_snapshot.get("total_quota_wait_seconds", 0.0),
+                "max_quota_wait_seconds": stats_snapshot.get("max_quota_wait_seconds", 0.0),
+                "quota_wait_p50_seconds": stats_snapshot.get("quota_wait_p50_seconds", 0.0),
+                "quota_wait_p95_seconds": stats_snapshot.get("quota_wait_p95_seconds", 0.0),
+                "quota_wait_p99_seconds": stats_snapshot.get("quota_wait_p99_seconds", 0.0),
+                "estimated_input_tokens": stats_snapshot.get("estimated_input_tokens", 0),
+                "estimated_output_tokens": stats_snapshot.get("estimated_output_tokens", 0),
+                "reserved_tokens": stats_snapshot.get("reserved_tokens", 0),
+                "reported_reconciliation_tokens": stats_snapshot.get(
+                    "reported_reconciliation_tokens", 0
+                ),
+                "refunded_tokens": stats_snapshot.get("refunded_tokens", 0),
+                "underestimated_tokens": stats_snapshot.get("underestimated_tokens", 0),
+                "unknown_usage_attempts": stats_snapshot.get("unknown_usage_attempts", 0),
+                "known_zero_usage_attempts": stats_snapshot.get("known_zero_usage_attempts", 0),
+                "token_estimation_failures": stats_snapshot.get("token_estimation_failures", 0),
+                "quota_scope_count": stats_snapshot.get("quota_scope_count", 0),
+                "admission_wait_p50_seconds": stats_snapshot.get("admission_wait_p50_seconds", 0.0),
+                "admission_wait_p95_seconds": stats_snapshot.get("admission_wait_p95_seconds", 0.0),
+                "admission_wait_p99_seconds": stats_snapshot.get("admission_wait_p99_seconds", 0.0),
+                "execution_p50_seconds": stats_snapshot.get("execution_p50_seconds", 0.0),
+                "execution_p95_seconds": stats_snapshot.get("execution_p95_seconds", 0.0),
+                "execution_p99_seconds": stats_snapshot.get("execution_p99_seconds", 0.0),
+                "structured_output_recoveries": stats_snapshot.get(
+                    "structured_output_recoveries", 0
+                ),
+                "structured_output_retries_avoided": stats_snapshot.get(
+                    "structured_output_retries_avoided", 0
+                ),
+                "structured_output_recovery_reasons": stats_snapshot.get(
+                    "structured_output_recovery_reasons", {}
+                ),
+                "input_queue_high_water_mark": stats_snapshot["input_queue_high_water_mark"],
+                "result_queue_high_water_mark": stats_snapshot["result_queue_high_water_mark"],
+                "duration": duration,
+            },
+        )
+
+    async def _emit_event(self, event: ProcessingEvent, data: dict | None = None) -> None:
+        """Delegate to EventDispatcher (see _internal/event_dispatcher.py)."""
+        await self._events.emit(event, data)
+
+    async def _run_middlewares_before(
+        self, work_item: LLMWorkItem[TInput, TOutput, TContext]
+    ) -> LLMWorkItem[TInput, TOutput, TContext] | None:
+        return await self._executor._run_middlewares_before(work_item)
+
+    async def _run_middlewares_after(
+        self, result: WorkItemResult[TOutput, TContext]
+    ) -> WorkItemResult[TOutput, TContext]:
+        return await self._events.run_after(result)
+
+    async def _run_middlewares_on_error(
+        self, work_item: LLMWorkItem[TInput, TOutput, TContext], error: Exception
+    ) -> WorkItemResult[TOutput, TContext] | None:
+        return await self._events.run_on_error(work_item, error)
+
+    async def _worker(self, worker_id: int):
+        """Process accepted items with exactly-once queue accounting."""
+        logger.debug("[Worker %s] started and waiting for work", worker_id)
+        if self._events.observers:
+            await self._emit_event(ProcessingEvent.WORKER_STARTED, {"worker_id": worker_id})
+
+        while True:
+            try:
+                work_item = await self._queue.get()
+            except asyncio.CancelledError:
+                logger.debug("[Worker %s] cancelled while waiting for work", worker_id)
+                raise
+            try:
+                if work_item is None:
+                    logger.debug("[Worker %s] finished (no more work)", worker_id)
+                    if self._events.observers:
+                        await self._emit_event(
+                            ProcessingEvent.WORKER_STOPPED,
+                            {"worker_id": worker_id},
+                        )
+                    return
+                try:
+                    await self._process_accepted_item(work_item, worker_id)
+                except ArtifactError as exc:
+                    # Artifact failures remain exceptional, but streaming users
+                    # can still inspect why the low-level processor terminated.
+                    self.termination = BatchTermination(
+                        kind="artifact_error",
+                        reason=str(exc),
+                    )
+                    raise
+            finally:
+                # The only task_done() site for every successful queue.get().
+                self._queue.task_done()
+
+    async def _process_accepted_item(
+        self,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        worker_id: int,
+    ) -> None:
+        """Resolve replay/execution, checkpoint, then publish one terminal result."""
+        logger.debug("[Worker %s] Picked up %s from queue", worker_id, work_item.item_id)
+        result: WorkItemResult[TOutput, TContext] | None = None
+        completion_event: dict = {}
+        prepared = None
+        artifact_key: object | None = None
+        artifact_prepared = False
+        artifact_prepare_attempted = False
+        accepted_index = work_item.submission_index
+        controller = self._abort_controller
+        assert controller is not None
+        if controller.aborted:
+            result = cast(
+                WorkItemResult[TOutput, TContext],
+                controller.result_for(work_item),
+            )
+        else:
+            prepared = await self._executor.prepare_logical_item(work_item, worker_id)
+            result = prepared.terminal_result
+            work_item = prepared.effective_item
+            if result is None:
+                try:
+                    if not self._configuration_for(work_item.strategy).configured:
+                        await await_with_guardrails(
+                            self._configure_item_strategy(work_item),
+                            item_deadline=prepared.deadline,
+                            item_id=work_item.item_id,
+                            abort_controller=controller,
+                        )
+                    if self.artifact_store is not None:
+                        artifact_prepare_attempted = True
+                        artifact_key = await await_with_guardrails(
+                            self.artifact_store.prepare_item(work_item),
+                            item_deadline=prepared.deadline,
+                            item_id=work_item.item_id,
+                            abort_controller=controller,
+                        )
+                        artifact_prepared = True
+                        self._executor.check_prepared(prepared)
+                        replayed = await await_with_guardrails(
+                            self.artifact_store.lookup(work_item, artifact_key, self.resume),
+                            item_deadline=prepared.deadline,
+                            item_id=work_item.item_id,
+                            abort_controller=controller,
+                        )
+                        result = cast(WorkItemResult[TOutput, TContext] | None, replayed)
+                    # A completed replay wins a simultaneous guardrail signal.
+                    if result is None:
+                        result = await self._executor.execute_prepared(prepared, worker_id)
+                except (ArtifactIdentityError, ArtifactSerializationError) as exc:
+                    # Invalid input is local to this accepted item. Persistence
+                    # and format failures still terminate the batch below.
+                    if artifact_prepared:
+                        raise
+                    result = await self._executor.build_failure_result(work_item, exc, worker_id)
+                except QuotaScopeError as exc:
+                    result = await self._executor.build_failure_result(work_item, exc, worker_id)
+                except (ItemDeadlineExceeded, BatchDeadlineExceeded, BatchAbortedError) as exc:
+                    result = await self._executor.build_failure_result(work_item, exc, worker_id)
+
+            completion_event = prepared.completion_event or {}
+
+        assert result is not None
+        result.submission_index = accepted_index
+        audit_only = result.error_category in GUARDRAIL_AUDIT_CATEGORIES
+        best_effort_audit = result.error_category in BEST_EFFORT_AUDIT_CATEGORIES
+
+        # Retain guardrail terminals for audit, including queued collateral
+        # aborts. These records never participate in replay. Do not restart an
+        # artifact preparation that was already interrupted by a deadline.
+        if self.artifact_store is not None and not artifact_prepare_attempted and audit_only:
+            try:
+                artifact_key = await self.artifact_store.prepare_item(work_item)
+                artifact_prepared = True
+            except ArtifactError as exc:
+                if not best_effort_audit:
+                    raise
+                logger.warning("Cannot checkpoint terminal item %s: %s", work_item.item_id, exc)
+
+        # Checkpoint with the exact pre-execution key before publication.
+        if (
+            self.artifact_store is not None
+            and artifact_prepared
+            and not result.replayed_from_artifact
+        ):
+            try:
+                try:
+                    await self.artifact_store.append(work_item, artifact_key, result)
+                except _RecordSerializationError as exc:
+                    fallback = getattr(self.artifact_store, "_append_serialization_failure", None)
+                    if fallback is None:
+                        raise
+                    result = serialization_failure_result(result, _detach_traceback(exc))
+                    await fallback(work_item, artifact_key, result, exc)
+            except ArtifactError as exc:
+                if not best_effort_audit:
+                    raise
+                logger.warning("Cannot checkpoint terminal item %s: %s", work_item.item_id, exc)
+
+        if self._events.observers:
+            if result.replayed_from_artifact:
+                await self._emit_event(
+                    ProcessingEvent.ITEM_REPLAYED,
+                    {
+                        "item_id": work_item.item_id,
+                        "submission_index": work_item.submission_index,
+                        "success": result.success,
+                        "error_type": result.error.split(":")[0] if result.error else None,
+                        "error_category": result.error_category,
+                    },
+                )
+            if result.error_category == "framework_total_item_timeout":
+                await self._emit_event(
+                    ProcessingEvent.ITEM_DEADLINE_EXCEEDED,
+                    {"item_id": work_item.item_id},
+                )
+        completed, total, current_item, stats_snapshot = await self._record_terminal_stats(
+            work_item, result
+        )
+        # Replay retains its dedicated event and counter semantics. Live items
+        # have exactly one terminal notification after persistence and recovery.
+        if self._events.observers and not result.replayed_from_artifact:
+            payload = {
+                "item_id": work_item.item_id,
+                "submission_index": result.submission_index,
+                "duration": result.timing.total_seconds,
+                "tokens": result.token_usage.get("total_tokens", 0),
+                "admission_wait_seconds": result.admission_wait_seconds,
+                "structured_output_recovered": result.structured_output_recovered,
+                "structured_output_recovery_reason": result.structured_output_recovery_reason,
+                "structured_output_retries_avoided": result.structured_output_retries_avoided,
+                "error_type": result.error.split(":")[0] if result.error else None,
+                "error_category": result.error_category,
+            }
+            if result.success:
+                payload.update(completion_event)
+            if payload["error_type"] is None:
+                payload.pop("error_type")
+            await self._emit_event(
+                ProcessingEvent.ITEM_COMPLETED if result.success else ProcessingEvent.ITEM_FAILED,
+                payload,
+            )
+
+        if prepared is not None:
+            prepared.completion_event = None
+
+        # Fail-fast is triggered only by a terminal failure and only after its
+        # checkpoint is complete. The controller retains the first cause.
+        if (
+            not result.success
+            and result.error_category in self.config.guardrails.abort_on_error_categories
+        ):
+            await self._trip_abort(
+                AbortCause(
+                    kind="fail_fast",
+                    reason=(
+                        f"Fail-fast triggered by item {work_item.item_id!r} "
+                        f"with category {result.error_category!r}"
+                    ),
+                    error_category=result.error_category,
+                    triggering_item_id=work_item.item_id,
+                )
+            )
+
+        # User callbacks fire for every completed item. The private bundled
+        # reporter observes every exact count too, but coalesces terminal
+        # rendering by time. progress_interval gates only the log line below.
+        # Progress runs before publication so finalization cannot lose the
+        # terminal count when a consumer stops after the final result.
+        if self.progress_callback:
+            await self._run_progress_callback(completed, total, current_item)
+        if stats_snapshot is not None:
+            self._log_progress(stats_snapshot)
+
+        if self._streaming:
+            assert self._result_stream is not None
+            await self._publish_stream_result(result)
+        else:
+            async with self._results_lock:
+                self._results.append(result)
+
+        if self.config.concurrent_post_processing:
+            self._spawn_post_processor(result, self.config.post_processor_timeout)
+        else:
+            await self._run_post_processor(result, timeout=self.config.post_processor_timeout)
+
+        logger.debug(
+            "[Worker %s] Completed %s (%s)",
+            worker_id,
+            work_item.item_id,
+            "success" if result.success else "failed",
+        )
+
+    async def _record_terminal_stats(
+        self,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        result: WorkItemResult[TOutput, TContext],
+    ) -> tuple[int, int, str, dict | None]:
+        async with self._stats_lock:
+            self._stats.processed += 1
+            if result.success:
+                self._stats.succeeded += 1
+            else:
+                self._stats.failed += 1
+                if result.error:
+                    error_type = result.error.split(":")[0]
+                    self._stats.error_counts[error_type] = (
+                        self._stats.error_counts.get(error_type, 0) + 1
+                    )
+            if result.replayed_from_artifact:
+                self._stats.replayed += 1
+            if result.error_category in ABORT_RESULT_CATEGORIES:
+                self._stats.aborted += 1
+
+            # Replayed tokens remain on the result for historical audit but are
+            # not counted as newly consumed provider tokens in live stats.
+            if result.token_usage and not result.replayed_from_artifact:
+                self._stats.total_input_tokens += result.token_usage.get("input_tokens", 0)
+                self._stats.total_output_tokens += result.token_usage.get("output_tokens", 0)
+                self._stats.total_tokens += result.token_usage.get("total_tokens", 0)
+                self._stats.cached_input_tokens += result.token_usage.get("cached_input_tokens", 0)
+                self._stats.cache_write_input_tokens += result.token_usage.get(
+                    "cache_write_input_tokens", 0
+                )
+            self._stats.total_admission_wait_seconds += result.admission_wait_seconds
+            self._stats.max_admission_wait_seconds = max(
+                self._stats.max_admission_wait_seconds,
+                result.admission_wait_seconds,
+            )
+            self._stats.record_timing(result.timing)
+            if result.structured_output_recovered:
+                self._stats.structured_output_recoveries += 1
+                self._stats.structured_output_retries_avoided += (
+                    result.structured_output_retries_avoided
+                )
+                reason = result.structured_output_recovery_reason
+                if reason is not None:
+                    self._stats.structured_output_recovery_reasons[reason] = (
+                        self._stats.structured_output_recovery_reasons.get(reason, 0) + 1
+                    )
+
+            at_interval = self._stats.processed % self.config.progress_interval == 0
+            return (
+                self._stats.processed,
+                self._stats.total,
+                work_item.item_id,
+                self._stats.copy() if at_interval else None,
+            )
+
+    @staticmethod
+    def _log_progress(stats_snapshot: dict) -> None:
+        start_time = stats_snapshot.get("start_time")
+        elapsed = time.time() - start_time if isinstance(start_time, (int, float)) else 0.0
+        calls_per_sec = stats_snapshot["processed"] / elapsed if elapsed > 0 else 0.0
+        errors = ", ".join(
+            f"{error}: {count}" for error, count in stats_snapshot["error_counts"].items()
+        )
+        error_breakdown = f" | Errors: {errors}" if errors else ""
+        token_summary = ""
+        if stats_snapshot["total_tokens"] > 0:
+            cached = stats_snapshot.get("cached_input_tokens", 0)
+            cached_info = f", {cached:,} cached" if cached > 0 else ""
+            token_summary = (
+                f" | Tokens: {stats_snapshot['total_tokens']:,} "
+                f"({stats_snapshot['total_input_tokens']:,} in, "
+                f"{stats_snapshot['total_output_tokens']:,} out{cached_info})"
+            )
+        total = stats_snapshot["total"]
+        percent = stats_snapshot["processed"] / total * 100 if total else 100.0
+        logger.info(
+            f"[INFO]Progress: {stats_snapshot['processed']}/{total} ({percent:.1f}%) | "
+            f"Succeeded: {stats_snapshot['succeeded']}, Failed: {stats_snapshot['failed']}"
+            f"{error_breakdown} | {calls_per_sec:.2f} calls/sec{token_summary}"
+        )
+
+    async def _handle_rate_limit(
+        self,
+        worker_id: int,
+        observed_generation: int | None = None,
+        suggested_wait: float | None = None,
+    ) -> None:
+        """Delegate to RateLimitCoordinator."""
+        await self._rate_limit_coord.handle_rate_limit(
+            worker_id, observed_generation, suggested_wait
+        )
+
+    async def _finalize_cooldown(self, start_time: float, error: Exception | None) -> None:
+        """Delegate to RateLimitCoordinator._finalize_cooldown (kept for subclass overrides)."""
+        await self._rate_limit_coord._finalize_cooldown(start_time, error)
+
+    def _extract_token_usage(self, exception: Exception) -> dict[str, int]:
+        """Extract token usage from a failed LLM call exception.
+
+        Thin wrapper around :class:`TokenExtractor`; retained as a method
+        for subclass override points. See ``token_extractor.py`` for the
+        three extraction strategies.
+        """
+        return self._token_extractor.extract_from_exception(exception)
+
+    async def _process_item_with_retries(
+        self,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        worker_id: int,
+        deadline: float | None = None,
+    ) -> WorkItemResult[TOutput, TContext]:
+        """Apply retry logic and strategy lifecycle (delegates to ItemExecutor).
+
+        Kept as an instance method (not inlined to the executor call) because
+        tests monkeypatch *this* method and call it directly on a non-started
+        processor; the worker must keep routing through it.
+        """
+        return await self._executor._process_item_with_retries(work_item, worker_id, deadline)
+
+    async def _process_item(  # type: ignore[override]  # ty:ignore[invalid-method-override]
+        self,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        worker_id: int,
+        attempt_number: int = 1,
+        strategy: LLMCallStrategy[TOutput] | None = None,
+        retry_state: RetryState | None = None,
+    ) -> WorkItemResult[TOutput, TContext]:
+        """Process a single work item (delegates to ItemExecutor)."""
+        return await self._executor._process_item(
+            work_item, worker_id, attempt_number, strategy, retry_state
+        )
+
+    async def _handle_execution_error(
+        self,
+        exception: Exception,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        worker_id: int,
+        attempt_number: int,
+    ) -> WorkItemResult[TOutput, TContext]:
+        """Handle exceptions from LLM execution (delegates to ItemExecutor).
+
+        Classifies errors, extracts token usage, handles rate limits, and either
+        re-raises (retryable / rate-limited) or returns a permanent-failure
+        result. See :class:`ItemExecutor` for the implementation.
+        """
+        return await self._executor._handle_execution_error(
+            exception, work_item, worker_id, attempt_number
+        )
+
+    async def shutdown(self):
+        """Release every owned resource; safe to call repeatedly.
+
+        Same ordered close as ``async with`` exit: runtime tasks and
+        callbacks, admission resources, prepared strategies, then the
+        artifact store (including after an early stream exit or a failed
+        run). Concurrent calls share one attempt; a step that succeeded is
+        never repeated and a failed one is retried by the next call. Raises
+        the first cleanup failure after every step has been attempted.
+        """
+        await self.cleanup()

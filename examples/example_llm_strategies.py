@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 
-from async_batch_llm import (
+from llm_minder import (
     GeminiCachedModel,
     GeminiModel,
     GeminiStrategy,
@@ -233,7 +233,7 @@ async def example_custom_strategy():
     print("Example 4: Custom Strategy")
     print("=" * 60 + "\n")
 
-    from async_batch_llm.llm_strategies import LLMCallStrategy
+    from llm_minder.llm_strategies import LLMCallStrategy
 
     class MockLLMStrategy(LLMCallStrategy[str]):
         """

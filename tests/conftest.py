@@ -8,7 +8,7 @@ don't specifically assert timing behavior should use these.
 
 import pytest
 
-from async_batch_llm.core import RateLimitConfig, RetryConfig
+from llm_minder.core import RateLimitConfig, RetryConfig
 
 
 @pytest.fixture

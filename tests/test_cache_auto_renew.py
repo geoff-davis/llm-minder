@@ -69,7 +69,7 @@ def _make_response(text: str) -> Any:
 
 def _expired_cached_model(client: Any) -> Any:
     """Build a GeminiCachedModel whose current cache is already inside the buffer."""
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     model = GeminiCachedModel(
         model="gemini-test",
@@ -188,7 +188,7 @@ def test_cache_within_renewal_buffer_helper():
 async def test_prov3_missing_cache_retries_once(status, message, recover):
     from google.genai.errors import APIError
 
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     client = MagicMock()
     old = _make_mock_cache("old")
@@ -208,7 +208,7 @@ async def test_prov3_missing_cache_retries_once(status, message, recover):
 
 @pytest.mark.asyncio
 async def test_prov3_adopted_expiry_overrides_creation_plus_local_ttl():
-    from async_batch_llm.models import GeminiCachedModel, _encode_tags_to_display_name
+    from llm_minder.models import GeminiCachedModel, _encode_tags_to_display_name
 
     client = MagicMock()
     model = GeminiCachedModel("gemini-test", client, [])
@@ -226,7 +226,7 @@ async def test_prov3_concurrent_missing_cache_shares_one_replacement():
 
     from google.genai.errors import APIError
 
-    from async_batch_llm.models import GeminiCachedModel
+    from llm_minder.models import GeminiCachedModel
 
     client = MagicMock()
     old, fresh = _make_mock_cache("old"), _make_mock_cache("fresh")
@@ -256,7 +256,7 @@ async def test_prov3_concurrent_missing_cache_shares_one_replacement():
 
 @pytest.mark.asyncio
 async def test_prov3_adopted_unknown_age_remains_due_for_renewal():
-    from async_batch_llm.models import GeminiCachedModel, _encode_tags_to_display_name
+    from llm_minder.models import GeminiCachedModel, _encode_tags_to_display_name
 
     client = MagicMock()
     model = GeminiCachedModel("gemini-test", client, [])

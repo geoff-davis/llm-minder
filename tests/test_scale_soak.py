@@ -51,7 +51,7 @@ async def isolate_harness_test():
     await asyncio.sleep(0)
     # run_config() silences framework logs for the CLI. Do not let a harness
     # test change logging assertions in subsequently selected test modules.
-    logger = logging.getLogger("async_batch_llm")
+    logger = logging.getLogger("llm_minder")
     previous_level = logger.level
     try:
         yield

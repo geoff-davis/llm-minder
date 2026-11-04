@@ -1,4 +1,4 @@
-# async-batch-llm developer benchmarks
+# llm-minder developer benchmarks
 
 Deterministic, credential-free measurement tooling. Nothing here ships in the
 wheel or is required at runtime.
@@ -9,7 +9,7 @@ The v0.21 scale and restart soak harness (issue #127, phase one). It drives
 the real `process_stream()` / `ParallelBatchProcessor` execution surfaces and
 the public artifact contract with a seeded fake provider — no network calls —
 and emits a versioned JSON report
-(`schema_name: async-batch-llm-scale-soak`, version 2).
+(`schema_name: llm-minder-scale-soak`, version 2).
 
 ```bash
 # Reduced deterministic regression profile (used by CI):

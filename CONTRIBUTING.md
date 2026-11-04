@@ -1,6 +1,6 @@
-# Contributing to async-batch-llm
+# Contributing to llm-minder
 
-Thank you for your interest in contributing to async-batch-llm! This document provides guidelines and instructions for
+Thank you for your interest in contributing to llm-minder! This document provides guidelines and instructions for
 contributing.
 
 To report a security vulnerability, don't open a public issue; follow [SECURITY.md](SECURITY.md).
@@ -10,8 +10,8 @@ To report a security vulnerability, don't open a public issue; follow [SECURITY.
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/geoff-davis/async-batch-llm.git
-cd async-batch-llm
+git clone https://github.com/geoff-davis/llm-minder.git
+cd llm-minder
 ```
 
 1. **Install uv** (if not already installed)
@@ -57,7 +57,7 @@ uv run pytest
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=async_batch_llm --cov-report=html
+uv run pytest --cov=llm_minder --cov-report=html
 
 # Run specific test file
 uv run pytest tests/test_basic.py
@@ -100,7 +100,7 @@ uv run ruff format src/ tests/
 uv run ruff check src/ tests/ --fix
 
 # Type check
-uv run mypy src/async_batch_llm/ --ignore-missing-imports
+uv run mypy src/llm_minder/ --ignore-missing-imports
 
 # Markdown lint, all tracked .md files except docs/archive/ (requires npm ci first)
 make markdown-lint-fix
@@ -141,7 +141,7 @@ git checkout -b feature/your-feature-name
 ```bash
 uv run pytest
 uv run ruff check src/
-uv run mypy src/async_batch_llm/
+uv run mypy src/llm_minder/
 ```
 
 1. **Submit a pull request**
@@ -197,12 +197,12 @@ and a manual upload would race or fail on auth.
    and publishes to PyPI. Either gate can fail the release.
 3. **Confirm the publish** before announcing anything: the publish workflow
    run for the tag is green (`gh run watch`), and
-   `https://pypi.org/pypi/async-batch-llm/X.Y.Z/json` resolves.
+   `https://pypi.org/pypi/llm-minder/X.Y.Z/json` resolves.
 4. **GitHub release**, only after step 3: `gh release create vX.Y.Z --title "vX.Y.Z" --latest`
    with the `[X.Y.Z]` CHANGELOG section as the notes. Inline reference-style
    links such as `[#52]` (their definitions aren't part of the pasted text)
    and rewrite relative links such as `docs/migration/vX.Y.md` to absolute
-   `https://github.com/geoff-davis/async-batch-llm/blob/vX.Y.Z/...` URLs;
+   `https://github.com/geoff-davis/llm-minder/blob/vX.Y.Z/...` URLs;
    both render as broken text in a release body.
 5. **Verify**: the GitHub release exists and the docs site redeployed
    (happens on the merge to `main`).
@@ -210,7 +210,7 @@ and a manual upload would race or fail on auth.
    release writes, so later releases keep reading it:
 
     ```bash
-    uv run --no-project --python 3.12 --with async-batch-llm==X.Y.Z \
+    uv run --no-project --python 3.12 --with llm-minder==X.Y.Z \
         python scripts/write_legacy_fixtures.py tests/fixtures/vX_Y
     ```
 

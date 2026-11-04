@@ -18,7 +18,7 @@ import asyncio
 
 from pydantic import BaseModel
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallError,
     ProcessorConfig,
     PydanticAIStrategy,
@@ -27,7 +27,7 @@ from async_batch_llm import (
     call,
     call_result,
 )
-from async_batch_llm.testing import MockAgent
+from llm_minder.testing import MockAgent
 
 
 class Summary(BaseModel):

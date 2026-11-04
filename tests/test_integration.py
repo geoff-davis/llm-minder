@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     BatchResult,
     ErrorCategory,
     LLMCallStrategy,
@@ -117,7 +117,7 @@ async def test_gemini_cached_model_reports_cached_tokens():
     from google import genai
     from google.genai.types import Content, Part
 
-    from async_batch_llm import GeminiCachedModel, GeminiStrategy
+    from llm_minder import GeminiCachedModel, GeminiStrategy
 
     # Explicit caching needs a minimum prompt size; ~3,000 tokens clears it.
     facts = "\n".join(f"Fact {i}: the code word for item {i} is word{i}." for i in range(250))
@@ -160,7 +160,7 @@ async def test_pydantic_ai_structured_output():
     from pydantic_ai import Agent
     from pydantic_ai.models.google import GoogleModel
 
-    from async_batch_llm import PydanticAIStrategy
+    from llm_minder import PydanticAIStrategy
 
     agent = Agent(GoogleModel(GEMINI_MODEL), output_type=Pick)
     result = await _run(
@@ -185,7 +185,7 @@ async def test_openai_responses_default():
 
 @needs_openai
 async def test_openai_chat_completions_opt_out():
-    from async_batch_llm import OpenAIModel, OpenAIStrategy
+    from llm_minder import OpenAIModel, OpenAIStrategy
 
     model = OpenAIModel.from_api_key(OPENAI_MODEL, api_surface="chat_completions")
     result = await _run(OpenAIStrategy(model))
@@ -237,7 +237,7 @@ async def test_deepseek_chat_batch():
 
 @needs_deepseek
 async def test_deepseek_responses_structured_output():
-    from async_batch_llm import DeepSeekModel, DeepSeekStrategy
+    from llm_minder import DeepSeekModel, DeepSeekStrategy
 
     model = DeepSeekModel.from_api_key(
         DEEPSEEK_MODEL, api_surface="responses", response_schema=Pick, thinking=False
@@ -370,7 +370,7 @@ async def test_openai_responses_tool_calls_view():
 
 @needs_openai
 async def test_openai_chat_tool_call_only_turn_reports_tool_call_reason():
-    from async_batch_llm import EmptyResponseError, OpenAIModel, OpenAIStrategy
+    from llm_minder import EmptyResponseError, OpenAIModel, OpenAIStrategy
 
     model = OpenAIModel.from_api_key(OPENAI_MODEL, api_surface="chat_completions")
     # gpt-6-luna rejects function tools on Chat Completions unless reasoning is off.
@@ -394,7 +394,7 @@ async def test_openai_chat_tool_call_only_turn_reports_tool_call_reason():
 
 @needs_openai
 async def test_openai_truncation_reports_response_truncated():
-    from async_batch_llm import TruncatedResponseError
+    from llm_minder import TruncatedResponseError
 
     # A reasoning model spends a tiny output bound on reasoning before any text.
     strategy = llm(f"openai:{OPENAI_REASONING_MODEL}", generation_config={"max_tokens": 16})

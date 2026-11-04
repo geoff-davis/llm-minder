@@ -1,4 +1,4 @@
-"""Concurrency and thread-safety tests for async_batch_llm.
+"""Concurrency and thread-safety tests for llm_minder.
 
 These tests verify that the package handles concurrent access correctly
 and doesn't have race conditions.
@@ -13,7 +13,7 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     LLMCallStrategy,
     LLMWorkItem,
     MetricsObserver,
@@ -22,9 +22,9 @@ from async_batch_llm import (
     PydanticAIStrategy,
     RetryState,
 )
-from async_batch_llm.strategies import ExponentialBackoffStrategy, RateLimitStrategy
-from async_batch_llm.strategies.errors import ErrorInfo
-from async_batch_llm.testing import MockAgent
+from llm_minder.strategies import ExponentialBackoffStrategy, RateLimitStrategy
+from llm_minder.strategies.errors import ErrorInfo
+from llm_minder.testing import MockAgent
 
 
 class TestOutput(BaseModel):
@@ -91,7 +91,7 @@ async def test_concurrent_rate_limit_handling():
     )
 
     # Use fast rate limit config for testing (instead of default 300s cooldown)
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     fast_rate_limit = RateLimitConfig(
         cooldown_seconds=0.2,  # Very short cooldown for testing
@@ -163,7 +163,7 @@ async def test_rate_limit_requeue_completes_without_deadlock():
         rate_limit_on_call=1,  # First call triggers rate limit once
     )
 
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     config = ProcessorConfig(
         max_workers=2,
@@ -249,7 +249,7 @@ async def test_adm5_rate_limit_strategy_failure_uses_fallback_then_resumes():
 
     flaky_strategy = FlakyRateLimitStrategy()
 
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     processor = ParallelBatchProcessor[str, TestOutput, None](
         rate_limit_strategy=flaky_strategy,
@@ -270,7 +270,7 @@ async def test_adm5_rate_limit_strategy_failure_uses_fallback_then_resumes():
 async def test_rate_limit_backoff_multiplier_config_applied():
     """Configured backoff multiplier should reach the exponential strategy."""
 
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     rate_limit_config = RateLimitConfig(
         cooldown_seconds=2.0,
@@ -307,7 +307,7 @@ async def test_progress_callback_timeout_for_sync_function():
 
     mock_agent = MockAgent(response_factory=mock_response, latency=0.01)
 
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     config = ProcessorConfig(
         max_workers=1,
@@ -361,7 +361,7 @@ async def test_progress_callback_timeout_for_async_function():
 
     mock_agent = MockAgent(response_factory=mock_response, latency=0.01)
 
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     config = ProcessorConfig(
         max_workers=1,
@@ -697,7 +697,7 @@ async def test_slow_start_counter_accuracy():
         rate_limit_on_call=5,
     )
 
-    from async_batch_llm.core import RateLimitConfig
+    from llm_minder.core import RateLimitConfig
 
     config = ProcessorConfig(
         max_workers=5,

@@ -18,7 +18,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any, cast
 
-from async_batch_llm import (
+from llm_minder import (
     BaseMiddleware,
     LLMWorkItem,
     ProcessorConfig,
@@ -29,10 +29,10 @@ from async_batch_llm import (
     WorkItemResult,
     process_stream,
 )
-from async_batch_llm.artifacts import ArtifactIdentity, JsonlArtifactStore
-from async_batch_llm.core.config import AbortMode, GuardrailConfig
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
-from async_batch_llm.streaming import _ProgressReporter
+from llm_minder.artifacts import ArtifactIdentity, JsonlArtifactStore
+from llm_minder.core.config import AbortMode, GuardrailConfig
+from llm_minder.observers import BaseObserver, ProcessingEvent
+from llm_minder.streaming import _ProgressReporter
 
 from .config import ScenarioSettings
 from .fake_provider import (

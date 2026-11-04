@@ -1,4 +1,4 @@
-"""Example of using async-batch-llm with DeepSeek via the built-in DeepSeekModel.
+"""Example of using llm-minder with DeepSeek via the built-in DeepSeekModel.
 
 ``DeepSeekModel`` is an ``OpenAICompatibleModel`` pointed at DeepSeek's API
 (``https://api.deepseek.com``). It differs from ``OpenAIModel`` in one
@@ -10,7 +10,7 @@ overrides token extraction to surface them in ``cached_input_tokens``.
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[deepseek]'
+pip install 'llm-minder[deepseek]'
 ```
 
 ## Setup
@@ -38,7 +38,7 @@ export DEEPSEEK_API_KEY=sk-...
 import asyncio
 import os
 
-from async_batch_llm import (
+from llm_minder import (
     CachedTokenRates,
     DeepSeekModel,
     DeepSeekStrategy,

@@ -1,19 +1,19 @@
 # Gemini API Integration Guide
 
-Complete guide for using async-batch-llm with Google's Gemini API.
+Complete guide for using llm-minder with Google's Gemini API.
 
 ## Installation
 
 ```bash
-# Install async-batch-llm with Gemini support
-pip install 'async-batch-llm[gemini]'
+# Install llm-minder with Gemini support
+pip install 'llm-minder[gemini]'
 # or
-uv add 'async-batch-llm[gemini]'
+uv add 'llm-minder[gemini]'
 ```
 
 This installs:
 
-- `async-batch-llm` - Core batch processing framework
+- `llm-minder` - Core batch processing framework
 - `google-genai` - Official Google Gemini SDK
 - `pydantic` - For response validation
 
@@ -53,9 +53,9 @@ response = client.models.generate_content(
 print(response.text)
 ```
 
-## Usage with async-batch-llm
+## Usage with llm-minder
 
-async-batch-llm provides one built-in Gemini strategy (`GeminiStrategy`) plus
+llm-minder provides one built-in Gemini strategy (`GeminiStrategy`) plus
 two models — `GeminiModel` (direct) and `GeminiCachedModel` (context caching).
 You pick caching by choosing the model; the strategy is the same either way.
 
@@ -67,7 +67,7 @@ and strategy in one call. It reads `GOOGLE_API_KEY`, then `GEMINI_API_KEY`.
 For direct Gemini API calls without caching:
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     GeminiModel,
     GeminiStrategy,
     LLMWorkItem,
@@ -139,7 +139,7 @@ ordinary `GeminiStrategy`. (The old `GeminiCachedStrategy` was removed; the
 model now owns the cache find/create/renew/delete lifecycle.)
 
 ```python
-from async_batch_llm import GeminiCachedModel, GeminiStrategy
+from llm_minder import GeminiCachedModel, GeminiStrategy
 from google import genai
 
 client = genai.Client(api_key="your-api-key")
@@ -208,7 +208,7 @@ stopping a run when they drop.
 Create a custom strategy that adjusts temperature based on attempt:
 
 ```python
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class ProgressiveTempGeminiStrategy(LLMCallStrategy[SummaryOutput]):
     """Gemini strategy with progressive temperature."""
@@ -334,7 +334,7 @@ reference](api/core.md#typed-auxiliary-output-grounding-reasoning-tool-calls-log
 **experimental** — the shapes may change while they stabilize):
 
 ```python
-from async_batch_llm import GeminiModel, GeminiStrategy
+from llm_minder import GeminiModel, GeminiStrategy
 from google.genai import types
 
 model = GeminiModel("gemini-3.5-flash", client)
@@ -394,10 +394,10 @@ available on `GeminiCachedModel`, `OpenAIModel`, `OpenRouterModel`, and
 
 ### Error Handling
 
-async-batch-llm includes `GeminiErrorClassifier` for Gemini-specific errors:
+llm-minder includes `GeminiErrorClassifier` for Gemini-specific errors:
 
 ```python
-from async_batch_llm.classifiers import GeminiErrorClassifier
+from llm_minder.classifiers import GeminiErrorClassifier
 
 processor = ParallelBatchProcessor(
     config=config,
@@ -429,7 +429,7 @@ to stop a processor run or an `LLMCallPool` on the first one (see
 Gemini has rate limits. Configure automatic handling:
 
 ```python
-from async_batch_llm import RateLimitConfig
+from llm_minder import RateLimitConfig
 
 config = ProcessorConfig(
     max_workers=10,
@@ -456,7 +456,7 @@ Process images with text:
 
 ```python
 from google.genai.types import Part, Content
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class GeminiVisionStrategy(LLMCallStrategy[str]):
     """Strategy for Gemini vision tasks."""
@@ -541,7 +541,7 @@ uv run python examples/example_gemini_direct.py
 ### With PydanticAI
 
 ```python
-from async_batch_llm import PydanticAIStrategy
+from llm_minder import PydanticAIStrategy
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
 
@@ -561,7 +561,7 @@ work_item = LLMWorkItem(
 ### Direct Gemini Strategy
 
 ```python
-from async_batch_llm import GeminiModel, GeminiStrategy
+from llm_minder import GeminiModel, GeminiStrategy
 
 model = GeminiModel("gemini-3.5-flash", client)
 strategy = GeminiStrategy(model, response_parser=parse_response, temperature=0.7)
@@ -656,8 +656,8 @@ Use the `on_error` callback to handle Gemini-specific errors intelligently:
 Only escalate to expensive Gemini models on validation errors, not network/rate limit errors:
 
 ```python
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm import TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder import TokenUsage
 from pydantic import ValidationError
 from google import genai
 
@@ -845,13 +845,13 @@ Ensure all fields match the required schema exactly."""
 - **Models**: <https://ai.google.dev/gemini-api/docs/models/gemini>
 - **Get API Key**: <https://aistudio.google.com/apikey>
 - **Quickstart**: <https://ai.google.dev/gemini-api/docs/quickstart>
-- **async-batch-llm API Docs**: [API reference](api/entrypoints.md)
+- **llm-minder API Docs**: [API reference](api/entrypoints.md)
 
 ## Support
 
 For issues with:
 
-- **async-batch-llm**: <https://github.com/geoff-davis/async-batch-llm/issues>
+- **llm-minder**: <https://github.com/geoff-davis/llm-minder/issues>
 - **Gemini API**: <https://developers.google.com/support>
 - **google-genai SDK**: <https://github.com/googleapis/python-genai/issues>
 

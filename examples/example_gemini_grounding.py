@@ -10,9 +10,9 @@ carries it (v0.16.0, issue #52 Phase 2).
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[gemini]'
+pip install 'llm-minder[gemini]'
 # or
-uv add 'async-batch-llm[gemini]'
+uv add 'llm-minder[gemini]'
 ```
 
 ## Setup
@@ -45,7 +45,7 @@ import os
 from google import genai
 from google.genai import types
 
-from async_batch_llm import (
+from llm_minder import (
     GeminiModel,
     GeminiStrategy,
     LLMWorkItem,

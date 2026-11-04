@@ -1,4 +1,4 @@
-"""Example of using async-batch-llm with OpenAI via the built-in OpenAIModel.
+"""Example of using llm-minder with OpenAI via the built-in OpenAIModel.
 
 This example uses the first-class ``OpenAIModel`` and ``OpenAIStrategy``
 classes (added in v0.9.0). For a custom-strategy reference (writing your own
@@ -8,7 +8,7 @@ classes (added in v0.9.0). For a custom-strategy reference (writing your own
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[openai]'
+pip install 'llm-minder[openai]'
 ```
 
 ## Setup
@@ -35,7 +35,7 @@ import os
 
 from pydantic import BaseModel
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     OpenAIErrorClassifier,
     OpenAIModel,

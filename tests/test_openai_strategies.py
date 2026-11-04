@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 
 import pytest
 
-from async_batch_llm import OpenAIModel, OpenAIStrategy
-from async_batch_llm.base import LLMResponse
+from llm_minder import OpenAIModel, OpenAIStrategy
+from llm_minder.base import LLMResponse
 
 
 class TestOpenAIModelFromApiKey:

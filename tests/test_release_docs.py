@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
-NOTEBOOK = ROOT / "notebooks" / "async_batch_llm_quickstart.ipynb"
+NOTEBOOK = ROOT / "notebooks" / "llm_minder_quickstart.ipynb"
 TERMINAL_ASSET = ROOT / "docs" / "assets" / "v0.20-quickstart.gif"
 
 
@@ -48,12 +48,12 @@ def test_terminal_asset_is_portable_and_small() -> None:
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert (
-        "https://raw.githubusercontent.com/geoff-davis/async-batch-llm/main/"
+        "https://raw.githubusercontent.com/geoff-davis/llm-minder/main/"
         "docs/assets/v0.20-quickstart.gif"
     ) in readme
     assert (
-        "https://colab.research.google.com/github/geoff-davis/async-batch-llm/blob/main/"
-        "notebooks/async_batch_llm_quickstart.ipynb"
+        "https://colab.research.google.com/github/geoff-davis/llm-minder/blob/main/"
+        "notebooks/llm_minder_quickstart.ipynb"
     ) in readme
     assert not re.search(r"!\[[^]]*]\((?!https://)", readme)
 

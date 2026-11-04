@@ -1,4 +1,4 @@
-"""Example of using async-batch-llm with OpenRouter.
+"""Example of using llm-minder with OpenRouter.
 
 OpenRouter (https://openrouter.ai) exposes a unified OpenAI-compatible API
 that fronts many upstream providers — Anthropic, OpenAI, Google, DeepSeek,
@@ -13,7 +13,7 @@ Mistral, etc. This example uses the built-in ``OpenRouterModel`` and
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[openrouter]'
+pip install 'llm-minder[openrouter]'
 ```
 
 ## Setup
@@ -37,7 +37,7 @@ Get a key at https://openrouter.ai/keys.
 import asyncio
 import os
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     OpenRouterErrorClassifier,
     OpenRouterModel,
@@ -57,12 +57,12 @@ async def example_cross_provider_batch() -> None:
     anthropic_model = OpenRouterModel.from_api_key(
         "anthropic/claude-haiku-4-5",
         api_key=api_key,
-        title="async-batch-llm example",
+        title="llm-minder example",
     )
     openai_model = OpenRouterModel.from_api_key(
         "openai/gpt-6-luna",
         api_key=api_key,
-        title="async-batch-llm example",
+        title="llm-minder example",
     )
 
     items = [
@@ -108,8 +108,8 @@ async def example_anthropic_prompt_caching() -> None:
         "This is reference context that should be cached on the second call. " * 80
     )
 
-    from async_batch_llm.base import LLMResponse, RetryState, TokenUsage
-    from async_batch_llm.llm_strategies import LLMCallStrategy
+    from llm_minder.base import LLMResponse, RetryState, TokenUsage
+    from llm_minder.llm_strategies import LLMCallStrategy
 
     class CachedAnthropicStrategy(LLMCallStrategy[str]):
         """Build a system+user message list with cache_control on the system block."""

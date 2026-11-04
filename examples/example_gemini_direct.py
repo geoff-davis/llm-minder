@@ -1,4 +1,4 @@
-"""Example of using async_batch_llm with Google Gemini API using GeminiStrategy.
+"""Example of using llm_minder with Google Gemini API using GeminiStrategy.
 
 This example shows how to process batches using the built-in GeminiStrategy,
 with progressive temperature increases on retries.
@@ -6,9 +6,9 @@ with progressive temperature increases on retries.
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[gemini]'
+pip install 'llm-minder[gemini]'
 # or
-uv add 'async-batch-llm[gemini]'
+uv add 'llm-minder[gemini]'
 ```
 
 ## Setup
@@ -46,7 +46,7 @@ from google import genai
 from google.genai.types import GenerateContentConfig
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     GeminiModel,
     GeminiStrategy,
     LLMWorkItem,
@@ -54,7 +54,7 @@ from async_batch_llm import (
     ProcessorConfig,
     TokenUsage,
 )
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.llm_strategies import LLMCallStrategy
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
 

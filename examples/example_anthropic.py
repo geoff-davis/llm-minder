@@ -1,10 +1,10 @@
-"""Example demonstrating async-batch-llm with Anthropic Claude API.
+"""Example demonstrating llm-minder with Anthropic Claude API.
 
 This example shows how to create a custom strategy for Anthropic's API,
 including both direct API calls and streaming responses.
 
 Install dependencies:
-    pip install 'async-batch-llm' 'anthropic'
+    pip install 'llm-minder' 'anthropic'
 """
 
 import asyncio
@@ -13,8 +13,8 @@ import os
 from anthropic import AsyncAnthropic
 from pydantic import BaseModel
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class AnalysisOutput(BaseModel):
@@ -317,7 +317,7 @@ async def example_anthropic_progressive_temperature():
     )
 
     # Configure with retries
-    from async_batch_llm.core import RetryConfig
+    from llm_minder.core import RetryConfig
 
     config = ProcessorConfig(
         max_workers=1,

@@ -5,7 +5,7 @@ import asyncio
 import pytest
 from pydantic import BaseModel
 
-from async_batch_llm import (
+from llm_minder import (
     CallableStrategy,
     CallOutcome,
     LLMCallError,
@@ -15,9 +15,9 @@ from async_batch_llm import (
     call,
     call_result,
 )
-from async_batch_llm.base import RetryState
-from async_batch_llm.core import RateLimitConfig, RetryConfig
-from async_batch_llm.testing import MockAgent
+from llm_minder.base import RetryState
+from llm_minder.core import RateLimitConfig, RetryConfig
+from llm_minder.testing import MockAgent
 
 
 class Out(BaseModel):

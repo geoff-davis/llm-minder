@@ -7,14 +7,14 @@ deep inside the worker loop.
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     RateLimitConfig,
     RetryConfig,
 )
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class _DummyStrategy(LLMCallStrategy[str]):

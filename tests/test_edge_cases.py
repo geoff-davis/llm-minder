@@ -6,15 +6,15 @@ from typing import Annotated, Any
 import pytest
 from pydantic import BaseModel, Field
 
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     ParallelBatchProcessor,
     ProcessorConfig,
     PydanticAIStrategy,
     WorkItemResult,
 )
-from async_batch_llm.core import RateLimitConfig, RetryConfig
-from async_batch_llm.testing import MockAgent
+from llm_minder.core import RateLimitConfig, RetryConfig
+from llm_minder.testing import MockAgent
 
 
 class TestOutput(BaseModel):

@@ -12,7 +12,7 @@ size a real run without leaving this page.
 ## The short version
 
 ```python
-from async_batch_llm import JsonlArtifactStore, ResumePolicy, llm, process_prompts
+from llm_minder import JsonlArtifactStore, ResumePolicy, llm, process_prompts
 
 strategy = llm("deepseek:deepseek-v4-flash", thinking=False)
 
@@ -134,7 +134,7 @@ TPM requires an estimator. Reserve estimated input plus expected output, not
 only prompt tokens:
 
 ```python
-from async_batch_llm import CharacterTokenEstimator, ProcessorConfig
+from llm_minder import CharacterTokenEstimator, ProcessorConfig
 
 config = ProcessorConfig(
     concurrency=16,
@@ -199,7 +199,7 @@ instead of sleeping past its deadline (see
 [guardrails](guardrails.md#retry-delay-cannot-fit)).
 
 ```python
-from async_batch_llm import ProcessorConfig, RetryConfig
+from llm_minder import ProcessorConfig, RetryConfig
 
 config = ProcessorConfig(
     concurrency=32,
@@ -251,7 +251,7 @@ Target: 10,000 classification prompts against an OpenAI-tier endpoint
   complete retry/cooldown chain 180s and stop the batch at 1h50m.
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     CharacterTokenEstimator,
     ErrorCategory,
     GuardrailConfig,

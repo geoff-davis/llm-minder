@@ -1,1 +1,1 @@
-"""Examples for async_batch_llm package."""
+"""Examples for llm_minder package."""

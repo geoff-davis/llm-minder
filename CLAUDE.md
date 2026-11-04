@@ -8,7 +8,7 @@ here.
 
 ## Project overview
 
-**async-batch-llm** processes batches of LLM requests in parallel using a
+**llm-minder** processes batches of LLM requests in parallel using a
 **strategy pattern** — provider-agnostic at the framework level, with
 first-class support for several providers built in.
 
@@ -41,7 +41,7 @@ gives backpressure (constant memory for huge inputs). Error classifier is
 auto-selected from the strategy:
 
 ```python
-from async_batch_llm import llm, process_prompts, process_stream
+from llm_minder import llm, process_prompts, process_stream
 
 strategy = llm("openai:gpt-6-luna")  # factory (v0.20); explicit form:
 # strategy = OpenAIStrategy(OpenAIModel.from_api_key("gpt-6-luna"))
@@ -54,7 +54,7 @@ async for r in process_stream(strategy, prompts):  # yields WorkItemResult in co
 Full-control example (drive `ParallelBatchProcessor` directly):
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     OpenAIModel,
     OpenAIStrategy,
@@ -346,7 +346,7 @@ session's task (an outside feature request once sat unanswered for 25 days):
 
 ```bash
 python3 scripts/needs_response.py     # open issues/PRs whose latest human activity isn't a maintainer's
-gh api repos/geoff-davis/async-batch-llm/dependabot/alerts \
+gh api repos/geoff-davis/llm-minder/dependabot/alerts \
   --jq '.[] | select(.state=="open") | [.number, .security_advisory.severity, .dependency.package.name, .security_advisory.summary] | @tsv'
 ```
 
@@ -374,14 +374,14 @@ make ci                      # full pipeline (lint + typecheck + test + markdown
 make lint                    # ruff check on src/ tests/
 make lint-fix                # ruff check --fix
 make format                  # ruff format on src/ tests/
-make typecheck               # mypy on src/async_batch_llm/
+make typecheck               # mypy on src/llm_minder/
 make markdown-lint-fix       # markdownlint with --fix
 uv run pytest                # tests only
 
 # Equivalents if you need to run without make (note: do NOT add examples/):
 uv run ruff check src/ tests/ --fix
 uv run ruff format src/ tests/
-uv run mypy src/async_batch_llm/ --ignore-missing-imports
+uv run mypy src/llm_minder/ --ignore-missing-imports
 ```
 
 ### Git hooks (prek)
@@ -494,7 +494,7 @@ parallel passes. Keep `.claude/review-context.md` pruned at each release.
 ~3,200 tests (`slow`, `integration`, and `benchmark` deselected by default),
 including ~480 parametrized doc-snippet checks (`tests/test_doc_examples.py` —
 parses every fenced python block in the docs, resolves
-`async_batch_llm` imports, and diffs framework-hook overrides in doc
+`llm_minder` imports, and diffs framework-hook overrides in doc
 classes against the live base-class signatures; opt a block out with
 `<!-- doc-snippet: skip -->` above the fence). The doc checks parse and
 signature-check snippets but don't run them. The default run takes about two
@@ -542,7 +542,7 @@ latency without API calls — much faster than real integration tests.
 ### Package layout
 
 ```text
-src/async_batch_llm/
+src/llm_minder/
 ├── __init__.py           # Public API exports (+ deprecated-name __getattr__)
 ├── base.py               # LLMWorkItem, WorkItemResult, BatchResult,
 │                         # LLMResponse, RetryState, CachedTokenRates
@@ -671,7 +671,7 @@ src/async_batch_llm/
 - `example_llm_strategies.py` — custom-strategy patterns.
 - `example_context_manager.py` — async context manager usage.
 - `example_model_escalation.py` — earlier escalation example.
-- `example_batch_benchmark.py` — flagship "why async-batch-llm" demo:
+- `example_batch_benchmark.py` — flagship "why llm-minder" demo:
   GSM8K through DeepSeek Flash vs Gemini 3.1/2.5 Flash-Lite with
   no-think→think escalation, a per-provider 3-way wall-time race
   (sequential vs `asyncio.gather` vs the framework), a `--throughput`
@@ -718,7 +718,7 @@ assert result.total_items == result.succeeded + result.failed
 
 ---
 
-[#8]: https://github.com/geoff-davis/async-batch-llm/issues/8
+[#8]: https://github.com/geoff-davis/llm-minder/issues/8
 
 ## Known limitations
 
@@ -761,10 +761,10 @@ assert result.total_items == result.succeeded + result.failed
 - **`docs/internal/`** (gitignored, local to the main checkout) — plans such as
   `release-1.0-plan.md`, design docs, handoffs, and Codex review notes
   (`*-codex-review.md`). Read these to pick up an in-progress design.
-- **GitHub issues** — `gh issue list -R geoff-davis/async-batch-llm`.
+- **GitHub issues** — `gh issue list -R geoff-davis/llm-minder`.
   Cross-referenced from "Future Enhancements" above.
 - **`CHANGELOG.md`** — release-shipped changes.
-- **`~/.claude/projects/-home-geoff-Projects-personal-async-batch-llm/memory/`**
+- **`~/.claude/projects/-home-geoff-Projects-personal-llm-minder/memory/`**
   — auto-memory store; `MEMORY.md` is the index.
 
 ---

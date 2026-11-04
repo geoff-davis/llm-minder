@@ -27,9 +27,9 @@ from typing import Any
 
 import pytest
 
-import async_batch_llm.base as base_module
-import async_batch_llm.streaming as streaming_module
-from async_batch_llm import (
+import llm_minder.base as base_module
+import llm_minder.streaming as streaming_module
+from llm_minder import (
     ArtifactIdentity,
     ArtifactIOError,
     BaseObserver,
@@ -50,14 +50,14 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm._internal import cleanup as cleanup_module
-from async_batch_llm._internal.admission import QuotaGate
-from async_batch_llm._internal.executor_host import ExecutorHost
-from async_batch_llm.base import TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder._internal import cleanup as cleanup_module
+from llm_minder._internal.admission import QuotaGate
+from llm_minder._internal.executor_host import ExecutorHost
+from llm_minder.base import TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 _TOKENS: TokenUsage = {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
-_SRC = Path(__file__).resolve().parents[1] / "src" / "async_batch_llm"
+_SRC = Path(__file__).resolve().parents[1] / "src" / "llm_minder"
 
 
 # --------------------------------------------------------------------------- #
@@ -1271,7 +1271,7 @@ async def test_c4_failed_outcomes_and_tracebacks_are_not_retained(
 
     # pytest's log capture would itself retain the exception via exc_info;
     # silence the logger so only framework retention is measured.
-    caplog.set_level(logging.CRITICAL, logger="async_batch_llm.base")
+    caplog.set_level(logging.CRITICAL, logger="llm_minder.base")
     strategy = _Strategy(cleanup_error_factory=lambda: Transient("transient"))
     processor = _processor()
     await _run_one(processor, strategy)
@@ -1525,11 +1525,11 @@ async def test_c5_live_progress_callback_prevents_clean_end_of_stream() -> None:
 _PROCESS_CONTROL_SCRIPT = textwrap.dedent(
     """
     import asyncio, sys
-    from async_batch_llm import (
+    from llm_minder import (
         BaseObserver,
     BatchInterruptedError, LLMWorkItem, ParallelBatchProcessor, ProcessingEvent, ProcessorConfig,
     )
-    from async_batch_llm.llm_strategies import LLMCallStrategy
+    from llm_minder.llm_strategies import LLMCallStrategy
 
     class S(LLMCallStrategy):
         async def execute(self, prompt, attempt, timeout, state=None):
@@ -2200,7 +2200,7 @@ async def test_c4_surfaced_cooldown_failure_is_not_retained_after_successful_ret
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    caplog.set_level(logging.CRITICAL, logger="async_batch_llm")
+    caplog.set_level(logging.CRITICAL, logger="llm_minder")
     host = _cooldown_host()
     coordinator = host._rate_limit_coord
     original_finalize = coordinator._finalize_cooldown
@@ -2451,7 +2451,7 @@ async def test_c3_interrupted_cooldown_sleep_releases_workers_and_is_reported(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A failed private sleep releases workers without hiding its interruption."""
-    import async_batch_llm._internal.rate_limit_coordinator as coordinator_module
+    import llm_minder._internal.rate_limit_coordinator as coordinator_module
 
     async def interrupted_sleep(sleep: Any, *args: Any, **kwargs: Any) -> None:
         sleep.close()  # the coroutine the coordinator hands over is never run here
@@ -2481,7 +2481,7 @@ async def test_c3_interrupted_cooldown_sleep_releases_workers_and_is_reported(
 
 
 async def test_shared_strategy_failed_prepare_has_release_step_without_cleanup() -> None:
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     class Unprepared(_Strategy):
         async def prepare(self):
@@ -2500,7 +2500,7 @@ async def test_shared_strategy_failed_prepare_has_release_step_without_cleanup()
 
 
 async def test_shared_strategy_nonlast_release_is_successful_cleanup_step() -> None:
-    from async_batch_llm._internal.strategy_lifecycle import StrategyLifecycle
+    from llm_minder._internal.strategy_lifecycle import StrategyLifecycle
 
     strategy = _Strategy()
     first, second = StrategyLifecycle(), StrategyLifecycle()

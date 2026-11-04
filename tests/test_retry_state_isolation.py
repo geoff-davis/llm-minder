@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     BaseObserver,
     GuardrailConfig,
     LLMWorkItem,
@@ -30,9 +30,9 @@ from async_batch_llm import (
     TokenEstimate,
     call_result,
 )
-from async_batch_llm._internal.execution_state import reset_attempt_runtime, runtime_state
-from async_batch_llm.base import TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder._internal.execution_state import reset_attempt_runtime, runtime_state
+from llm_minder.base import TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 _TOKENS: TokenUsage = {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
 
@@ -247,7 +247,7 @@ async def test_quota_events_use_none_before_physical_try_is_assigned() -> None:
 
 async def test_nested_and_concurrent_execution_preserves_prepared_context():
     """Nested requests restore the outer context on the same and another host."""
-    from async_batch_llm._internal.executor_host import ExecutorHost
+    from llm_minder._internal.executor_host import ExecutorHost
 
     entered = set()
     both_entered = asyncio.Event()

@@ -32,7 +32,7 @@ No provider-capacity slot is held during estimation or quota waiting.
 ## Configure RPM and TPM
 
 ```python
-from async_batch_llm import CharacterTokenEstimator, ProcessorConfig
+from llm_minder import CharacterTokenEstimator, ProcessorConfig
 
 config = ProcessorConfig(
     concurrency=32,
@@ -201,7 +201,7 @@ Quota scope and concurrency scope answer different questions:
 Two models sharing one account quota:
 
 ```python
-from async_batch_llm import ArtifactIdentity, CallableStrategy, TokenEstimate
+from llm_minder import ArtifactIdentity, CallableStrategy, TokenEstimate
 
 shared_quota = object()
 

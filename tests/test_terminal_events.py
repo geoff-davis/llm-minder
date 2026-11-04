@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIOError,
     GuardrailConfig,
     JsonlArtifactStore,
@@ -18,9 +18,9 @@ from async_batch_llm import (
     SqliteArtifactStore,
     WorkItemResult,
 )
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.middleware import BaseMiddleware
-from async_batch_llm.observers import BaseObserver, MetricsObserver, ProcessingEvent
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.middleware import BaseMiddleware
+from llm_minder.observers import BaseObserver, MetricsObserver, ProcessingEvent
 
 TERMINALS = {
     ProcessingEvent.ITEM_COMPLETED,
@@ -231,7 +231,7 @@ def test_invalid_observer_rejected_at_construction(observer):
 
 @pytest.mark.asyncio
 async def test_mock_observer_uses_guarded_dispatch(monkeypatch):
-    from async_batch_llm._internal import event_dispatcher
+    from llm_minder._internal import event_dispatcher
 
     observer = MagicMock()
     observer.on_event = AsyncMock()

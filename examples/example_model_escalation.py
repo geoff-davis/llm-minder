@@ -10,7 +10,7 @@ This maximizes cost efficiency while maintaining high success rates.
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[gemini]'
+pip install 'llm-minder[gemini]'
 export GOOGLE_API_KEY=your_api_key_here
 ```
 
@@ -40,9 +40,9 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_
 from google.genai.types import GenerateContentConfig
 from pydantic import BaseModel, Field
 
-from async_batch_llm import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, TokenUsage
-from async_batch_llm.core import RetryConfig
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import LLMWorkItem, ParallelBatchProcessor, ProcessorConfig, TokenUsage
+from llm_minder.core import RetryConfig
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class Analysis(BaseModel):

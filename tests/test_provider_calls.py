@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import async_batch_llm
-from async_batch_llm import (
+import llm_minder
+from llm_minder import (
     LLMCallStrategy,
     LLMResponse,
     LLMWorkItem,
@@ -210,4 +210,4 @@ async def test_model_strategy_records_provider_time_with_the_hook():
 
 
 def test_helpers_are_exported():
-    assert {"provider_call", "attach_token_usage"} <= set(async_batch_llm.__all__)
+    assert {"provider_call", "attach_token_usage"} <= set(llm_minder.__all__)

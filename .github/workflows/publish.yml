@@ -43,14 +43,14 @@ jobs:
       run: uv run ruff check src/ tests/
 
     - name: Type check
-      run: uv run mypy src/async_batch_llm/ --ignore-missing-imports
+      run: uv run mypy src/llm_minder/ --ignore-missing-imports
 
   publish:
     runs-on: ubuntu-latest
     needs: test
     environment:
       name: pypi
-      url: https://pypi.org/project/async-batch-llm/
+      url: https://pypi.org/project/llm-minder/
 
     steps:
     - uses: actions/checkout@v7.0.1

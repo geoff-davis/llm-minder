@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, RootModel, ValidationError
 
-from async_batch_llm import (
+from llm_minder import (
     LLMResponse,
     LLMWorkItem,
     MetricsObserver,
@@ -204,8 +204,8 @@ async def test_recovery_avoids_retry_and_updates_batch_and_observer_metrics():
     assert metrics["structured_output_recoveries"] == 1
     assert metrics["structured_output_retries_avoided"] == 1
     assert metrics["structured_output_recovery_reasons"] == {"trailing_markdown_fence": 1}
-    assert "async_batch_llm_structured_output_recoveries 1" in prometheus
-    assert "async_batch_llm_structured_output_retries_avoided 1" in prometheus
+    assert "llm_minder_structured_output_recoveries 1" in prometheus
+    assert "llm_minder_structured_output_retries_avoided 1" in prometheus
     assert 'reason="trailing_markdown_fence"} 1' in prometheus
 
 

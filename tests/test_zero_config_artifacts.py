@@ -8,7 +8,7 @@ fingerprint still protects against silent reuse across changed inputs.
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactError,
     ArtifactIdentity,
     CallableStrategy,
@@ -25,7 +25,7 @@ from async_batch_llm import (
     WorkItemResult,
     process_prompts,
 )
-from async_batch_llm.artifacts import infer_artifact_identity
+from llm_minder.artifacts import infer_artifact_identity
 
 
 class FakeModel:

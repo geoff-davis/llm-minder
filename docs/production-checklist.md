@@ -225,7 +225,7 @@ For a very large (or unbounded) input, don't buffer all the work up front. Use
 input size.
 
 ```python
-from async_batch_llm import ProcessorConfig, process_stream
+from llm_minder import ProcessorConfig, process_stream
 
 config = ProcessorConfig(
     max_workers=50,

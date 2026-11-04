@@ -17,7 +17,7 @@ For large bulk jobs, keep using `ParallelBatchProcessor` /
 ## Example
 
 ```python
-from async_batch_llm import LLMCallPool, OpenAIModel, OpenAIStrategy, ProcessorConfig, call, call_result
+from llm_minder import LLMCallPool, OpenAIModel, OpenAIStrategy, ProcessorConfig, call, call_result
 
 strategy = OpenAIStrategy(OpenAIModel.from_api_key("gpt-6-luna"))
 
@@ -98,16 +98,16 @@ direct SDK, `CallableStrategy`, or a real third-party gateway client.
 
 ## call
 
-::: async_batch_llm.call
+::: llm_minder.call
 
 ## call_result
 
-::: async_batch_llm.call_result
+::: llm_minder.call_result
 
 ## LLMCallPool
 
-::: async_batch_llm.LLMCallPool
+::: llm_minder.LLMCallPool
 
 ## LLMCallError
 
-::: async_batch_llm.LLMCallError
+::: llm_minder.LLMCallError

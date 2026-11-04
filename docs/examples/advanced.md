@@ -6,7 +6,7 @@ Save costs by starting with cheap models and escalating only on validation error
 
 ```python
 from pydantic import ValidationError
-from async_batch_llm import LLMCallStrategy, RetryState
+from llm_minder import LLMCallStrategy, RetryState
 
 class SmartModelEscalation(LLMCallStrategy[dict]):
     MODELS = [
@@ -42,7 +42,7 @@ Tell the LLM exactly what failed on retry. Wrapping the validation error in
 `TokenTrackingError` keeps the tokens the failed call billed in the item's totals:
 
 ```python
-from async_batch_llm import TokenTrackingError
+from llm_minder import TokenTrackingError
 
 class SmartRetryStrategy(LLMCallStrategy[PersonData]):
     def __init__(self, client):
@@ -86,7 +86,7 @@ class SmartRetryStrategy(LLMCallStrategy[PersonData]):
 Dramatically reduce costs for RAG and repeated context:
 
 ```python
-from async_batch_llm import GeminiCachedModel, GeminiStrategy
+from llm_minder import GeminiCachedModel, GeminiStrategy
 from google import genai
 from google.genai.types import Content
 
@@ -128,7 +128,7 @@ async def process_with_caching():
 Inject custom behavior into the processing pipeline:
 
 ```python
-from async_batch_llm import BaseMiddleware, LLMWorkItem, WorkItemResult
+from llm_minder import BaseMiddleware, LLMWorkItem, WorkItemResult
 
 class LoggingMiddleware(BaseMiddleware):
     """Subclass BaseMiddleware to get no-op defaults for the hooks you skip.
@@ -172,8 +172,8 @@ includes failed attempts (an `ITEM_COMPLETED` event reports only the final
 attempt's tokens):
 
 ```python
-from async_batch_llm import CachedTokenRates
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
+from llm_minder import CachedTokenRates
+from llm_minder.observers import BaseObserver, ProcessingEvent
 from typing import Any
 
 class ProgressCounter(BaseObserver):
@@ -252,8 +252,8 @@ attempt), so escalation here is driven by *validation* failures, not throttling.
 
 ```python
 from pydantic import ValidationError
-from async_batch_llm import RetryState
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import RetryState
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class ProgressiveTempStrategy(LLMCallStrategy[str]):
     """Increase temperature only when validation keeps failing."""
@@ -288,8 +288,8 @@ classifier treats built-in errors such as `ValueError`, `TypeError`, and `KeyErr
 non-retryable logic errors, so raising one of those would fail the item on its first attempt.
 
 ```python
-from async_batch_llm import RetryState
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder import RetryState
+from llm_minder.llm_strategies import LLMCallStrategy
 
 class MissingFieldsError(Exception):
     """Retryable: deliberately not a ValueError subclass."""
@@ -333,5 +333,5 @@ class PartialRecoveryStrategy(LLMCallStrategy[dict]):
 
 Retries focus only on the fields that failed validation, so the follow-up
 attempt usually consumes fewer tokens than the first. See
-[`examples/example_smart_model_escalation.py`](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_smart_model_escalation.py)
+[`examples/example_smart_model_escalation.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_smart_model_escalation.py)
 and `examples/example_gemini_smart_retry.py` for complete, runnable versions.

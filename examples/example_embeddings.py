@@ -1,6 +1,6 @@
 """Example: batch embedding generation with Gemini and OpenAI.
 
-async-batch-llm has no built-in embedding support, but ``LLMCallStrategy``
+llm-minder has no built-in embedding support, but ``LLMCallStrategy``
 is generic over its output type — a custom strategy can return embedding
 vectors instead of text and still get the worker pool, rate-limit cooldown
 coordination, retries, and token accounting for free. This is the pattern
@@ -33,7 +33,7 @@ takes task instructions as text prefixes, e.g.
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[gemini,openai]'
+pip install 'llm-minder[gemini,openai]'
 ```
 
 (Each provider's section runs only if its SDK and API key are available,
@@ -53,7 +53,7 @@ import math
 import os
 from typing import Any
 
-from async_batch_llm import (
+from llm_minder import (
     GeminiErrorClassifier,
     LLMWorkItem,
     OpenAIErrorClassifier,
@@ -61,8 +61,8 @@ from async_batch_llm import (
     ProcessorConfig,
     TokenUsage,
 )
-from async_batch_llm.llm_strategies import LLMCallStrategy
-from async_batch_llm.strategies.errors import ErrorClassifier
+from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder.strategies.errors import ErrorClassifier
 
 try:
     from openai import AsyncOpenAI
@@ -315,14 +315,14 @@ async def main() -> None:
         await run_openai_embeddings()
         ran_any = True
     else:
-        print("Skipping OpenAI: install 'async-batch-llm[openai]' and set OPENAI_API_KEY")
+        print("Skipping OpenAI: install 'llm-minder[openai]' and set OPENAI_API_KEY")
 
     if genai is not None and GOOGLE_API_KEY:
         await run_gemini_embeddings()
         ran_any = True
     else:
         print(
-            "Skipping Gemini: install 'async-batch-llm[gemini]' and set "
+            "Skipping Gemini: install 'llm-minder[gemini]' and set "
             "GOOGLE_API_KEY (or GEMINI_API_KEY)"
         )
 

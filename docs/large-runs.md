@@ -13,7 +13,7 @@ memory. For large runs use `process_stream()` with a lazy source and consume
 each result as it arrives:
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     ProcessorConfig,
     ResumePolicy,
     SqliteArtifactStore,

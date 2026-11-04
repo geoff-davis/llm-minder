@@ -1,5 +1,8 @@
 # Migration Guide: v0.8.x → v0.10.0
 
+> This page predates the rename to `llm-minder` in 1.0. Its examples use the old
+> names: install `async-batch-llm`, import `async_batch_llm`.
+
 This guide covers the changes shipped across v0.9.0 (first-class OpenAI
 and OpenRouter providers) and v0.10.0 (response metadata reaching
 `WorkItemResult`). Both releases were designed to be **mostly additive** —

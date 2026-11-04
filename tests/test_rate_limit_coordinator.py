@@ -11,9 +11,9 @@ import asyncio
 
 import pytest
 
-from async_batch_llm._internal.event_dispatcher import EventDispatcher
-from async_batch_llm._internal.rate_limit_coordinator import RateLimitCoordinator
-from async_batch_llm.strategies.rate_limit import FixedDelayStrategy
+from llm_minder._internal.event_dispatcher import EventDispatcher
+from llm_minder._internal.rate_limit_coordinator import RateLimitCoordinator
+from llm_minder.strategies.rate_limit import FixedDelayStrategy
 
 
 def _make_coordinator(cooldown: float) -> RateLimitCoordinator:
@@ -31,9 +31,7 @@ async def _captured_cooldown(coord: RateLimitCoordinator, monkeypatch, **kwargs)
         slept.append(delay)
         await real_sleep(0)  # yield without actually waiting
 
-    monkeypatch.setattr(
-        "async_batch_llm._internal.rate_limit_coordinator.asyncio.sleep", fake_sleep
-    )
+    monkeypatch.setattr("llm_minder._internal.rate_limit_coordinator.asyncio.sleep", fake_sleep)
     await coord.handle_rate_limit(worker_id=0, observed_generation=0, **kwargs)
     return slept[0] if slept else 0.0
 
@@ -206,9 +204,9 @@ async def test_sd1_invalid_cooldown_return_uses_fallback(
 async def test_c4_d5_hint_clamp_and_fallback_across_hosts(
     host_kind, strategy_result, suggestion, clamped, monkeypatch
 ):
-    from async_batch_llm import ParallelBatchProcessor, ProcessorConfig, RateLimitConfig
-    from async_batch_llm._internal.executor_host import ExecutorHost
-    from async_batch_llm.llm_strategies import LLMCallStrategy
+    from llm_minder import ParallelBatchProcessor, ProcessorConfig, RateLimitConfig
+    from llm_minder._internal.executor_host import ExecutorHost
+    from llm_minder.llm_strategies import LLMCallStrategy
 
     class CooldownPolicy(FixedDelayStrategy):
         async def on_rate_limit(self, worker_id, consecutive_limit_count):

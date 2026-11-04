@@ -12,8 +12,8 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import cast
 
-from async_batch_llm import LLMCallStrategy, RetryState, TokenEstimate, TokenUsage
-from async_batch_llm.strategies import ErrorClassifier, ErrorInfo
+from llm_minder import LLMCallStrategy, RetryState, TokenEstimate, TokenUsage
+from llm_minder.strategies import ErrorClassifier, ErrorInfo
 
 TOKENS_OK = {"input_tokens": 7, "output_tokens": 3, "total_tokens": 10}
 TOKENS_FAILED_ATTEMPT = {"input_tokens": 7, "output_tokens": 2, "total_tokens": 9}

@@ -1,9 +1,9 @@
-site_name: async-batch-llm
+site_name: llm-minder
 site_description: Provider-neutral asyncio toolkit for concurrent LLM calls with retries, coordinated rate limits, bounded streaming, resumable checkpoints, and deadlines.
-site_url: https://geoff-davis.github.io/async-batch-llm/
+site_url: https://geoff-davis.github.io/llm-minder/
 
-repo_name: geoff-davis/async-batch-llm
-repo_url: https://github.com/geoff-davis/async-batch-llm
+repo_name: geoff-davis/llm-minder
+repo_url: https://github.com/geoff-davis/llm-minder
 
 theme:
   name: material

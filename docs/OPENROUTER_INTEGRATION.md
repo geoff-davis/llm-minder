@@ -9,7 +9,7 @@ support arrived in v0.9.0 via `OpenRouterModel`, `OpenRouterStrategy`, and
 ## Installation
 
 ```bash
-pip install 'async-batch-llm[openrouter]'
+pip install 'llm-minder[openrouter]'
 ```
 
 (Internally this installs the `openai` SDK; OpenRouter speaks the OpenAI
@@ -29,7 +29,7 @@ Set `OPENROUTER_API_KEY`, or pass `api_key=` to
 
 ```python
 import asyncio
-from async_batch_llm import (
+from llm_minder import (
     LLMWorkItem,
     OpenRouterErrorClassifier,
     OpenRouterModel,
@@ -125,7 +125,7 @@ job. `prompt_cache_key=` and `cache_group=` work on `OpenRouterModel` as on
 billable tokens, pass the matching rate from `CachedTokenRates`:
 
 ```python
-from async_batch_llm import CachedTokenRates
+from llm_minder import CachedTokenRates
 
 # Pick the rate for whichever upstream actually served your request
 # (visible in LLMResponse.metadata['provider']).
@@ -155,7 +155,7 @@ provider name (`"Anthropic"`, `"OpenAI"`, `"DeepSeek"`, etc.), the
 actually-routed model, and `finish_reason`. No custom parser needed.
 
 ```python
-from async_batch_llm import (
+from llm_minder import (
     CachedTokenRates,
     LLMWorkItem,
     OpenRouterModel,
@@ -237,8 +237,8 @@ through. The cleanest way to do this through the framework is a small custom
 strategy that builds the message list inside `execute()`:
 
 ```python
-from async_batch_llm.base import LLMResponse, RetryState, TokenUsage
-from async_batch_llm.llm_strategies import LLMCallStrategy
+from llm_minder.base import LLMResponse, RetryState, TokenUsage
+from llm_minder.llm_strategies import LLMCallStrategy
 
 
 class CachedAnthropicStrategy(LLMCallStrategy[str]):
@@ -286,7 +286,7 @@ DeepSeek's API directly with the built-in `DeepSeekModel` (v0.10.0), which
 reads those native fields into `cached_input_tokens`:
 
 ```python
-from async_batch_llm import DeepSeekModel, DeepSeekStrategy
+from llm_minder import DeepSeekModel, DeepSeekStrategy
 
 model = DeepSeekModel.from_api_key("deepseek-v4-flash", thinking=False)  # reads DEEPSEEK_API_KEY
 strategy = DeepSeekStrategy(model)
@@ -344,5 +344,5 @@ classifier.
 ## See also
 
 - [`docs/OPENAI_INTEGRATION.md`](OPENAI_INTEGRATION.md) — the OpenAI sibling.
-- [`examples/example_openrouter.py`](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_openrouter.py)
+- [`examples/example_openrouter.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_openrouter.py)
   — runnable example with the cross-provider and cached-Anthropic patterns.

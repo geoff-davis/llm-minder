@@ -2,11 +2,11 @@
 
 import pytest
 
-from async_batch_llm import MetricsObserver
-from async_batch_llm._internal.event_dispatcher import EventDispatcher
-from async_batch_llm._internal.rate_limit_coordinator import RateLimitCoordinator
-from async_batch_llm.observers.base import BaseObserver, ProcessingEvent
-from async_batch_llm.strategies.rate_limit import ExponentialBackoffStrategy
+from llm_minder import MetricsObserver
+from llm_minder._internal.event_dispatcher import EventDispatcher
+from llm_minder._internal.rate_limit_coordinator import RateLimitCoordinator
+from llm_minder.observers.base import BaseObserver, ProcessingEvent
+from llm_minder.strategies.rate_limit import ExponentialBackoffStrategy
 
 # ── Item 2: observer fast-path ──────────────────────────────────────────────
 

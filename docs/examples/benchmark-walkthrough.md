@@ -1,6 +1,6 @@
 # Benchmark Walkthrough
 
-How `examples/example_batch_benchmark.py` — the flagship "why async-batch-llm"
+How `examples/example_batch_benchmark.py` — the flagship "why llm-minder"
 demo — is built. For the **results**, see [Benchmarks](../benchmarks.md); this
 page is the architecture and the techniques worth stealing.
 

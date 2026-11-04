@@ -10,7 +10,7 @@ Process multiple prompts in parallel:
 
 ```python
 import asyncio
-from async_batch_llm import llm, process_prompts
+from llm_minder import llm, process_prompts
 
 async def main():
     prompts = ["What is Python?", "What is async/await?", "What is asyncio?"]
@@ -32,7 +32,7 @@ Pass `(item_id, prompt, context)` triples to carry application data into each re
 ```python
 from dataclasses import dataclass
 
-from async_batch_llm import llm, process_prompts
+from llm_minder import llm, process_prompts
 
 @dataclass
 class FileContext:
@@ -58,14 +58,14 @@ async def process_with_context():
 ## Full control: ParallelBatchProcessor
 
 The remaining examples build work items and drive the processor yourself. They use a
-PydanticAI agent (`pip install 'async-batch-llm[pydantic-ai,gemini]'`).
+PydanticAI agent (`pip install 'llm-minder[pydantic-ai,gemini]'`).
 `GoogleModel` reads `GOOGLE_API_KEY` when it is constructed. Pass a model object,
 as here, rather than a bare model name: pydantic-ai 2.x rejects bare names, and the
 provider prefixes differ between the 1.x and 2.x lines.
 
 ```python
 import asyncio
-from async_batch_llm import (
+from llm_minder import (
     ParallelBatchProcessor,
     LLMWorkItem,
     ProcessorConfig,
@@ -177,7 +177,7 @@ async def process_with_post_processor():
 Track metrics using observers:
 
 ```python
-from async_batch_llm.observers import MetricsObserver
+from llm_minder.observers import MetricsObserver
 
 async def process_with_metrics():
     metrics = MetricsObserver()

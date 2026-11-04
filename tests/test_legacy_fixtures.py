@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     ArtifactIdentity,
     BatchResult,
     JsonlArtifactStore,

@@ -6,8 +6,8 @@ dummy api_key (or asserts on the error path).
 
 import pytest
 
-import async_batch_llm.models as models_module
-from async_batch_llm import (
+import llm_minder.models as models_module
+from llm_minder import (
     DeepSeekModel,
     DeepSeekStrategy,
     GeminiModel,
@@ -90,7 +90,7 @@ class TestKwargForwarding:
         assert strategy.generation_config == {"max_tokens": 5}
 
     def test_default_parser_returns_text(self):
-        from async_batch_llm import LLMResponse
+        from llm_minder import LLMResponse
 
         strategy = llm("openai:gpt-4o-mini", api_key="sk-test")
         response = LLMResponse(text="hello", input_tokens=1, output_tokens=1, total_tokens=2)
@@ -105,7 +105,7 @@ class TestErrorMessages:
         assert "anthropic" in message
         for prefix in ("gemini", "openai", "openrouter", "deepseek"):
             assert f"'{prefix}:'" in message
-        assert "async-batch-llm[openai]" in message
+        assert "llm-minder[openai]" in message
 
     def test_missing_colon(self):
         with pytest.raises(ValueError, match="provider:model"):
@@ -117,12 +117,12 @@ class TestErrorMessages:
 
     def test_missing_openai_dependency_names_extra(self, monkeypatch):
         monkeypatch.setattr(models_module, "AsyncOpenAI", None)
-        with pytest.raises(ImportError, match=r"async-batch-llm\[openai\]"):
+        with pytest.raises(ImportError, match=r"llm-minder\[openai\]"):
             llm("openai:gpt-4o-mini", api_key="sk-test")
 
     def test_missing_gemini_dependency_names_extra(self, monkeypatch):
         monkeypatch.setattr(models_module, "genai", None)
-        with pytest.raises(ImportError, match=r"async-batch-llm\[gemini\]"):
+        with pytest.raises(ImportError, match=r"llm-minder\[gemini\]"):
             llm("gemini:gemini-2.5-flash", api_key="test-key")
 
     def test_gemini_no_api_key_names_env_vars(self, monkeypatch):
@@ -178,7 +178,7 @@ async def test_prov9_factory_gemini_owned_client_reopens_and_shares(monkeypatch)
     from types import SimpleNamespace
     from unittest.mock import AsyncMock, MagicMock
 
-    from async_batch_llm import call
+    from llm_minder import call
 
     clients = []
 

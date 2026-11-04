@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from async_batch_llm import (
+from llm_minder import (
     AbortMode,
     AttemptUsage,
     BatchBudgetExceeded,
@@ -31,9 +31,9 @@ from async_batch_llm import (
     process_prompts,
     process_stream,
 )
-from async_batch_llm.base import LLMWorkItem, RetryState, TokenUsage
-from async_batch_llm.observers import BaseObserver, ProcessingEvent
-from async_batch_llm.serialization import batch_result_from_dict, batch_result_to_dict
+from llm_minder.base import LLMWorkItem, RetryState, TokenUsage
+from llm_minder.observers import BaseObserver, ProcessingEvent
+from llm_minder.serialization import batch_result_from_dict, batch_result_to_dict
 
 
 def _usage(total: int) -> TokenUsage:
@@ -294,7 +294,7 @@ async def test_first_cause_wins_against_fail_fast() -> None:
 
     class Classifier:
         def classify(self, exception):
-            from async_batch_llm import ErrorInfo
+            from llm_minder import ErrorInfo
 
             return ErrorInfo(False, False, False, "authentication")
 
@@ -605,7 +605,7 @@ async def test_budget_audit_records_never_replay_and_replays_are_free(
 
 
 def test_budget_termination_round_trips() -> None:
-    from async_batch_llm import BatchResult, BatchTermination
+    from llm_minder import BatchResult, BatchTermination
 
     result: BatchResult[str, None] = BatchResult(
         results=[],
@@ -622,7 +622,7 @@ def test_budget_termination_round_trips() -> None:
 
 @pytest.mark.asyncio
 async def test_metrics_observer_matches_stats_and_crossing_item_is_postprocessed() -> None:
-    from async_batch_llm import MetricsObserver
+    from llm_minder import MetricsObserver
 
     metrics = MetricsObserver()
     processed: list[str] = []
@@ -646,7 +646,7 @@ async def test_metrics_observer_matches_stats_and_crossing_item_is_postprocessed
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 @pytest.mark.asyncio
 async def test_crossing_item_checkpoint_failure_stays_fatal(tmp_path: Any, store_type: Any) -> None:
-    from async_batch_llm import ArtifactIOError
+    from llm_minder import ArtifactIOError
 
     store = store_type(tmp_path / "fatal.artifact")
     append = store.append

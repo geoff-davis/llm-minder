@@ -1,19 +1,19 @@
-# Contributing to async-batch-llm
+# Contributing to llm-minder
 
-Thank you for considering contributing to async-batch-llm!
+Thank you for considering contributing to llm-minder!
 
 To report a security vulnerability, don't open a public issue; follow the
-[security policy](https://github.com/geoff-davis/async-batch-llm/blob/main/SECURITY.md).
+[security policy](https://github.com/geoff-davis/llm-minder/blob/main/SECURITY.md).
 Maintainer material, including the release process, lives in
-[CONTRIBUTING.md](https://github.com/geoff-davis/async-batch-llm/blob/main/CONTRIBUTING.md).
+[CONTRIBUTING.md](https://github.com/geoff-davis/llm-minder/blob/main/CONTRIBUTING.md).
 
 ## Development Setup
 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/geoff-davis/async-batch-llm.git
-cd async-batch-llm
+git clone https://github.com/geoff-davis/llm-minder.git
+cd llm-minder
 
 # Create virtual environment and install dependencies
 uv venv
@@ -43,7 +43,7 @@ uv run pytest
 uv run pytest tests/test_basic.py -v
 
 # Run with coverage
-uv run pytest --cov=async_batch_llm --cov-report=html
+uv run pytest --cov=llm_minder --cov-report=html
 ```
 
 ### Code Quality
@@ -61,7 +61,7 @@ uv run ruff check src/ tests/ --fix
 uv run ruff check src/ tests/
 
 # Type check
-uv run mypy src/async_batch_llm/ --ignore-missing-imports
+uv run mypy src/llm_minder/ --ignore-missing-imports
 
 # Or run all checks at once
 make ci
@@ -107,7 +107,7 @@ Before committing, ensure:
 
 1. ✅ All tests pass: `uv run pytest`
 2. ✅ Linting passes: `uv run ruff check src/ tests/`
-3. ✅ Type checking passes: `uv run mypy src/async_batch_llm/`
+3. ✅ Type checking passes: `uv run mypy src/llm_minder/`
 4. ✅ Markdown is clean: `make markdown-lint`
 
 Or run everything at once:
@@ -128,8 +128,8 @@ make ci
 ## Project Structure
 
 ```text
-async-batch-llm/
-├── src/async_batch_llm/          # Main package
+llm-minder/
+├── src/llm_minder/          # Main package
 │   ├── base.py             # Core data models
 │   ├── parallel.py         # Main processor
 │   ├── streaming.py        # process_prompts / process_stream
@@ -158,7 +158,7 @@ async-batch-llm/
 
 To add a new LLM provider strategy:
 
-1. Add the strategy to `src/async_batch_llm/llm_strategies.py` (or your own module)
+1. Add the strategy to `src/llm_minder/llm_strategies.py` (or your own module)
 2. Subclass the `LLMCallStrategy` abstract base class
 3. Add tests in `tests/`
 4. Add example in `examples/`
@@ -167,7 +167,7 @@ To add a new LLM provider strategy:
 Example:
 
 ```python
-from async_batch_llm import LLMCallStrategy
+from llm_minder import LLMCallStrategy
 
 class MyProviderStrategy(LLMCallStrategy[str]):
     async def execute(self, prompt: str, attempt: int, timeout: float, state=None):
@@ -177,8 +177,8 @@ class MyProviderStrategy(LLMCallStrategy[str]):
 
 ## Questions?
 
-- Open an [issue](https://github.com/geoff-davis/async-batch-llm/issues)
-- Start a [discussion](https://github.com/geoff-davis/async-batch-llm/discussions)
+- Open an [issue](https://github.com/geoff-davis/llm-minder/issues)
+- Start a [discussion](https://github.com/geoff-davis/llm-minder/discussions)
 
 ## License
 

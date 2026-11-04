@@ -1,5 +1,8 @@
 # v0.20.0 Release Notes
 
+> This page predates the rename to `llm-minder` in 1.0. Its examples use the old
+> names: install `async-batch-llm`, import `async_batch_llm`.
+
 v0.20 makes async-batch-llm useful as an execution layer around clients and
 application services you already have, while completing end-to-end streaming
 backpressure and the onboarding path from v0.18.

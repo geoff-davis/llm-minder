@@ -2,19 +2,19 @@
 
 ## ArtifactIdentity
 
-::: async_batch_llm.ArtifactIdentity
+::: llm_minder.ArtifactIdentity
 
 ## ResumePolicy
 
-::: async_batch_llm.ResumePolicy
+::: llm_minder.ResumePolicy
 
 ## ArtifactStore
 
-::: async_batch_llm.ArtifactStore
+::: llm_minder.ArtifactStore
 
 ## JsonlArtifactStore
 
-::: async_batch_llm.JsonlArtifactStore
+::: llm_minder.JsonlArtifactStore
 
 ## SqliteArtifactStore
 
@@ -26,24 +26,24 @@ in SQLite locking and may create empty WAL/SHM coordination sidecars so a
 writer can safely start during inspection; live `store.iter_results()` instead
 flushes and inspects that writable store.
 
-::: async_batch_llm.SqliteArtifactStore
+::: llm_minder.SqliteArtifactStore
 
 ## SqliteDurability
 
-::: async_batch_llm.SqliteDurability
+::: llm_minder.SqliteDurability
 
 ## ResultSerializationError
 
-::: async_batch_llm.ResultSerializationError
+::: llm_minder.ResultSerializationError
 
 ## Artifact errors
 
-::: async_batch_llm.ArtifactError
+::: llm_minder.ArtifactError
 
-::: async_batch_llm.ArtifactIdentityError
+::: llm_minder.ArtifactIdentityError
 
-::: async_batch_llm.ArtifactSerializationError
+::: llm_minder.ArtifactSerializationError
 
-::: async_batch_llm.ArtifactIOError
+::: llm_minder.ArtifactIOError
 
-::: async_batch_llm.ArtifactFormatError
+::: llm_minder.ArtifactFormatError

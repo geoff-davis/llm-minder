@@ -1,7 +1,7 @@
 # Regenerating the Terminal Demo
 
 The README animation is a deterministic rendering of the credential-free
-[`example_callable_application.py`](https://github.com/geoff-davis/async-batch-llm/blob/main/examples/example_callable_application.py)
+[`example_callable_application.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_callable_application.py)
 run. First verify the live example, then regenerate the asset:
 
 ```bash
