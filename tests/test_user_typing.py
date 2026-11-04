@@ -7,6 +7,7 @@ code that type-checks.
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,8 @@ SAMPLE = Path(__file__).resolve().parent / "user_typing" / "sample_app.py"
 _spec = importlib.util.spec_from_file_location("sample_app", SAMPLE)
 assert _spec is not None and _spec.loader is not None
 sample_app = importlib.util.module_from_spec(_spec)
+# dataclasses looks the defining module up in sys.modules, so register it before running.
+sys.modules[_spec.name] = sample_app
 _spec.loader.exec_module(sample_app)
 
 

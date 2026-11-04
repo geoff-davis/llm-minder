@@ -41,8 +41,9 @@ Read the [1.0 migration guide](docs/migration/v1.0.md) before upgrading.
 - The typed provider-output views `.grounding`, `.reasoning` and `.tool_calls`, the
   `Grounding`, `GroundingSource` and `ToolCall` classes, and their reserved metadata
   keys are stable. `.logprobs` stays provisional. `docs/stability.md` is final for 1.0.
-- A truncated response now has the error category `response_truncated`
-  (`ErrorCategory.RESPONSE_TRUNCATED`) instead of `empty_response`. It is still not
+- A response truncated before any usable text now has the error category
+  `response_truncated` (`ErrorCategory.RESPONSE_TRUNCATED`) instead of
+  `empty_response`; partial text cut off by the limit still succeeds. It is still not
   retried. Update `abort_on_error_categories` and any code that matches
   `"empty_response"` to catch truncations ([#273]).
 - An empty-string reply (`""`, not missing text) from Gemini or a Chat Completions

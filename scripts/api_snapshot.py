@@ -48,6 +48,7 @@ def _normalize(text: str) -> str:
     text = re.sub(r"<class '([\w.]+)'>", r"\1", text)
     text = re.sub(r"\bllm_minder\.[\w.]*\.(?=[A-Z])", "", text)
     text = text.replace("NoneType", "None")
+    text = re.sub(r"ForwardRef\('([^']*)'(?:, module='[\w.]+')?\)", r"\1", text)
     return _optional_to_union(text)
 
 
@@ -57,6 +58,15 @@ def _annotation(value: object) -> str:
     if isinstance(value, str):
         return value
     return inspect.formatannotation(value)
+
+
+def _factory_default(factory: typing.Callable[[], object]) -> str:
+    """Render what a default factory builds, so a changed default changes the snapshot."""
+    try:
+        value = factory()
+    except Exception as exc:  # pragma: no cover - a factory that needs arguments
+        return f"<factory raised {type(exc).__name__}>"
+    return f"<factory: {_normalize(repr(value))}>"
 
 
 def _signature(obj: object) -> str:
@@ -116,6 +126,12 @@ def _public_members(cls: type) -> list[tuple[str, object]]:
 def _render_class(name: str, cls: type) -> list[str]:
     bases = ", ".join(base.__name__ for base in cls.__bases__ if base is not object)
     lines = [f"class {name}({bases})" if bases else f"class {name}"]
+    if typing.is_typeddict(cls):
+        required = cls.__required_keys__  # type: ignore[attr-defined]
+        for key, annotation in cls.__annotations__.items():
+            kind = "required" if key in required else "optional"
+            lines.append(f"    key {key}: {_normalize(_annotation(annotation))} ({kind})")
+        return lines
     if issubclass(cls, enum.Enum):
         lines.extend(f"    {member.name} = {member.value!r}" for member in cls)
         return lines
@@ -131,7 +147,7 @@ def _render_class(name: str, cls: type) -> list[str]:
             if field.default is not dataclasses.MISSING:
                 text += f" = {_normalize(repr(field.default))}"
             elif field.default_factory is not dataclasses.MISSING:
-                text += " = <factory>"
+                text += f" = {_factory_default(field.default_factory)}"
             lines.append(text)
     is_protocol = getattr(cls, "_is_protocol", False)
     if not is_protocol and ("__init__" in cls.__dict__ or dataclasses.is_dataclass(cls)):

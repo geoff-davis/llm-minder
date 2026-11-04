@@ -13,7 +13,7 @@ class ArtifactIdentity
     field prompt_version: str | None = None
     field parser_version: str | None = None
     field application_version: str | None = None
-    field extra: Mapping[str, JSONValue] = <factory>
+    field extra: Mapping[str, JSONValue] = <factory: {}>
     __init__(self, provider: str | None = None, model: str | None = None, prompt_version: str | None = None, parser_version: str | None = None, application_version: str | None = None, extra: Mapping[str, JSONValue] = <factory>) -> None
 class ArtifactIdentityError(ArtifactError)
 class ArtifactSerializationError(ArtifactError)
@@ -76,7 +76,7 @@ class BatchResult(Generic)
     field total_output_tokens: int (init=False) = 0
     field total_cached_tokens: int (init=False) = 0
     field total_cache_write_tokens: int (init=False) = 0
-    field termination: BatchTermination = <factory>
+    field termination: BatchTermination = <factory: BatchTermination(kind='completed', reason=None, error_category=None, triggering_item_id=None)>
     field wall_time_seconds: float | None = None
     __init__(self, results: list[WorkItemResult[~TOutput, ~TContext]], termination: BatchTermination = <factory>, wall_time_seconds: float | None = None) -> None
     def by_id(self) -> dict[str, WorkItemResult[~TOutput, ~TContext]]
@@ -129,7 +129,7 @@ class CachedTokenRates
     attribute OPENAI_WRITE = 1.25
 class CallOutcome(Generic)
     field output: TOutput
-    field token_usage: Mapping[str, int] = <factory>
+    field token_usage: Mapping[str, int] = <factory: {}>
     field metadata: Mapping[str, Any] | None = None
     __init__(self, output: TOutput, token_usage: Mapping[str, int] = <factory>, metadata: Mapping[str, Any] | None = None) -> None
 class CallableStrategy(LLMCallStrategy)
@@ -273,9 +273,9 @@ class GeminiStrategy(ModelStrategy)
     def recommended_error_classifier(self) -> ErrorClassifier
     async def request_concurrency(self, concurrency: int) -> bool
 class Grounding
-    field sources: list[GroundingSource] = <factory>
-    field queries: list[str] = <factory>
-    field supports: list[dict[str, Any]] = <factory>
+    field sources: list[GroundingSource] = <factory: []>
+    field queries: list[str] = <factory: []>
+    field supports: list[dict[str, Any]] = <factory: []>
     __init__(self, sources: list[GroundingSource] = <factory>, queries: list[str] = <factory>, supports: list[dict[str, Any]] = <factory>) -> None
     classmethod from_metadata(data: Any) -> Grounding | None
 class GroundingSource
@@ -287,7 +287,7 @@ class GroundingSource
 class GuardrailConfig
     field total_timeout_per_item: float | None (kw_only) = None
     field batch_timeout: float | None (kw_only) = None
-    field abort_on_error_categories: frozenset[str] (kw_only) = <factory>
+    field abort_on_error_categories: frozenset[str] (kw_only) = <factory: frozenset()>
     field abort_mode: AbortMode (kw_only) = <AbortMode.DRAIN_ACTIVE: 'drain_active'>
     field max_total_tokens: int | None (kw_only) = None
     field max_total_cost: float | None (kw_only) = None
@@ -480,8 +480,8 @@ class ProcessorConfig
     field max_workers: int | None (kw_only) = None
     field post_processor_timeout: float (kw_only) = 90.0
     field concurrent_post_processing: bool (kw_only) = False
-    field retry: RetryConfig (kw_only) = <factory>
-    field rate_limit: RateLimitConfig (kw_only) = <factory>
+    field retry: RetryConfig (kw_only) = <factory: RetryConfig(max_attempts=3, initial_wait=1.0, max_wait=60.0, exponential_base=2.0, jitter=True, max_rate_limit_retries=20)>
+    field rate_limit: RateLimitConfig (kw_only) = <factory: RateLimitConfig(cooldown_seconds=300.0, slow_start_items=50, slow_start_initial_delay=2.0, slow_start_final_delay=0.1, backoff_multiplier=1.5, max_cooldown_seconds=600.0)>
     field max_requests_per_minute: float | None (kw_only) = None
     field progress_interval: int (kw_only) = 10
     field progress_callback_timeout: float | None (kw_only) = 5.0
@@ -489,7 +489,7 @@ class ProcessorConfig
     field dry_run: bool (kw_only) = False
     field max_provider_concurrency: int | None (kw_only) = None
     field startup_ramp: StartupRampConfig | None (kw_only) = None
-    field guardrails: GuardrailConfig (kw_only) = <factory>
+    field guardrails: GuardrailConfig (kw_only) = <factory: GuardrailConfig(total_timeout_per_item=None, batch_timeout=None, abort_on_error_categories=frozenset(), abort_mode=<AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens=None, max_total_cost=None, cost_function=None, min_cache_hit_rate=None, cache_hit_window=50)>
     field attempt_timeout: float | None (kw_only) = None
     field concurrency: int | None (kw_only) = None
     field max_result_queue_size: int (kw_only) = 0
@@ -549,7 +549,7 @@ class RetryConfig
     __init__(self, *, max_attempts: int = 3, initial_wait: float = 1.0, max_wait: float = 60.0, exponential_base: float = 2.0, jitter: bool = True, max_rate_limit_retries: int = 20) -> None
     def validate(self) -> None
 class RetryState
-    field data: dict[str, Any] = <factory>
+    field data: dict[str, Any] = <factory: {}>
     __init__(self, data: dict[str, Any] = <factory>) -> None
     def clear(self) -> None
     def delete(self, key: str, raise_if_missing: bool = False) -> None
@@ -602,6 +602,11 @@ class TokenEstimatorRequired(TokenEstimationError)
 class TokenTrackingError(LLMMinderError)
     __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None)
 class TokenUsage(dict)
+    key input_tokens: int (optional)
+    key output_tokens: int (optional)
+    key total_tokens: int (optional)
+    key cached_input_tokens: int (optional)
+    key cache_write_input_tokens: int (optional)
 class ToolCall
     field id: str | None
     field name: str
@@ -616,11 +621,11 @@ class WorkItemResult(ProviderOutputViews, Generic)
     field output: ~TOutput | None = None
     field error: str | None = None
     field context: ~TContext | None = None
-    field token_usage: TokenUsage = <factory>
+    field token_usage: TokenUsage = <factory: {'input_tokens': 0, 'output_tokens': 0, 'total_tokens': 0}>
     field metadata: dict[str, Any] | None = None
     field exception: Exception | None = None
     field admission_wait_seconds: float = 0.0
-    field timing: WorkItemTiming = <factory>
+    field timing: WorkItemTiming = <factory: WorkItemTiming(total_seconds=0.0, attempts=[], timeout_category=None)>
     field submission_index: int | None = None
     field error_category: str | None = None
     field replayed_from_artifact: bool = False
@@ -637,7 +642,7 @@ class WorkItemResult(ProviderOutputViews, Generic)
     property tool_calls -> list[ToolCall] | None
 class WorkItemTiming
     field total_seconds: float = 0.0
-    field attempts: list[AttemptTiming] = <factory>
+    field attempts: list[AttemptTiming] = <factory: []>
     field timeout_category: str | None = None
     __init__(self, total_seconds: float = 0.0, attempts: list[AttemptTiming] = <factory>, timeout_category: str | None = None) -> None
     property admission_wait_seconds -> float

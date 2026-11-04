@@ -45,3 +45,44 @@ def test_every_event_has_documented_payload_keys():
         line.split(":")[0].removeprefix("event ") for line in api_snapshot._documented_payloads()
     }
     assert documented == {event.name for event in ProcessingEvent}
+
+
+def _render(cls: type) -> str:
+    return "\n".join(api_snapshot._render_class(cls.__name__, cls))
+
+
+def test_snapshot_sees_typeddict_keys_and_requiredness():
+    from typing import NotRequired, TypedDict
+
+    class Before(TypedDict):
+        a: int
+        b: NotRequired[str]
+
+    class Dropped(TypedDict):
+        a: int
+
+    class NowRequired(TypedDict):
+        a: int
+        b: str
+
+    rendered = {_render(cls).split("\n", 1)[1] for cls in (Before, Dropped, NowRequired)}
+    assert len(rendered) == 3
+
+
+def test_snapshot_sees_changed_default_factories():
+    import dataclasses
+
+    from llm_minder import RetryConfig
+
+    @dataclasses.dataclass
+    class Config:
+        retry: RetryConfig = dataclasses.field(default_factory=RetryConfig)
+
+    @dataclasses.dataclass
+    class Changed:
+        retry: RetryConfig = dataclasses.field(default_factory=lambda: RetryConfig(max_attempts=99))
+
+    before = _render(Config).split("\n", 1)[1]
+    after = _render(Changed).split("\n", 1)[1]
+    assert before != after
+    assert "max_attempts=99" in after
