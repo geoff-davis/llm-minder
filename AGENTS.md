@@ -57,9 +57,12 @@ review requests and replies through Herdr; no manual relay is needed.
 - Codex replies with `herdr agent prompt abl-implementer "<review verdict and findings>"`.
   Review read-only in an isolated snapshot; leave implementation edits to Claude.
   Follow the evidence protocol below and identify the exact target in every verdict.
-- Put each review's snapshot, tarball, logs and test temp dirs under one directory,
-  `/tmp/abl-review/<PR>-r<round>/`, and delete it once the verdict is sent. A later
-  round takes a fresh snapshot, so nothing needs to be kept between rounds.
+- Put each review round's files under one directory, `/tmp/abl-review/<PR>-r<round>/`,
+  and delete the whole directory once the verdict is sent. Snapshots, tarballs,
+  environments, logs and test temp dirs can be regenerated, so none of them is kept.
+  Probe scripts and their output can't be: before deleting, put the full probe code (or
+  exact commands to recreate it) and the output that matters in the verdict, or point to
+  a committed regression test that covers it.
 - Send without `--wait` so neither agent blocks waiting for the other's turn. Do not
   send acknowledgment loops or duplicate prompts. If delivery is uncertain, inspect
   the target before retrying; never answer an approval dialog on the user's behalf.
