@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An item whose deadline expired before its input was prepared for checkpointing
+  no longer aborts the whole run when that input can't be checkpointed (an
+  unserializable context or a mismatched strategy identity). The item fails
+  with `framework_total_item_timeout`, its audit record is skipped with a
+  warning, and the batch continues, on both JSONL and SQLite stores.
+
 ## [1.0.0rc2] - 2026-11-10
 
 The second release candidate for 1.0.0. It fixes the defects a full review of
