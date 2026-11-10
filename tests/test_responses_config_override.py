@@ -12,11 +12,11 @@ import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
 import pytest
 
 from llm_minder import (
     DeepSeekModel,
+    DeepSeekStrategy,
     ErrorInfo,
     LLMWorkItem,
     OpenAIModel,
@@ -32,6 +32,7 @@ from llm_minder._internal.responses_translation import (
     translate_request_config,
 )
 from llm_minder.classifiers.openai import OpenAIErrorClassifier
+from tests._openai_http import openai_http
 
 _SCHEMA_FORMAT = {"type": "json_schema", "name": "x", "schema": {"type": "object"}}
 
@@ -160,14 +161,48 @@ async def test_openai_per_call_text_format_beats_json_mode_default() -> None:
     assert sent["text"] == {"format": _SCHEMA_FORMAT, "verbosity": "low"}
 
 
-async def test_deepseek_per_call_max_tokens_beats_default_max_output_tokens() -> None:
+@pytest.mark.parametrize("alias", ["max_tokens", "max_completion_tokens"])
+async def test_deepseek_per_call_token_alias_beats_default_max_output_tokens(alias: str) -> None:
     model = DeepSeekModel(
         "deepseek-v4-flash",
         _stop_client(),
         api_surface="responses",
         extra_body={"max_output_tokens": 1000},
     )
-    assert (await _sent(model, {"max_tokens": 4000}))["max_output_tokens"] == 4000
+    sent = await _sent(model, {alias: 4000})
+    assert sent["max_output_tokens"] == 4000
+    assert alias not in sent.get("extra_body", {})
+
+
+class _DeepSeekRaiseBound(DeepSeekStrategy):
+    def __init__(self, model: Any, alias: str, **kwargs: Any) -> None:
+        super().__init__(model, **kwargs)
+        self.alias = alias
+
+    def attempt_generation_config(
+        self, attempt: int, state: RetryState | None
+    ) -> dict[str, Any] | None:
+        return {self.alias: 4000} if attempt > 1 else None
+
+
+@pytest.mark.parametrize("alias", ["max_tokens", "max_completion_tokens"])
+@pytest.mark.parametrize("where", ["model-default", "strategy-config"])
+async def test_deepseek_attempt_token_alias_beats_max_output_tokens(alias: str, where: str) -> None:
+    bound = {"max_output_tokens": 1000}
+    model = DeepSeekModel(
+        "deepseek-v4-flash",
+        _stop_client(),
+        api_surface="responses",
+        extra_body=bound if where == "model-default" else None,
+    )
+    strategy = _DeepSeekRaiseBound(
+        model, alias, generation_config=bound if where == "strategy-config" else None
+    )
+    with pytest.raises(RuntimeError, match="stop-before-network"):
+        await strategy.execute("hi", attempt=2, timeout=10.0)
+    sent = model._client.responses.create.call_args.kwargs
+    assert sent["max_output_tokens"] == 4000
+    assert alias not in sent.get("extra_body", {})
 
 
 async def test_deepseek_per_call_text_keeps_the_schema_format() -> None:
@@ -262,9 +297,10 @@ async def test_truncation_retry_raises_the_bound_over_a_max_output_tokens_defaul
 ) -> None:
     from openai import AsyncOpenAI
 
+    httpx = openai_http()
     sent: list[dict[str, Any]] = []
 
-    def handle(request: httpx.Request) -> httpx.Response:
+    def handle(request: Any) -> Any:
         sent.append(json.loads(request.content))
         return httpx.Response(200, json=_response_body(truncated=len(sent) == 1))
 

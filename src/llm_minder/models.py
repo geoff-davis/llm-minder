@@ -1957,11 +1957,13 @@ class _ResponsesSurface:
         has_system = isinstance(input_value, list) and _has_system_message(input_value)
 
         # Per-call fields beat defaults under any alias, so a per-call
-        # max_tokens replaces a default max_output_tokens.
+        # max_tokens replaces a default max_output_tokens. Every token alias the
+        # merge drops must then map to the native field, or the bound is lost.
         request_config = merge_request_configs(self._default_extra_body, config, chat_aliases=False)
-        if "max_tokens" in request_config:
-            request_config.setdefault("max_output_tokens", request_config["max_tokens"])
-            request_config.pop("max_tokens")
+        for alias in ("max_completion_tokens", "max_tokens"):
+            if alias in request_config:
+                request_config.setdefault("max_output_tokens", request_config[alias])
+                request_config.pop(alias)
 
         call_kwargs: dict[str, Any] = {"model": self._model, "input": input_value}
         if si is not None and not has_system:
