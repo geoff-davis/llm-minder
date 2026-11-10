@@ -192,7 +192,8 @@ async def cancel_and_join(task: asyncio.Future[Any], *, propagate_errors: bool =
       task outranks the cancellation: process-control signals must never be
       dropped silently, and an interpreter that is exiting does not need the
       cancellation delivered. The caller's ``CancelledError`` is attached as the
-      fatal error's ``__context__``.
+      fatal error's ``__context__`` only when it has none; an existing context
+      (often the task's own cancellation) is kept rather than overwritten.
     """
     task.cancel()
     caller_cancelled: asyncio.CancelledError | None = None
