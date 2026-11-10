@@ -1042,9 +1042,7 @@ class ParallelBatchProcessor(
             exception, work_item, worker_id, attempt_number
         )
 
-    # Unannotated so tests/api_snapshot.txt stays unchanged in a patch release;
-    # add `-> None` (and update the snapshot) in the next minor.
-    async def shutdown(self):  # type: ignore[no-untyped-def]
+    async def shutdown(self) -> None:
         """Release every owned resource; safe to call repeatedly.
 
         Same ordered close as ``async with`` exit: runtime tasks and

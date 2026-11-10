@@ -1447,9 +1447,7 @@ class BatchProcessor(ABC, Generic[TInput, TOutput, TContext]):
             report.raise_first()
         return False  # Don't suppress exceptions
 
-    # Unannotated so tests/api_snapshot.txt stays unchanged in a patch release;
-    # add `-> None` (and update the snapshot) in the next minor.
-    async def cleanup(self):  # type: ignore[no-untyped-def]
+    async def cleanup(self) -> None:
         """Release every owned resource in dependency order.
 
         Runtime tasks and callbacks stop first (stream finalizer, workers,
