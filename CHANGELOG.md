@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Code that passed a bare string must wrap it, for example
   `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
   config, so the check covers both.
+- On the OpenAI Responses API, a Chat-style function tool with no `parameters`
+  now gets an empty object schema. The translated tool used to omit the key,
+  which the Responses function-tool type requires. Tools that declare
+  `parameters` are unchanged.
 
 ## [1.0.0rc2] - 2026-11-10
 
