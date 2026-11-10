@@ -17,6 +17,7 @@ from llm_minder.strategies.errors import (
     ProviderResponseError,
 )
 from llm_minder.testing import MockAgent
+from tests._openai_http import openai_http
 
 
 class ClassifierTestOutput(BaseModel):
@@ -527,9 +528,9 @@ def _make_openai_status_error(status_code: int, message: str = "boom"):
 
 
 def httpx_request_or_none():
-    """Build an httpx.Request if httpx is available; else return None."""
+    """Build a Request with the openai SDK's HTTP library (httpx or httpx2), or None."""
     try:
-        import httpx
+        httpx = openai_http()
 
         return httpx.Request("POST", "https://api.example.com/v1/chat/completions")
     except Exception:
@@ -537,9 +538,9 @@ def httpx_request_or_none():
 
 
 def httpx_response_or_none(status_code: int, text: str):
-    """Build an httpx.Response if httpx is available; else return None."""
+    """Build a Response with the openai SDK's HTTP library (httpx or httpx2), or None."""
     try:
-        import httpx
+        httpx = openai_http()
 
         return httpx.Response(
             status_code=status_code,
@@ -623,7 +624,7 @@ class TestOpenAIErrorClassifier:
         assert info.is_retryable is True
 
     def test_429_retry_after_header_seconds_used_as_suggested_wait(self):
-        import httpx
+        httpx = openai_http()
         from openai import APIStatusError
 
         from llm_minder.classifiers import OpenAIErrorClassifier
@@ -640,7 +641,7 @@ class TestOpenAIErrorClassifier:
         assert info.suggested_wait == 12.0
 
     def test_429_without_retry_after_has_no_suggested_wait(self):
-        import httpx
+        httpx = openai_http()
         from openai import APIStatusError
 
         from llm_minder.classifiers import OpenAIErrorClassifier
@@ -1019,12 +1020,12 @@ def test_prov8_usage_limit_is_terminal():
     ],
 )
 def test_prov4_openai_quota_is_not_cooldown(body):
-    import httpx2
+    httpx = openai_http()
     from openai import RateLimitError
 
     from llm_minder.classifiers import OpenAIErrorClassifier
 
-    response = httpx2.Response(429, request=httpx2.Request("POST", "https://test.invalid"))
+    response = httpx.Response(429, request=httpx.Request("POST", "https://test.invalid"))
     info = OpenAIErrorClassifier().classify(RateLimitError("quota", response=response, body=body))
     assert info.error_category == "insufficient_balance"
     assert not info.is_retryable
@@ -1114,7 +1115,7 @@ def test_prov9_openrouter_no_provider_only_transient_statuses(status):
 @pytest.mark.parametrize("surface", ["batch", "stream", "single", "pool"])
 @pytest.mark.parametrize("provider", ["openai", "pydantic_flat", "pydantic_nested"])
 async def test_prov4_quota_stops_after_one_provider_call(surface, monkeypatch, provider):
-    import httpx2
+    httpx = openai_http()
     from openai import RateLimitError
 
     from llm_minder import LLMCallPool, call_result, process_prompts, process_stream
@@ -1150,7 +1151,7 @@ async def test_prov4_quota_stops_after_one_provider_call(surface, monkeypatch, p
                 if provider == "pydantic_nested":
                     body = {"error": body}
                 raise ModelHTTPError(429, "test", body=body)
-            response = httpx2.Response(429, request=httpx2.Request("POST", "https://test.invalid"))
+            response = httpx.Response(429, request=httpx.Request("POST", "https://test.invalid"))
             raise RateLimitError("quota", response=response, body={"code": "insufficient_quota"})
 
     strategy = QuotaFailure()
@@ -1411,7 +1412,7 @@ def test_issue177_failing_response_property_keeps_rate_limit_without_hint(classi
 
 
 def _sdk_billing_cases():
-    import httpx
+    httpx = openai_http()
     from google.genai.errors import APIError
     from openai import APIStatusError, RateLimitError
     from pydantic_ai.exceptions import ModelHTTPError
@@ -1473,7 +1474,7 @@ def test_issue177_sdk_billing_exhaustion_outranks_status_and_routing(
 
 
 def test_issue177_sdk_rate_limit_without_billing_is_unchanged():
-    import httpx
+    httpx = openai_http()
     from openai import RateLimitError
 
     response = httpx.Response(429, request=httpx.Request("POST", "https://example.invalid"))
