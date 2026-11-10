@@ -19,6 +19,7 @@ from ..strategies.errors import (
     BatchDeadlineExceeded,
     ItemDeadlineExceeded,
 )
+from .cleanup import cancel_and_join
 
 _T = TypeVar("_T")
 
@@ -80,8 +81,9 @@ class AbortController:
             self._active_provider_calls += 1
 
     async def end_provider_call(self) -> None:
-        async with self._lock:
-            self._active_provider_calls = max(0, self._active_provider_calls - 1)
+        # No lock: a synchronous decrement cannot interleave with another
+        # coroutine, and cannot be lost to a cancellation while queued for one.
+        self._active_provider_calls = max(0, self._active_provider_calls - 1)
 
     def exception_for(self, item_id: str | None) -> Exception:
         cause = self.cause
@@ -208,9 +210,9 @@ async def await_with_guardrails(
         done, _ = await asyncio.wait({task, *controls}, return_when=asyncio.FIRST_COMPLETED)
         if task in done:
             return await task
-        task.cancel()
-        with contextlib.suppress(asyncio.CancelledError, Exception):
-            await task
+        # Consume only the task's own outcome: a cancellation of this caller
+        # during the join must propagate, not become a timeout or abort error.
+        await cancel_and_join(task)
         if watch_abort is not None and watch_abort in done:
             assert abort_controller is not None
             raise abort_controller.exception_for(item_id)

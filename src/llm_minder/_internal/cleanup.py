@@ -153,6 +153,71 @@ async def wait_detached(future: asyncio.Future[Any]) -> None:
         future.remove_done_callback(_wake)
 
 
+def _consume_outcome(task: asyncio.Future[Any]) -> None:
+    if not task.cancelled():
+        task.exception()
+
+
+def discard_task_outcome(task: asyncio.Future[Any]) -> None:
+    """Mark a task's eventual exception retrieved, now or when it settles."""
+    if task.done():
+        _consume_outcome(task)
+    else:
+        task.add_done_callback(_consume_outcome)
+
+
+async def cancel_and_join(task: asyncio.Future[Any], *, propagate_errors: bool = False) -> None:
+    """Cancel ``task`` and wait for it without swallowing the caller's cancellation.
+
+    Awaiting the task directly cannot tell its ``CancelledError`` from the
+    caller's, so suppressing that error after ``task.cancel()`` also swallows a
+    cancellation of the caller that lands during the join. This waits through
+    :func:`wait_detached` instead, so a ``CancelledError`` here is always the
+    caller's. Like a direct await, the wait always lasts until the task settles
+    (the caller never leaves work it holds a lock or slot for still running),
+    and each caller cancellation is forwarded to the task. After the task
+    settles, the caller's first cancellation is re-raised.
+
+    Outcome rules, after the task settles:
+
+    - The task's own cancellation is always consumed.
+    - An ordinary :class:`Exception` is raised when ``propagate_errors`` is
+      true and discarded otherwise.
+    - A non-``Exception`` :class:`BaseException` (``SystemExit``,
+      ``KeyboardInterrupt``, a custom fatal error) is always raised, as the
+      ``suppress(CancelledError, Exception)`` joins this replaced did.
+    - If the caller was cancelled, its cancellation outranks an ordinary
+      exception (raising that instead would swallow the cancellation, the
+      defect this exists to prevent), but a fatal ``BaseException`` from the
+      task outranks the cancellation: process-control signals must never be
+      dropped silently, and an interpreter that is exiting does not need the
+      cancellation delivered. The caller's ``CancelledError`` is attached as the
+      fatal error's ``__context__`` only when it has none; an existing context
+      (often the task's own cancellation) is kept rather than overwritten.
+    """
+    task.cancel()
+    caller_cancelled: asyncio.CancelledError | None = None
+    while True:
+        try:
+            await wait_detached(task)
+            break
+        except asyncio.CancelledError as exc:
+            caller_cancelled = caller_cancelled or exc
+            task.cancel()
+        except BaseException:
+            discard_task_outcome(task)
+            raise
+    error = None if task.cancelled() else task.exception()
+    if error is not None and not isinstance(error, Exception):
+        if caller_cancelled is not None and error.__context__ is None:
+            error.__context__ = caller_cancelled
+        raise error
+    if caller_cancelled is not None:
+        raise caller_cancelled
+    if error is not None and propagate_errors:
+        raise error
+
+
 def owned_task_failure(
     task: asyncio.Future[Any], *, name: str, cancel_sent: bool
 ) -> BaseException | None:
