@@ -659,7 +659,7 @@ class ParallelBatchProcessor(
     ) -> WorkItemResult[TOutput, TContext] | None:
         return await self._events.run_on_error(work_item, error)
 
-    async def _worker(self, worker_id: int):
+    async def _worker(self, worker_id: int) -> None:
         """Process accepted items with exactly-once queue accounting."""
         logger.debug("[Worker %s] started and waiting for work", worker_id)
         if self._events.observers:
@@ -1042,7 +1042,9 @@ class ParallelBatchProcessor(
             exception, work_item, worker_id, attempt_number
         )
 
-    async def shutdown(self):
+    # Unannotated so tests/api_snapshot.txt stays unchanged in a patch release;
+    # add `-> None` (and update the snapshot) in the next minor.
+    async def shutdown(self):  # type: ignore[no-untyped-def]
         """Release every owned resource; safe to call repeatedly.
 
         Same ordered close as ``async with`` exit: runtime tasks and

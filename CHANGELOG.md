@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `llm_strategies` mypy override keeps only the `assignment` code it still needs,
   and the pytest filter for the removed 2-tuple `execute()` deprecation warning is
   gone.
+- mypy now runs with `disallow_untyped_defs` on `src/llm_minder/`. The missing
+  annotations are added without runtime changes; `cleanup()` and `shutdown()` keep
+  their unannotated return so the public API snapshot is unchanged.
 
 ## [1.0.0rc2] - 2026-11-10
 
