@@ -13,6 +13,15 @@ For which category each built-in classifier assigns, see
 
 ## Error classification
 
+The failures the library raises itself never reach your classifier:
+`ItemDeadlineExceeded`, `BatchDeadlineExceeded`, `BatchBudgetExceeded`,
+`BatchAbortedError`, `RateLimitRetriesExceeded`, middleware-contract and
+quota-scope errors, token-estimation errors, and artifact preparation errors
+always get their built-in category, so replay, deadline events, abort metrics and
+fail-fast behave the same with any classifier. Attempt timeouts
+(`FrameworkTimeoutError`), empty and truncated responses, and structured-output
+errors do reach it, so you can choose their retry policy.
+
 ### ErrorClassifier
 
 ::: llm_minder.strategies.ErrorClassifier
