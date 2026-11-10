@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
+  single string, including a lone `ErrorCategory` member. It used to accept one
+  and match categories by substring, so `"auth"` tripped on `"authentication"`.
+  Code that passed a bare string must wrap it, for example
+  `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
+  config, so the check covers both.
+
 ## [1.0.0rc2] - 2026-11-10
 
 The second release candidate for 1.0.0. It fixes the defects a full review of

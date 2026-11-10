@@ -14,6 +14,7 @@ from openai import APIStatusError
 from llm_minder import (
     AbortMode,
     DefaultErrorClassifier,
+    ErrorCategory,
     ErrorInfo,
     GuardrailConfig,
     ItemDeadlineExceeded,
@@ -670,6 +671,40 @@ def test_guardrail_timeout_rejects_non_numbers(field: str, value: object) -> Non
     # guardrail timeout must reject it (and non-numbers) with ValueError.
     with pytest.raises(ValueError, match=f"{field} must be a finite number"):
         GuardrailConfig(**{field: value})
+
+
+@pytest.mark.parametrize(
+    "value", ["authentication", "auth", ErrorCategory.AUTHENTICATION], ids=repr
+)
+def test_abort_on_error_categories_rejects_bare_string(value: str) -> None:
+    # A bare string would be iterated per character and matched with substring
+    # ``in``, so "auth" would trip on "authentication".
+    with pytest.raises(TypeError, match="not a single string"):
+        GuardrailConfig(abort_on_error_categories=value)  # type: ignore[arg-type]
+
+
+def test_abort_on_error_categories_string_rejected_on_revalidation() -> None:
+    guardrails = GuardrailConfig()
+    guardrails.abort_on_error_categories = "authentication"  # type: ignore[assignment]
+    with pytest.raises(TypeError, match="not a single string"):
+        ProcessorConfig(guardrails=guardrails)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        frozenset({"authentication"}),
+        {"authentication"},
+        ["authentication"],
+        ("authentication",),
+        frozenset({ErrorCategory.AUTHENTICATION}),
+    ],
+    ids=lambda v: type(v).__name__,
+)
+def test_abort_on_error_categories_accepts_collections(value: Any) -> None:
+    guardrails = GuardrailConfig(abort_on_error_categories=value)
+    assert "authentication" in guardrails.abort_on_error_categories
+    assert "auth" not in guardrails.abort_on_error_categories
 
 
 def test_openai_classifier_distinguishes_authentication_and_permission() -> None:
