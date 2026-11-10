@@ -12,8 +12,8 @@ here.
 **strategy pattern** — provider-agnostic at the framework level, with
 first-class support for several providers built in.
 
-**Current version:** v1.0.0rc1, the 1.0 release candidate and the first release
-as `llm-minder`; 1.0.0 follows a one-week soak. v0.32.0 was the last release for
+**Current version:** v1.0.0rc2, the second 1.0 release candidate (rc1 was the first release
+as `llm-minder`); 1.0.0 follows a one-week soak. v0.32.0 was the last release for
 Python 3.10 and the last as `async-batch-llm` (see `CHANGELOG.md`; `pyproject.toml` is bumped
 by the release-prep flow, so it may briefly lag `main` between releases).
 
@@ -773,6 +773,11 @@ assert result.total_items == result.succeeded + result.failed
 ## Version history
 
 Most recent first. See `CHANGELOG.md` for full per-release detail.
+
+- **v1.0.0rc2** — second release candidate. Fixes defects a full review of rc1 found:
+  cancellation lost during timeout joins and a leaked capacity slot (#294), framework failure
+  categories under custom classifiers (#289), custom-strategy model in checkpoint identity
+  (#290), Responses per-call alias overrides (#292), and upgrade hints (#291).
 
 - **v1.0.0rc1** — release candidate for 1.0.0. Renames the package to `llm-minder`
   (`LLMMinderError`, with `AsyncBatchLLMError` as an alias), removes everything 0.27

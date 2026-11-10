@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0rc2] - 2026-11-10
+
+The second release candidate for 1.0.0. It fixes the defects a full review of
+rc1 found; all of them predate rc1. One change affects existing checkpoints:
+custom strategies now include their model in the automatic checkpoint identity
+(see [Custom strategies infer their model for checkpoints](docs/migration/v1.0.md#custom-strategies-infer-their-model-for-checkpoints)).
+
+### Changed
+
+- Automatic checkpoint identity now records a custom strategy's model
+  ([#290]).
+  - A plain-string `model` attribute becomes the model id, with the strategy class
+    as provider. It used to infer `provider='str', model='unknown'`, so switching
+    models replayed the old model's results.
+  - A custom model object contributes its first non-empty `_model`, `model_name`,
+    `model_id` or `model` string.
+  - A model object with no model id, or an empty string, raises
+    `ArtifactIdentityError`, so the item fails with `artifact_preparation_error`
+    before any provider call.
+  - Built-in models, `PydanticAIStrategy`, `CallableStrategy` and explicit
+    identities are unchanged.
+  - Checkpoints these custom strategies wrote under the old identity no longer
+    match, so their items run again on resume.
+- `from llm_minder import LLMGateway` and the other removed names now raise
+  `ImportError` naming the replacement. Attribute access still raises
+  `AttributeError` with the same hint ([#291]).
+- `process_prompts`, `process_stream` and `ParallelBatchProcessor` point
+  `ProcessorConfig` keywords at `config=ProcessorConfig(...)` ([#291]).
+- `llm()` validates keyword arguments against the provider's own constructor,
+  so `llm("deepseek:…", prompt_cache_key=…)` fails up front ([#291]).
+
+### Fixed
+
+- **Cancellation during a timeout join is no longer lost** ([#294]). When the
+  caller was cancelled while a timed-out call was being joined, the cancellation
+  was swallowed:
+  - workers kept retrying after `process_all()` was cancelled, and it never
+    returned;
+  - streaming `shutdown()` hung.
+
+  Fatal `BaseException`s from the joined call still propagate.
+- A concurrency slot no longer leaks when an attempt is cancelled while releasing
+  it. The leak could deadlock `LLMCallPool` ([#294]).
+- The framework's own failures now keep their categories under a custom
+  classifier ([#289]).
+  - Before, a classifier that subclasses `ErrorClassifier` directly relabelled
+    item and batch deadlines, the batch budget, `cancel_active` aborts and the
+    rate-limit retry bound, usually as `unknown`. Middleware and quota contract
+    failures already bypassed the user classifier and are unchanged.
+  - As a result, timed-out items replayed as failures on resume,
+    `ITEM_DEADLINE_EXCEEDED` wasn't emitted, and `items_aborted` undercounted.
+- On the Responses API, a per-call or per-attempt config now overrides a model
+  default spelled with a different alias ([#292]).
+  - Token-bound aliases (`max_tokens`, `max_completion_tokens`,
+    `max_output_tokens`) work on both `OpenAIModel` and
+    `DeepSeekModel(api_surface="responses")`.
+  - `response_format`/`text.format` and `reasoning_effort`/`reasoning.effort` are
+    aliases on `OpenAIModel` only.
+  - `OpenAIModel` used to raise `ValueError` on such an override, breaking the
+    documented way to raise the token bound after a truncated response.
+    `DeepSeekModel` dropped a per-call `max_tokens`.
+  - Nested `text` and `reasoning` settings now merge key by key on both models.
+- `llm()` closes the HTTP clients it built when model construction fails
+  ([#291]).
+- Tests use the openai SDK's own HTTP transport, so they run on SDK releases that
+  ship only `httpx2` ([#293]).
+
+[#289]: https://github.com/geoff-davis/llm-minder/pull/289
+[#290]: https://github.com/geoff-davis/llm-minder/pull/290
+[#291]: https://github.com/geoff-davis/llm-minder/pull/291
+[#292]: https://github.com/geoff-davis/llm-minder/pull/292
+[#293]: https://github.com/geoff-davis/llm-minder/pull/293
+[#294]: https://github.com/geoff-davis/llm-minder/pull/294
+
 ## [1.0.0rc1] - 2026-11-04
 
 The release candidate for 1.0.0, the first release covered by the
@@ -59,7 +133,8 @@ Read the [1.0 migration guide](docs/migration/v1.0.md) before upgrading.
 - Python 3.10. 1.0 requires Python 3.11 or newer.
 - `LLMGateway` (from `llm_minder` and `llm_minder.gateway`), `BatchProcessor`,
   `ProcessingStats` and `grounding_metadata_extractor` as public names. Accessing one
-  raises `AttributeError` naming its replacement.
+  raises `AttributeError` naming its replacement (from 1.0.0rc2, a from-import raises
+  `ImportError` with the same hint).
 - `ProcessorConfig(timeout_per_item=...)`, `ProcessorConfig.timeout_per_item` and
   `ProcessorConfig(enable_detailed_logging=...)`. Passing either keyword raises
   `TypeError` naming its replacement.
@@ -2863,7 +2938,8 @@ See **[Migration Guide](docs/archive/MIGRATION_V0_1.md)** for complete upgrade i
 [#122]: https://github.com/geoff-davis/async-batch-llm/issues/122
 [#125]: https://github.com/geoff-davis/async-batch-llm/issues/125
 
-[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc1...HEAD
+[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc2...HEAD
+[1.0.0rc2]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc1...v1.0.0rc2
 [1.0.0rc1]: https://github.com/geoff-davis/llm-minder/compare/v0.32.0...v1.0.0rc1
 [0.32.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.30.0...v0.31.0
