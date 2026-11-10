@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A `batch_timeout` abort no longer loses `BATCH_ABORTED` for later observers when an
+  earlier observer awaits in `on_event`. The run could finish (in either abort mode)
+  while the deadline task was still announcing, and finishing cancelled that task.
+  The processor now waits for a tripped deadline's announcement before
+  `BATCH_COMPLETED`, so every observer sees `BATCH_ABORTED` first.
+
 ## [1.0.0rc2] - 2026-11-10
 
 The second release candidate for 1.0.0. It fixes the defects a full review of
