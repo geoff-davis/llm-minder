@@ -341,8 +341,10 @@ def _read_artifact_records(path: Path, *, allow_create: bool) -> _ArtifactRead:
         if end == 0:
             # Only our canonical manifest prefix is eligible for recovery.
             # Foreign files must remain untouched even when allow_create=True.
+            # A crash during the first write can leave fewer bytes than the
+            # prefix itself, so a leading slice of it is a torn manifest too.
             prefix = b'{"artifact_schema_version":1,"created_at":'
-            if not raw.startswith(prefix):
+            if not (raw.startswith(prefix) or prefix.startswith(raw)):
                 raise ArtifactFormatError("Artifact has no complete manifest record")
             try:
                 manifest = json.loads(raw)
