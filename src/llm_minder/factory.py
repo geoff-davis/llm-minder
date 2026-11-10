@@ -9,6 +9,7 @@ Added in v0.20.0 (issue #95).
 
 from __future__ import annotations
 
+import contextlib
 import inspect
 import os
 from collections.abc import Callable
@@ -55,11 +56,10 @@ def _validate_model_kwargs(provider: str, kwargs: dict[str, Any]) -> None:
         "deepseek": DeepSeekModel,
         "openai-compatible": OpenAICompatibleModel,
     }[provider]
-    constructors = (
-        [model_cls.__init__]
-        if provider == "gemini"
-        else [cls.from_api_key for cls in model_cls.__mro__ if hasattr(cls, "from_api_key")]
-    )
+    # Only the provider's own from_api_key: a subclass override may drop a
+    # base-class keyword (DeepSeekModel has no prompt_cache_key), and the union
+    # over the MRO would let it through to fail inside the constructor.
+    constructors = [model_cls.__init__ if provider == "gemini" else model_cls.from_api_key]
     if provider != "gemini" and _models.AsyncOpenAI is not None:
         from openai import AsyncOpenAI
 
@@ -96,7 +96,14 @@ def _build_gemini(model_id: str, model_kwargs: dict[str, Any]) -> GeminiModel:
                 "GOOGLE_API_KEY (or GEMINI_API_KEY) environment variable."
             )
     client = _models.genai.Client(api_key=api_key)
-    model = GeminiModel(model_id, client, **model_kwargs)
+    try:
+        model = GeminiModel(model_id, client, **model_kwargs)
+    except BaseException:
+        # The model never took the client; close both of its transports.
+        _models._close_unused_client(client.aio, "aclose")
+        with contextlib.suppress(Exception):
+            client.close()
+        raise
     model._owns_client = True
     model._reopen_kwargs = {"api_key": api_key}
     return model
