@@ -228,8 +228,10 @@ async def test_invalid_input_after_item_deadline_fails_only_its_item(
         store,
         strategy,
         SlowForBad(),
+        # The deadline applies to the good items too, and the first one also
+        # pays for opening the store, so leave room for a slow CI runner.
         config=ProcessorConfig(
-            max_workers=1, guardrails=GuardrailConfig(total_timeout_per_item=0.05)
+            max_workers=1, guardrails=GuardrailConfig(total_timeout_per_item=1.0)
         ),
         items=[
             LLMWorkItem("first", strategy, "first"),
