@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-minder"
-version = "1.0.0rc1"
+version = "1.0.0rc2"
 description = "Provider-neutral asyncio toolkit for concurrent LLM calls with retries, scoped RPM/TPM admission, bounded streaming, resumable checkpoints, and deadlines."
 readme = "README.md"
 requires-python = ">=3.11"
