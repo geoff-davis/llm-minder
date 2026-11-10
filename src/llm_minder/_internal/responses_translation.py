@@ -41,8 +41,82 @@ def _error(message: str) -> ValueError:
 def _merge_same(target: dict[str, Any], key: str, value: Any, *, source: str) -> None:
     """Set ``target[key]`` unless a different value is already there."""
     if key in target and target[key] != value:
-        raise _error(f"{source} conflicts with {key}={target[key]!r}")
+        # Two spellings of one field in the same config: switching surfaces
+        # wouldn't help, so don't point at the Chat Completions opt-out.
+        raise ValueError(
+            f"OpenAI Responses: {source} conflicts with {key}={target[key]!r} in the "
+            "same config; pass only one of them."
+        )
     target[key] = value
+
+
+_MAX_TOKEN_KEYS = ("max_output_tokens", "max_completion_tokens", "max_tokens")
+
+
+def merge_request_configs(
+    defaults: Mapping[str, Any] | None,
+    override: Mapping[str, Any] | None,
+    *,
+    chat_aliases: bool = True,
+) -> dict[str, Any]:
+    """Merge a model's default request fields with one call's, per-call winning.
+
+    Both sides may use Chat aliases or native Responses names. A per-call field
+    replaces the default for every spelling of it, so a default
+    ``max_output_tokens`` and a per-call ``max_tokens`` don't collide in
+    :func:`translate_request_config`. The nested ``text`` and ``reasoning``
+    mappings merge key by key: a per-call ``text.format`` or ``response_format``
+    replaces the default format and keeps other default ``text`` keys; a per-call
+    ``reasoning.effort`` or ``reasoning_effort`` does the same for ``reasoning``.
+    Two spellings within one side are left for the translator to reject.
+    ``chat_aliases=False`` (DeepSeek, which doesn't translate ``response_format``
+    or ``reasoning_effort``) merges the nested mappings without treating those
+    keys as aliases. Works on copies; neither argument is mutated.
+    """
+    merged = copy.deepcopy(dict(defaults or {}))
+    if not override:
+        return merged
+    incoming = copy.deepcopy(dict(override))
+    if any(key in incoming for key in _MAX_TOKEN_KEYS):
+        for key in _MAX_TOKEN_KEYS:
+            merged.pop(key, None)
+    _merge_nested(
+        merged,
+        incoming,
+        nested="text",
+        field="format",
+        alias="response_format" if chat_aliases else None,
+    )
+    _merge_nested(
+        merged,
+        incoming,
+        nested="reasoning",
+        field="effort",
+        alias="reasoning_effort" if chat_aliases else None,
+    )
+    merged.update(incoming)
+    return merged
+
+
+def _merge_nested(
+    merged: dict[str, Any],
+    incoming: dict[str, Any],
+    *,
+    nested: str,
+    field: str,
+    alias: str | None,
+) -> None:
+    base = merged.get(nested)
+    overlay = incoming.get(nested)
+    aliased = alias is not None and alias in incoming
+    if aliased or (isinstance(overlay, Mapping) and field in overlay):
+        if alias is not None:
+            merged.pop(alias, None)
+        if isinstance(base, Mapping):
+            base = {key: value for key, value in base.items() if key != field}
+            merged[nested] = base
+    if isinstance(base, Mapping) and isinstance(overlay, Mapping):
+        incoming[nested] = {**base, **overlay}
 
 
 def translate_tool(tool: Any) -> Any:

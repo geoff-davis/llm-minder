@@ -23,7 +23,11 @@ from typing import TYPE_CHECKING, Any, NoReturn, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
 
-from ._internal.responses_translation import translate_input, translate_request_config
+from ._internal.responses_translation import (
+    merge_request_configs,
+    translate_input,
+    translate_request_config,
+)
 from .base import LLMResponse
 from .strategies.errors import (
     EmptyResponseError,
@@ -1902,6 +1906,23 @@ class _ResponsesSurface:
     _default_extra_headers: dict[str, str] | None
     _metadata_extractors: list[MetadataExtractor] | None
     _client_used: bool
+    api_surface: str
+    # Whether the request translator treats response_format/reasoning_effort as
+    # aliases of text.format/reasoning.effort (OpenAI yes, DeepSeek no).
+    _responses_chat_aliases = False
+
+    def _merge_call_config(
+        self, base: Mapping[str, Any] | None, override: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        """Merge a strategy's ``generation_config`` with one attempt's override.
+
+        Used by ``ModelStrategy.execute()``. On the Responses surface a field
+        replaces every alias of itself (see ``merge_request_configs``); on Chat
+        Completions it stays a shallow top-level merge.
+        """
+        if self.api_surface != "responses":
+            return {**(base or {}), **override}
+        return merge_request_configs(base, override, chat_aliases=self._responses_chat_aliases)
 
     async def _generate_responses(
         self,
@@ -1982,12 +2003,14 @@ class _ResponsesSurface:
         si = system_instruction or self._default_system_instruction
         has_system = isinstance(input_value, list) and _has_system_message(input_value)
 
-        request_config = dict(self._default_extra_body or {})
-        if config:
-            request_config.update(config)
-        if "max_tokens" in request_config:
-            request_config.setdefault("max_output_tokens", request_config["max_tokens"])
-            request_config.pop("max_tokens")
+        # Per-call fields beat defaults under any alias, so a per-call
+        # max_tokens replaces a default max_output_tokens. Every token alias the
+        # merge drops must then map to the native field, or the bound is lost.
+        request_config = merge_request_configs(self._default_extra_body, config, chat_aliases=False)
+        for alias in ("max_completion_tokens", "max_tokens"):
+            if alias in request_config:
+                request_config.setdefault("max_output_tokens", request_config[alias])
+                request_config.pop(alias)
 
         call_kwargs: dict[str, Any] = {"model": self._model, "input": input_value}
         if si is not None and not has_system:
@@ -2174,6 +2197,7 @@ class OpenAIModel(_ResponsesSurface, OpenAICompatibleModel):
     _default_base_url: str | None = None
     _install_extras: str = "openai"
     _responses_label = "OpenAI"
+    _responses_chat_aliases = True
 
     def __init__(
         self,
@@ -2303,9 +2327,11 @@ class OpenAIModel(_ResponsesSurface, OpenAICompatibleModel):
         config: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Translate Chat-style fields to Responses; ``store=False`` by default."""
-        merged: dict[str, Any] = dict(self._default_extra_body or {})
-        if config:
-            merged.update(config)
+        # Per-call fields beat defaults under any alias (max_tokens vs
+        # max_output_tokens, response_format vs text.format, ...).
+        merged = merge_request_configs(
+            self._default_extra_body, config, chat_aliases=self._responses_chat_aliases
+        )
         request_config = translate_request_config(merged)
         request_config.setdefault("store", False)
         input_value = translate_input(prompt)
