@@ -178,8 +178,21 @@ async def cancel_and_join(task: asyncio.Future[Any], *, propagate_errors: bool =
     and each caller cancellation is forwarded to the task. After the task
     settles, the caller's first cancellation is re-raised.
 
-    The task's own cancellation is consumed. Its exception is raised when
-    ``propagate_errors`` is true and discarded otherwise.
+    Outcome rules, after the task settles:
+
+    - The task's own cancellation is always consumed.
+    - An ordinary :class:`Exception` is raised when ``propagate_errors`` is
+      true and discarded otherwise.
+    - A non-``Exception`` :class:`BaseException` (``SystemExit``,
+      ``KeyboardInterrupt``, a custom fatal error) is always raised, as the
+      ``suppress(CancelledError, Exception)`` joins this replaced did.
+    - If the caller was cancelled, its cancellation outranks an ordinary
+      exception (raising that instead would swallow the cancellation, the
+      defect this exists to prevent), but a fatal ``BaseException`` from the
+      task outranks the cancellation: process-control signals must never be
+      dropped silently, and an interpreter that is exiting does not need the
+      cancellation delivered. The caller's ``CancelledError`` is attached as the
+      fatal error's ``__context__``.
     """
     task.cancel()
     caller_cancelled: asyncio.CancelledError | None = None
@@ -193,15 +206,15 @@ async def cancel_and_join(task: asyncio.Future[Any], *, propagate_errors: bool =
         except BaseException:
             discard_task_outcome(task)
             raise
+    error = None if task.cancelled() else task.exception()
+    if error is not None and not isinstance(error, Exception):
+        if caller_cancelled is not None and error.__context__ is None:
+            error.__context__ = caller_cancelled
+        raise error
     if caller_cancelled is not None:
-        discard_task_outcome(task)
         raise caller_cancelled
-    if task.cancelled():
-        return
-    if propagate_errors:
-        task.result()
-    else:
-        task.exception()
+    if error is not None and propagate_errors:
+        raise error
 
 
 def owned_task_failure(

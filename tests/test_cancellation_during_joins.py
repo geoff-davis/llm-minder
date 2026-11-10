@@ -186,6 +186,89 @@ async def test_cancel_and_join_error_propagation() -> None:
     await cancel_and_join(failed_again)  # discarded by default
 
 
+class _Fatal(BaseException):
+    """A non-Exception outcome that no join may discard."""
+
+
+async def test_guardrail_join_propagates_fatal_base_exception_from_child() -> None:
+    async def child() -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            raise _Fatal("fatal during cancellation")
+
+    with pytest.raises(_Fatal, match="fatal during cancellation"):
+        await await_with_guardrails(
+            child(), item_deadline=None, item_id="x", operation_timeout=0.01
+        )
+
+
+@pytest.mark.parametrize("propagate_errors", [False, True])
+async def test_cancel_and_join_raises_process_control_outcome(propagate_errors: bool) -> None:
+    future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+    future.set_exception(SystemExit(7))
+    with pytest.raises(SystemExit) as raised:
+        await cancel_and_join(future, propagate_errors=propagate_errors)
+    assert raised.value.code == 7
+
+
+def _child_ending_with(error: BaseException, cancelling: asyncio.Event, release: asyncio.Event):
+    async def child() -> None:
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelling.set()
+            while not release.is_set():
+                try:
+                    await release.wait()
+                except asyncio.CancelledError:
+                    pass
+            raise error from None
+
+    return child()
+
+
+@pytest.mark.parametrize("propagate_errors", [False, True])
+async def test_cancel_and_join_fatal_outcome_outranks_caller_cancellation(
+    propagate_errors: bool,
+) -> None:
+    cancelling, release = asyncio.Event(), asyncio.Event()
+    child_task = asyncio.create_task(_child_ending_with(_Fatal("fatal"), cancelling, release))
+    try:
+        await asyncio.sleep(0)
+        joiner = asyncio.create_task(cancel_and_join(child_task, propagate_errors=propagate_errors))
+        await asyncio.wait_for(cancelling.wait(), GUARD)
+        joiner.cancel()
+        release.set()
+        with pytest.raises(_Fatal) as raised:
+            await asyncio.wait_for(joiner, GUARD)
+        assert isinstance(raised.value.__context__, asyncio.CancelledError)
+    finally:
+        release.set()
+        child_task.cancel()
+        await asyncio.gather(child_task, return_exceptions=True)
+
+
+@pytest.mark.parametrize("propagate_errors", [False, True])
+async def test_cancel_and_join_caller_cancellation_outranks_ordinary_exception(
+    propagate_errors: bool,
+) -> None:
+    cancelling, release = asyncio.Event(), asyncio.Event()
+    child_task = asyncio.create_task(_child_ending_with(ValueError("late"), cancelling, release))
+    try:
+        await asyncio.sleep(0)
+        joiner = asyncio.create_task(cancel_and_join(child_task, propagate_errors=propagate_errors))
+        await asyncio.wait_for(cancelling.wait(), GUARD)
+        joiner.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(joiner, GUARD)
+    finally:
+        release.set()
+        child_task.cancel()
+        await asyncio.gather(child_task, return_exceptions=True)
+
+
 # --------------------------------------------------------------------------- #
 # End to end: cancelling process_all() must stop retries
 # --------------------------------------------------------------------------- #
