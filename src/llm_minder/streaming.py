@@ -18,7 +18,6 @@ results waiting for a slow consumer; zero preserves the unbounded default.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import dataclasses
 import inspect
 import logging
@@ -35,7 +34,7 @@ from collections.abc import (
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from ._internal.capacity import capture_capacity_warning_source
-from ._internal.cleanup import CleanupStep
+from ._internal.cleanup import CleanupStep, cancel_and_join
 from ._internal.input_validation import (
     processor_keyword_hints,
     validate_keywords,
@@ -396,11 +395,12 @@ async def _process_stream_impl(
                 yield result
         finally:
             abort_watcher.cancel()
-            if not producer.done():
-                producer.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await producer
-            await asyncio.gather(abort_watcher, return_exceptions=True)
+            try:
+                # Re-raises a producer error; the consumer's own cancellation
+                # during this join propagates instead of being swallowed.
+                await cancel_and_join(producer, propagate_errors=True)
+            finally:
+                await asyncio.gather(abort_watcher, return_exceptions=True)
     except BaseException as exc:  # noqa: BLE001 - re-raised after cleanup below
         body_error = exc
         raise

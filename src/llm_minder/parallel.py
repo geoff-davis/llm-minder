@@ -1,7 +1,6 @@
 """Parallel batch processor"""
 
 import asyncio
-import contextlib
 import functools
 import logging
 import time
@@ -22,7 +21,7 @@ from ._internal.capacity import (
     warn_if_worker_capacity_exceeded,
 )
 from ._internal.classifier_resolver import StrategyClassifierResolver
-from ._internal.cleanup import CleanupAction, CleanupStep
+from ._internal.cleanup import CleanupAction, CleanupStep, cancel_and_join
 from ._internal.event_dispatcher import EventDispatcher
 from ._internal.guardrails import (
     AbortCause,
@@ -425,9 +424,7 @@ class ParallelBatchProcessor(
         task = self._batch_timeout_task
         if task is None or task.done() or task is asyncio.current_task():
             return
-        task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+        await cancel_and_join(task, propagate_errors=True)
 
     def _cleanup_steps(self) -> list[CleanupAction]:
         """Runtime tasks, then admission resources, then strategies, then the store."""

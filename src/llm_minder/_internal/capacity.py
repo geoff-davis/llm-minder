@@ -56,6 +56,7 @@ class _CapacityGate:
         self._active = 0
         self._started = time.perf_counter()
         self._condition = asyncio.Condition()
+        self._notifiers: set[asyncio.Task[None]] = set()
 
     def _current_limit(self, now: float) -> tuple[int, float | None]:
         if self._ramp is None:
@@ -123,8 +124,22 @@ class _CapacityGate:
                     ramp_wait += max(0.0, time.perf_counter() - segment_started)
 
     async def release(self) -> None:
+        # Free the slot before any await. The Condition lock can be held across
+        # loop iterations (a waiter's child task re-acquires it), so a release
+        # queued for it can be cancelled; that must not leak the slot.
+        self._active -= 1
+        try:
+            await self._notify_waiters()
+        except asyncio.CancelledError:
+            # The caller was cancelled before it could take the lock. Hand the
+            # wake-up to a task it does not own so waiters still see the slot.
+            notifier = asyncio.create_task(self._notify_waiters())
+            self._notifiers.add(notifier)
+            notifier.add_done_callback(self._notifiers.discard)
+            raise
+
+    async def _notify_waiters(self) -> None:
         async with self._condition:
-            self._active -= 1
             self._condition.notify_all()
 
 

@@ -153,6 +153,57 @@ async def wait_detached(future: asyncio.Future[Any]) -> None:
         future.remove_done_callback(_wake)
 
 
+def _consume_outcome(task: asyncio.Future[Any]) -> None:
+    if not task.cancelled():
+        task.exception()
+
+
+def discard_task_outcome(task: asyncio.Future[Any]) -> None:
+    """Mark a task's eventual exception retrieved, now or when it settles."""
+    if task.done():
+        _consume_outcome(task)
+    else:
+        task.add_done_callback(_consume_outcome)
+
+
+async def cancel_and_join(task: asyncio.Future[Any], *, propagate_errors: bool = False) -> None:
+    """Cancel ``task`` and wait for it without swallowing the caller's cancellation.
+
+    Awaiting the task directly cannot tell its ``CancelledError`` from the
+    caller's, so suppressing that error after ``task.cancel()`` also swallows a
+    cancellation of the caller that lands during the join. This waits through
+    :func:`wait_detached` instead, so a ``CancelledError`` here is always the
+    caller's. Like a direct await, the wait always lasts until the task settles
+    (the caller never leaves work it holds a lock or slot for still running),
+    and each caller cancellation is forwarded to the task. After the task
+    settles, the caller's first cancellation is re-raised.
+
+    The task's own cancellation is consumed. Its exception is raised when
+    ``propagate_errors`` is true and discarded otherwise.
+    """
+    task.cancel()
+    caller_cancelled: asyncio.CancelledError | None = None
+    while True:
+        try:
+            await wait_detached(task)
+            break
+        except asyncio.CancelledError as exc:
+            caller_cancelled = caller_cancelled or exc
+            task.cancel()
+        except BaseException:
+            discard_task_outcome(task)
+            raise
+    if caller_cancelled is not None:
+        discard_task_outcome(task)
+        raise caller_cancelled
+    if task.cancelled():
+        return
+    if propagate_errors:
+        task.result()
+    else:
+        task.exception()
+
+
 def owned_task_failure(
     task: asyncio.Future[Any], *, name: str, cancel_sent: bool
 ) -> BaseException | None:

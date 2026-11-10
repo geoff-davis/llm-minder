@@ -31,6 +31,7 @@ from ._internal.cleanup import (
     CleanupStep,
     CloseState,
     SharedCloser,
+    cancel_and_join,
     first_failure,
     wait_all_detached,
     wait_detached,
@@ -2047,9 +2048,7 @@ class BatchProcessor(ABC, Generic[TInput, TOutput, TContext]):
             await asyncio.gather(*self._workers, return_exceptions=True)
             raise
         else:
-            worker_failure.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await worker_failure
+            await cancel_and_join(worker_failure, propagate_errors=True)
             # Unblock workers only after every accepted item called task_done().
             for _ in range(self.max_workers):
                 await self._queue.put(None)
