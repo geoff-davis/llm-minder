@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Development
+
+- The rate-limit retry-exemption tests use the shared fast retry and rate-limit
+  fixtures, and the context-manager typing check moved from a mypy subprocess test
+  into the strict-typed public API sample (`make typecheck-user`). The default test
+  run is about 40 seconds shorter.
+
 ## [1.0.0rc2] - 2026-11-10
 
 The second release candidate for 1.0.0. It fixes the defects a full review of

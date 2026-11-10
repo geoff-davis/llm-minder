@@ -33,3 +33,8 @@ async def test_sample_processor_runs(tmp_path):
 async def test_sample_high_level_api_runs():
     outputs = await sample_app.run_high_level()
     assert sorted(o["length"] for o in outputs) == [1, 2, 3, 4, 5]
+
+
+@pytest.mark.asyncio
+async def test_sample_callable_processor_runs():
+    assert await sample_app.run_callable_processor() == {"length": 3}
