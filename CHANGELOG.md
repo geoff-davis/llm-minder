@@ -51,21 +51,24 @@ custom strategies now include their model in the automatic checkpoint identity
 - A concurrency slot no longer leaks when an attempt is cancelled while releasing
   it. The leak could deadlock `LLMCallPool` ([#294]).
 - The framework's own failures now keep their categories under a custom
-  classifier: item and batch deadlines, the batch budget, `cancel_active` aborts,
-  the rate-limit retry bound, and the middleware and quota contracts ([#289]).
+  classifier ([#289]).
   - Before, a classifier that subclasses `ErrorClassifier` directly relabelled
-    them, usually as `unknown`.
+    item and batch deadlines, the batch budget, `cancel_active` aborts and the
+    rate-limit retry bound, usually as `unknown`. Middleware and quota contract
+    failures already bypassed the user classifier and are unchanged.
   - As a result, timed-out items replayed as failures on resume,
     `ITEM_DEADLINE_EXCEEDED` wasn't emitted, and `items_aborted` undercounted.
 - On the Responses API, a per-call or per-attempt config now overrides a model
-  default under any alias ([#292]).
-  - The aliases are `max_tokens`, `max_completion_tokens` and
-    `max_output_tokens`; `response_format` and `text.format`; and
-    `reasoning_effort` and `reasoning.effort`.
+  default spelled with a different alias ([#292]).
+  - Token-bound aliases (`max_tokens`, `max_completion_tokens`,
+    `max_output_tokens`) work on both `OpenAIModel` and
+    `DeepSeekModel(api_surface="responses")`.
+  - `response_format`/`text.format` and `reasoning_effort`/`reasoning.effort` are
+    aliases on `OpenAIModel` only.
   - `OpenAIModel` used to raise `ValueError` on such an override, breaking the
     documented way to raise the token bound after a truncated response.
-    `DeepSeekModel` dropped the per-call value.
-  - Nested `text` and `reasoning` settings now merge key by key.
+    `DeepSeekModel` dropped a per-call `max_tokens`.
+  - Nested `text` and `reasoning` settings now merge key by key on both models.
 - `llm()` closes the HTTP clients it built when model construction fails
   ([#291]).
 - Tests use the openai SDK's own HTTP transport, so they run on SDK releases that
