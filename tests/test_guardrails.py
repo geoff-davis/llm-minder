@@ -8,7 +8,6 @@ import math
 from collections import Counter
 from typing import Any
 
-import httpx
 import pytest
 from openai import APIStatusError
 
@@ -33,6 +32,7 @@ from llm_minder.base import LLMWorkItem, RetryState, TokenUsage, WorkItemResult
 from llm_minder.call_pool import LLMCallPool
 from llm_minder.middleware import BaseMiddleware
 from llm_minder.observers import BaseObserver, ProcessingEvent
+from tests._openai_http import openai_http
 
 _TOKENS: TokenUsage = {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3}
 
@@ -673,6 +673,7 @@ def test_guardrail_timeout_rejects_non_numbers(field: str, value: object) -> Non
 
 
 def test_openai_classifier_distinguishes_authentication_and_permission() -> None:
+    httpx = openai_http()
     classifier = OpenAIErrorClassifier()
     for status, category in ((401, "authentication"), (403, "permission_denied")):
         response = httpx.Response(

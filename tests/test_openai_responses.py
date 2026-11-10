@@ -8,7 +8,6 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-import httpx
 import pytest
 
 import llm_minder.models as models
@@ -35,6 +34,10 @@ from llm_minder._internal.responses_translation import (
 from llm_minder.artifacts import infer_artifact_identity
 from llm_minder.base import LLMWorkItem
 from llm_minder.classifiers.openai import OpenAIErrorClassifier
+from tests._openai_http import openai_http
+
+# The HTTP library the installed openai SDK uses (httpx before 3.x, httpx2 after).
+httpx = openai_http()
 
 # ── Translation (pure functions) ─────────────────────────────────────────────
 
@@ -244,9 +247,9 @@ class _Server:
         self.reply = reply
         self.requests: list[dict[str, Any]] = []
         self.paths: list[str] = []
-        self.headers: list[httpx.Headers] = []
+        self.headers: list[Any] = []
 
-    def handle(self, request: httpx.Request) -> httpx.Response:
+    def handle(self, request: Any) -> Any:
         self.paths.append(request.url.path)
         self.headers.append(request.headers)
         self.requests.append(json.loads(request.content))
