@@ -225,3 +225,126 @@ def test_prov9_factory_lists_valid_kwargs(provider):
         llm(f"{provider}:test", api_key="test", typo=True)
     assert "typo" in str(raised.value)
     assert "temperature" not in str(raised.value)
+
+
+def _record_openai_clients(monkeypatch):
+    """Record every AsyncOpenAI client the models build."""
+    built = []
+    real = models_module.AsyncOpenAI
+
+    def construct(**kwargs):
+        client = real(**kwargs)
+        built.append(client)
+        return client
+
+    monkeypatch.setattr(models_module, "AsyncOpenAI", construct)
+    return built
+
+
+@pytest.mark.parametrize(
+    ("spec", "kwargs", "unknown"),
+    [
+        # DeepSeekModel.from_api_key drops the base class's prompt_cache_key.
+        ("deepseek:deepseek-v4-flash", {"prompt_cache_key": "k"}, "prompt_cache_key"),
+        (
+            "openai-compatible:m",
+            {"base_url": "http://x/v1", "api_surface": "responses"},
+            "api_surface",
+        ),
+        ("openrouter:m", {"thinking": False}, "thinking"),
+        ("openai:m", {"response_schema": dict}, "response_schema"),
+    ],
+)
+def test_factory_rejects_kwargs_the_provider_does_not_take(monkeypatch, spec, kwargs, unknown):
+    built = _record_openai_clients(monkeypatch)
+    provider = spec.partition(":")[0]
+    with pytest.raises(TypeError, match=f"Unknown {provider} model kwargs: {unknown}\\."):
+        llm(spec, api_key="sk-test", **kwargs)
+    assert built == []
+
+
+@pytest.mark.parametrize(
+    ("spec", "kwargs"),
+    [
+        ("openai:m", {"prompt_cache_key": "k", "api_surface": "chat_completions"}),
+        ("openrouter:m", {"prompt_cache_key": "k", "referer": "r", "title": "t"}),
+        ("openai-compatible:m", {"base_url": "http://x/v1", "prompt_cache_key": "k"}),
+        ("deepseek:m", {"thinking": False, "api_surface": "responses", "cache_group": "g"}),
+    ],
+)
+def test_factory_accepts_each_providers_own_kwargs(spec, kwargs):
+    assert llm(spec, api_key="sk-test", **kwargs).model is not None
+
+
+def test_failed_model_construction_closes_the_built_client(monkeypatch):
+    built = _record_openai_clients(monkeypatch)
+    with pytest.raises(ValueError, match="api_surface"):
+        DeepSeekModel.from_api_key("m", api_key="sk-test", api_surface="bogus")
+    assert len(built) == 1
+    assert built[0].is_closed()
+
+
+@pytest.mark.asyncio
+async def test_failed_model_construction_closes_the_client_inside_a_loop(monkeypatch):
+    import asyncio
+
+    built = _record_openai_clients(monkeypatch)
+    with pytest.raises(ValueError, match="api_surface"):
+        OpenAIModel.from_api_key("m", api_key="sk-test", api_surface="bogus")
+    for _ in range(3):
+        await asyncio.sleep(0)
+    assert len(built) == 1
+    assert built[0].is_closed()
+
+
+def test_failed_client_construction_closes_the_sized_http_client(monkeypatch):
+    http_clients = []
+    real = models_module._build_openai_http_client
+
+    def build(max_connections):
+        http_clients.append(real(max_connections))
+        return http_clients[-1]
+
+    monkeypatch.setattr(models_module, "_build_openai_http_client", build)
+    with pytest.raises(TypeError, match="not_an_sdk_option"):
+        OpenAIModel.from_api_key("m", api_key="sk-test", max_connections=2, not_an_sdk_option=1)
+    assert len(http_clients) == 1
+    assert http_clients[0].is_closed
+
+
+def test_missing_key_builds_no_sized_http_client(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setattr(
+        models_module,
+        "_build_openai_http_client",
+        lambda n: pytest.fail("built an http client before resolving the key"),
+    )
+    with pytest.raises(ValueError, match="DEEPSEEK_API_KEY"):
+        DeepSeekModel.from_api_key("m", max_connections=2)
+
+
+def test_failed_model_construction_leaves_a_caller_http_client_open(monkeypatch):
+    from openai import DefaultAsyncHttpxClient
+
+    mine = DefaultAsyncHttpxClient()
+    with pytest.raises(ValueError, match="api_surface"):
+        DeepSeekModel.from_api_key("m", api_key="sk-test", api_surface="bogus", http_client=mine)
+    assert not mine.is_closed
+
+
+def test_factory_gemini_construction_failure_closes_the_client(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    clients = []
+
+    def construct(**kwargs):
+        client = MagicMock()
+        client.aio.aclose = AsyncMock()
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(models_module.genai, "Client", construct)
+    with pytest.raises(ValueError, match="cache_group"):
+        llm("gemini:test", api_key="test", cache_group="")
+    clients[0].aio.aclose.assert_awaited_once()
+    clients[0].close.assert_called_once()

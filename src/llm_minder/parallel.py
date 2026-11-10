@@ -5,7 +5,7 @@ import contextlib
 import functools
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Generic, cast
 
 from ._internal.admission import AdmissionGateClosed, AdmissionRegistry
@@ -30,7 +30,7 @@ from ._internal.guardrails import (
     BatchAdmissionStopped,
     await_with_guardrails,
 )
-from ._internal.input_validation import REMOVED_PROCESSOR_KEYWORDS, suggest_keyword_errors
+from ._internal.input_validation import processor_keyword_hints, suggest_keyword_errors
 from ._internal.item_executor import ItemExecutor, _detach_traceback
 from ._internal.rate_limit_coordinator import RateLimitCoordinator
 from ._internal.strategy_lifecycle import StrategyLifecycle
@@ -147,7 +147,10 @@ class ParallelBatchProcessor(
     - Configuration objects for easier setup
     """
 
-    @functools.partial(suggest_keyword_errors, removed=REMOVED_PROCESSOR_KEYWORDS)
+    @functools.partial(
+        suggest_keyword_errors,
+        removed=processor_keyword_hints(f.name for f in fields(ProcessorConfig)),
+    )
     def __init__(
         self,
         *,

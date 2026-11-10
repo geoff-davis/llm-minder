@@ -46,6 +46,7 @@ Type Aliases:
 from typing import Any, TypeVar
 
 from ._internal.cleanup import CleanupInterruptedError
+from ._internal.removed_names import removed_name_error as _removed_name_error
 from .artifacts import (
     ArtifactError,
     ArtifactFormatError,
@@ -362,9 +363,9 @@ except PackageNotFoundError:
     __version__ = "0.0.0+dev"
 
 
-# Names removed from the public API in 1.0. Looking one up raises the usual
-# AttributeError (so ``from llm_minder import X`` raises ImportError), with
-# a pointer to the replacement.
+# Names removed from the public API in 1.0. Attribute access raises
+# AttributeError and ``from llm_minder import X`` raises ImportError, both
+# with a pointer to the replacement (see _internal/removed_names.py).
 _REMOVED_NAMES: dict[str, str] = {
     "LLMGateway": "LLMGateway was removed in 1.0; use LLMCallPool, the same class.",
     "BatchProcessor": (
@@ -384,7 +385,5 @@ _REMOVED_NAMES: dict[str, str] = {
 
 def __getattr__(name: str) -> Any:
     if name in _REMOVED_NAMES:
-        raise AttributeError(
-            f"module {__name__!r} has no attribute {name!r}. {_REMOVED_NAMES[name]}"
-        )
+        raise _removed_name_error(__name__, __file__, name, _REMOVED_NAMES[name])
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

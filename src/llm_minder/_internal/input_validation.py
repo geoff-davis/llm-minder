@@ -44,6 +44,31 @@ REMOVED_PROCESSOR_KEYWORDS = {
 }
 
 
+def processor_keyword_hints(
+    config_fields: Iterable[str], *, concurrency_shorthand: bool = False
+) -> dict[str, str]:
+    """Hints for keywords passed to a processor-building entry point.
+
+    ``ProcessorConfig`` settings point at ``config=ProcessorConfig(...)``, and
+    the keywords 1.0 removed point at their replacement *on the config*: the
+    plain ``_REMOVED_KEYWORDS`` hints describe ``ProcessorConfig``'s own
+    keywords, which these entry points don't accept. ``concurrency_shorthand``
+    mentions the ``concurrency=`` shorthand the streaming helpers accept.
+    """
+    hints = {
+        name: f"It is a ProcessorConfig setting; use config=ProcessorConfig({name}=...)."
+        for name in config_fields
+    }
+    hints["enable_detailed_logging"] = _REMOVED_KEYWORDS["enable_detailed_logging"]
+    hints.update(REMOVED_PROCESSOR_KEYWORDS)
+    if concurrency_shorthand:
+        hints["max_workers"] = (
+            "It is a ProcessorConfig setting; use concurrency=... or "
+            "config=ProcessorConfig(max_workers=...)."
+        )
+    return hints
+
+
 def validate_keywords(
     kwargs: Mapping[str, object],
     allowed: Iterable[str],
