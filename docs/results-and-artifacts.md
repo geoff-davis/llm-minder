@@ -190,11 +190,35 @@ same path, for each run. Path-based inspection (`read_results`) still works
 afterward.
 
 When no `ArtifactIdentity` is given, `provider` and `model` are inferred from
-ordinary model-backed strategies at run start (built-in models map to their
-provider names; custom models use their class name) and the remaining identity
-fields default to `"unversioned"`. Prompt — and, by default, context — still
-participate in the per-item compatibility fingerprint, so a changed prompt or
-a changed model never silently replays a stale result.
+the strategy at run start and the remaining identity fields default to
+`"unversioned"`. Prompt — and, by default, context — still participate in the
+per-item compatibility fingerprint, so a changed prompt or a changed model never
+silently replays a stale result. Inference reads the strategy's `model`
+attribute:
+
+| `strategy.model` | Inferred `provider` | Inferred `model` |
+| --- | --- | --- |
+| A built-in model (`GeminiModel`, `OpenAIModel`, ...) | `gemini`, `openai`, `openrouter`, `deepseek` | the model name |
+| A plain string, such as `self.model = "model-a"` | the strategy class name | the string |
+| Another object with a non-empty string `_model`, `model_name`, `model_id` or `model` attribute (checked in that order) | the object's class name | that attribute |
+| Another object without one, or an empty string | — | raises `ArtifactIdentityError` |
+| No `model` attribute (for example `PydanticAIStrategy`) | the strategy class name | `agent.model` or its `model_name`, else `"unknown"` |
+
+The error case fails each item with `artifact_preparation_error` before any
+provider call, because the store cannot tell when such a model changes. Pass
+`identity=ArtifactIdentity(provider=..., model=...)` to the store, or give the
+strategy an `artifact_identity` property that returns one.
+
+Before 1.0.0rc2, a custom strategy whose `model` was a plain string, or an object
+without `_model`, inferred `model="unknown"` (with `provider="str"` for a string),
+so switching models replayed the old model's results. Checkpoints written that way
+no longer match: on resume those items run again and append new records, and the
+old records stay in the file as audit history. Nothing is replayed from them and
+no error is raised. To keep reusing them, pass an explicit
+`ArtifactIdentity(provider="str", model="unknown", prompt_version="unversioned",
+parser_version="unversioned", application_version="unversioned")` (or the custom
+model's class name as `provider`), but only if you are sure the model never
+changed.
 
 Automatic identity covers the provider and the model. `OpenAIModel` adds its API
 surface when it is the Responses API, and `DeepSeekStrategy` adds its API surface and
