@@ -481,7 +481,10 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
         Override it to change provider config per attempt without overriding
         ``execute()``, for example to raise an output-token bound after a
         truncated response. The returned keys replace the same top-level keys of
-        ``generation_config`` for this call only (a shallow merge); ``None``, the
+        ``generation_config`` for this call only (a shallow merge; on the
+        Responses surface of the built-in OpenAI and DeepSeek models they also
+        replace other spellings of the same field, such as ``max_tokens`` for
+        ``max_output_tokens``); ``None``, the
         default, sends ``generation_config`` unchanged. Don't mutate
         ``self.generation_config``: the strategy may be shared by concurrent
         items.
@@ -516,7 +519,14 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
         config = self.generation_config
         attempt_config = self.attempt_generation_config(attempt, state)
         if attempt_config is not None:
-            config = {**(config or {}), **attempt_config}
+            # Built-in Responses models replace every alias of an overridden field
+            # (an attempt's max_tokens beats a generation_config max_output_tokens).
+            # Looked up on the class so a mock model doesn't fabricate the hook.
+            merge = getattr(type(self.model), "_merge_call_config", None)
+            if merge is not None:
+                config = merge(self.model, config, attempt_config)
+            else:
+                config = {**(config or {}), **attempt_config}
         if config is not None:
             gen_kwargs["config"] = config
         async with provider_call(state):

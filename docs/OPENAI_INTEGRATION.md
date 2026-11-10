@@ -95,6 +95,13 @@ keep working:
 | Chat `tools` / `tool_choice` | Responses function tools. An omitted `strict` becomes `false`, matching Chat. |
 | Chat message lists, including image parts, assistant `tool_calls` and `tool` replies | Responses input items |
 
+A per-call `config` (or an `attempt_generation_config()` override) replaces the
+model's `extra_body` default under any spelling: a per-call `max_tokens` beats a
+default `max_output_tokens`, and a per-call `text.format` beats the `json_mode`
+`response_format`. Other `text` and `reasoning` keys from the default are kept.
+Two spellings of one field in the same config with different values still raise
+`ValueError`.
+
 Fields with no Responses equivalent (`n`, `stop`, `seed`,
 `presence_penalty`, `frequency_penalty`, `logit_bias`, legacy
 `functions`/`function_call`), unsupported content parts (audio, files in Chat

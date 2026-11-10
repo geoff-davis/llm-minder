@@ -237,7 +237,10 @@ subclass for.
 
 To change provider config from one attempt to the next, override
 `attempt_generation_config()` rather than `execute()`. Its keys replace the same
-top-level keys of `generation_config` for that call. Timing, token accounting on
+top-level keys of `generation_config` for that call. On the Responses surface of
+`OpenAIModel` and `DeepSeekModel` they also replace other spellings of the same field,
+in `generation_config` and in the model's `extra_body`: a returned `max_tokens` beats a
+`max_output_tokens` set either place. Timing, token accounting on
 parse failures and later fixes to `execute()` still apply.
 
 ```python
