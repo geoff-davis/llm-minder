@@ -36,7 +36,11 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from ._internal.capacity import capture_capacity_warning_source
 from ._internal.cleanup import CleanupStep
-from ._internal.input_validation import validate_keywords, validate_strategy
+from ._internal.input_validation import (
+    processor_keyword_hints,
+    validate_keywords,
+    validate_strategy,
+)
 from .artifacts import ArtifactStore, ResumePolicy
 from .base import (
     BatchAdmissionClosedError,
@@ -278,6 +282,13 @@ def _apply_concurrency_shorthand(
     return dataclasses.replace(config, **overrides)
 
 
+# process_prompts/process_stream don't accept ProcessorConfig's keywords either,
+# so removed keywords point at the config (or the concurrency= shorthand).
+_STREAMING_KEYWORD_HINTS = processor_keyword_hints(
+    (f.name for f in dataclasses.fields(ProcessorConfig)), concurrency_shorthand=True
+)
+
+
 async def _process_stream_impl(
     strategy: LLMCallStrategy[TOutput],
     prompts: PromptSource,
@@ -319,6 +330,7 @@ async def _process_stream_impl(
     validate_keywords(
         processor_kwargs,
         set(inspect.signature(ParallelBatchProcessor).parameters) | {"concurrency", "progress"},
+        _STREAMING_KEYWORD_HINTS,
     )
     config = _apply_concurrency_shorthand(config, concurrency) or ProcessorConfig()
     reporter = _resolve_progress(

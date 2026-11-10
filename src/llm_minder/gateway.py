@@ -9,14 +9,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from ._internal.removed_names import removed_name_error
 from .call_pool import LLMCallPool
 
 
 def __getattr__(name: str) -> Any:
     if name == "LLMGateway":
-        raise AttributeError(
-            f"module {__name__!r} has no attribute {name!r}. LLMGateway was removed "
-            "in 1.0; use LLMCallPool, the same class."
+        raise removed_name_error(
+            __name__,
+            __file__,
+            name,
+            "LLMGateway was removed in 1.0; use LLMCallPool, the same class.",
         )
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

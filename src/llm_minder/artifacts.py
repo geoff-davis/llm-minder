@@ -103,13 +103,47 @@ _UNVERSIONED = "unversioned"
 _NO_IDENTITY_HOOK = object()
 
 
+# Attributes probed, in order, for the model id of a model object. ``_model``
+# is what every built-in model class stores; the public names cover custom
+# model wrappers (and SDK objects such as LangChain chat models).
+_MODEL_ID_ATTRIBUTES = ("_model", "model_name", "model_id", "model")
+
+
+def _custom_model_id(model_obj: Any) -> str | None:
+    for attribute in _MODEL_ID_ATTRIBUTES:
+        value = getattr(model_obj, attribute, None)
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _no_model_id_message(strategy: Any, found: str) -> str:
+    return (
+        f"Cannot infer an artifact identity for {type(strategy).__name__}: its "
+        f"`model` attribute is {found} with no model id (a non-empty string "
+        f"`_model`, `model_name`, `model_id`, or `model` attribute), so a changed "
+        "model could silently replay stale results. Pass "
+        "identity=ArtifactIdentity(provider=..., model=...) to JsonlArtifactStore "
+        "or SqliteArtifactStore, or define an `artifact_identity` property on the "
+        "strategy."
+    )
+
+
 def infer_artifact_identity(strategy: Any) -> ArtifactIdentity:
     """Derive a deterministic :class:`ArtifactIdentity` from a strategy.
 
     Used by artifact stores when no explicit identity is given (v0.20.0, issue
-    #99). ``provider`` and ``model`` come from the strategy's wrapped model
-    (built-in model classes map to their provider name; other models use their
-    class name); the version fields default to ``"unversioned"``. The result is
+    #99). ``provider`` and ``model`` come from the strategy's ``model``
+    attribute: built-in model classes map to their provider name and other model
+    objects use their class name, with the model id read from the first
+    non-empty string among ``_model``, ``model_name``, ``model_id``, and
+    ``model``. A plain string ``model`` is the model id, with the strategy class
+    name as provider. A model object (or empty string) with no model id raises
+    :class:`ArtifactIdentityError` rather than inferring ``"unknown"``, which
+    would let a changed model replay stale results. Strategies with no ``model``
+    attribute fall back to an ``agent.model`` (PydanticAI) or to
+    provider=<strategy class>, model ``"unknown"``. The version fields default
+    to ``"unversioned"``. The result is
     deterministic for the same strategy setup across processes, so resume keeps
     working — and changing the model changes the identity fingerprint, which
     invalidates reuse. One live automatic store requires every prepared item to
@@ -138,10 +172,21 @@ def infer_artifact_identity(strategy: Any) -> ArtifactIdentity:
     extra: dict[str, Any] = {}
 
     model_obj = getattr(strategy, "model", None)
-    if model_obj is not None:
-        raw_model = getattr(model_obj, "_model", None)
-        if isinstance(raw_model, str) and raw_model:
-            model_id = raw_model
+    if isinstance(model_obj, str):
+        # Custom strategies often keep the model name as a plain string
+        # (``self.model = "model-a"``). Before 1.0.0rc2 this inferred
+        # provider="str", model="unknown", so changing the model replayed stale
+        # results. The string is the model id; the strategy class stands in for
+        # the provider, as it does for strategies with no model at all.
+        if not model_obj:
+            raise ArtifactIdentityError(_no_model_id_message(strategy, "an empty string"))
+        model_id = model_obj
+    elif model_obj is not None:
+        model_id = _custom_model_id(model_obj)
+        if model_id is None:
+            raise ArtifactIdentityError(
+                _no_model_id_message(strategy, f"a {type(model_obj).__name__} instance")
+            )
         provider = _PROVIDER_BY_MODEL_CLASS.get(type(model_obj).__name__)
         if provider is None:
             provider = type(model_obj).__name__

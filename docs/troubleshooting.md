@@ -438,9 +438,9 @@ recovery, deadlines, and artifacts.
 **Related guide.** [Single Call and Shared Call Pool](api/single-call-pool.md) and
 [Choosing Between ABL and Alternatives](comparison.md#litellm-and-other-ai-gateways).
 
-## `AttributeError` or `TypeError` after upgrading to 1.0
+## `ImportError`, `AttributeError` or `TypeError` after upgrading to 1.0
 
-**Symptom.** Code that ran on 0.x raises `AttributeError` for a top-level name,
+**Symptom.** Code that ran on 0.x raises `ImportError` or `AttributeError` for a top-level name,
 `TypeError` for a keyword argument, or fails items whose `execute()` returns two
 values.
 

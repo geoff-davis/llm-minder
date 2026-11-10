@@ -155,9 +155,10 @@ possible changes in a minor release, announced in the changelog.
 
 ### Removed in 1.0
 
-Everything deprecated in 0.27 and 0.28 is gone. Removed top-level names raise
-`AttributeError` with a hint naming the replacement, and the removed `ProcessorConfig`
-and `ParallelBatchProcessor` keyword arguments raise `TypeError` with one.
+Everything deprecated in 0.27 and 0.28 is gone. Removed top-level names raise an error
+with a hint naming the replacement (`ImportError` from `from llm_minder import ...`,
+`AttributeError` from attribute access), and the removed `ProcessorConfig` and
+`ParallelBatchProcessor` keyword arguments raise `TypeError` with one.
 
 | Removed | Replacement |
 | --- | --- |

@@ -12,6 +12,7 @@ import base64
 import copy
 import enum
 import hashlib
+import inspect
 import io
 import json
 import logging
@@ -90,6 +91,40 @@ def _build_openai_http_client(max_connections: int) -> Any:
             max_keepalive_connections=max_connections,
         )
     )
+
+
+# Close tasks for unused clients, held so the loop doesn't drop them mid-close.
+_PENDING_CLIENT_CLOSES: set["asyncio.Task[None]"] = set()
+
+
+def _close_unused_client(resource: Any, method: str) -> None:
+    """Close a client whose model failed to construct, from synchronous code.
+
+    The client has sent no request, so closing only releases its transport
+    objects. Inside a running event loop the close runs as a task; otherwise
+    on a private loop. Failures are logged, never raised over the original
+    construction error.
+    """
+
+    async def close() -> None:
+        try:
+            result = getattr(resource, method)()
+            if inspect.isawaitable(result):
+                await result
+        except Exception:
+            logger.debug("Failed to close unused %s", type(resource).__name__, exc_info=True)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            asyncio.run(close())
+        except Exception:
+            logger.debug("Failed to close unused %s", type(resource).__name__, exc_info=True)
+        return
+    task = loop.create_task(close())
+    _PENDING_CLIENT_CLOSES.add(task)
+    task.add_done_callback(_PENDING_CLIENT_CLOSES.discard)
 
 
 def _fallback_cache_content(value: Any) -> Any:
@@ -1741,22 +1776,7 @@ class OpenAICompatibleModel:
                 f"openai is required for {cls.__name__}. "
                 f"Install with: pip install 'llm-minder[{cls._install_extras}]'"
             )
-        caller_http_client = client_kwargs.get("http_client") is not None
-        if max_connections is not None:
-            if "http_client" in client_kwargs:
-                raise ValueError(
-                    "Pass either max_connections or http_client, not both. "
-                    "max_connections is a convenience for sizing the default "
-                    "httpx pool; if you build your own http_client, set its "
-                    "limits there instead."
-                )
-            if max_connections < 1:
-                raise ValueError(f"max_connections must be >= 1; got {max_connections}.")
-            client_kwargs["http_client"] = _build_openai_http_client(max_connections)
-        effective_base_url = base_url or cls._default_base_url
-        if effective_base_url is not None:
-            client_kwargs.setdefault("base_url", effective_base_url)
-
+        # Resolve the key before building any client, so a missing key leaks nothing.
         resolved_key = api_key
         if resolved_key is None and cls._api_key_env_var is not None:
             import os as _os
@@ -1769,6 +1789,24 @@ class OpenAICompatibleModel:
                     f"{key_env} environment variable."
                 )
 
+        caller_http_client = client_kwargs.get("http_client") is not None
+        own_http_client: Any = None
+        if max_connections is not None:
+            if "http_client" in client_kwargs:
+                raise ValueError(
+                    "Pass either max_connections or http_client, not both. "
+                    "max_connections is a convenience for sizing the default "
+                    "httpx pool; if you build your own http_client, set its "
+                    "limits there instead."
+                )
+            if max_connections < 1:
+                raise ValueError(f"max_connections must be >= 1; got {max_connections}.")
+            own_http_client = _build_openai_http_client(max_connections)
+            client_kwargs["http_client"] = own_http_client
+        effective_base_url = base_url or cls._default_base_url
+        if effective_base_url is not None:
+            client_kwargs.setdefault("base_url", effective_base_url)
+
         # When resolved_key is None and the SDK can self-resolve (OpenAIModel),
         # don't pass api_key at all — letting the SDK raise its own clear
         # error if neither path produces one.
@@ -1779,10 +1817,12 @@ class OpenAICompatibleModel:
 
         try:
             client = AsyncOpenAI(**client_kwargs)
-        except OpenAIError as exc:
+        except BaseException as exc:
+            if own_http_client is not None:
+                _close_unused_client(own_http_client, "aclose")
             # Keep all SDK authentication mechanisms and configuration errors.
             # Only translate its known missing-credentials diagnostics.
-            if str(exc).startswith(
+            if isinstance(exc, OpenAIError) and str(exc).startswith(
                 (
                     "Missing credentials.",
                     "The api_key client option must be set",
@@ -1802,26 +1842,33 @@ class OpenAICompatibleModel:
                 effective_extra_body.update(extra_body)
             extra_body = effective_extra_body
 
-        instance = cls(
-            model,
-            client,
-            system_instruction=system_instruction,
-            extra_headers=extra_headers,
-            extra_body=extra_body,
-            metadata_extractors=metadata_extractors,
-            # Only when set, so subclasses written for the older constructor
-            # signature (and DeepSeekModel, which takes no prompt_cache_key) keep
-            # working with this factory.
-            **{
-                name: value
-                for name, value in (
-                    ("prompt_cache_key", prompt_cache_key),
-                    ("cache_group", cache_group),
-                )
-                if value is not None
-            },
-            **(_instance_kwargs or {}),
-        )
+        try:
+            instance = cls(
+                model,
+                client,
+                system_instruction=system_instruction,
+                extra_headers=extra_headers,
+                extra_body=extra_body,
+                metadata_extractors=metadata_extractors,
+                # Only when set, so subclasses written for the older constructor
+                # signature (and DeepSeekModel, which takes no prompt_cache_key) keep
+                # working with this factory.
+                **{
+                    name: value
+                    for name, value in (
+                        ("prompt_cache_key", prompt_cache_key),
+                        ("cache_group", cache_group),
+                    )
+                    if value is not None
+                },
+                **(_instance_kwargs or {}),
+            )
+        except BaseException:
+            # The model never took the client, so release it here — unless the
+            # caller supplied its transport, which closing the client would close.
+            if not caller_http_client:
+                _close_unused_client(client, "close")
+            raise
         instance.max_concurrency = max_connections
         instance._owns_client = True
         instance._caller_http_client = caller_http_client
