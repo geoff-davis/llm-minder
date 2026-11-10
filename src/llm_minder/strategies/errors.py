@@ -546,46 +546,69 @@ class ErrorInfo:
                 self.suggested_wait = max(0.0, self.suggested_wait)
 
 
+def _framework_owned_error_info(exception: Exception) -> ErrorInfo | None:
+    """Return the framework's fixed classification for a framework-owned failure.
+
+    These exceptions are raised by llm-minder itself (guardrails, the
+    rate-limit retry bound, middleware and quota contracts), never by a
+    provider. Framework policy keys on their categories — replay eligibility,
+    deadline events, abort metrics, fail-fast — so the executor applies this
+    classification before consulting any classifier, including a custom
+    ``ErrorClassifier`` subclass that does not call the built-in prelude.
+
+    Provider-condition exceptions (attempt timeouts, empty/truncated responses,
+    structured-output failures) are deliberately excluded: a custom classifier
+    may legitimately choose their retry policy.
+    """
+    if isinstance(exception, (MiddlewareContractError, QuotaScopeError)):
+        return ErrorInfo(
+            is_retryable=False,
+            is_rate_limit=False,
+            is_timeout=False,
+            error_category=exception.error_category,
+        )
+    if isinstance(exception, ItemDeadlineExceeded):
+        return ErrorInfo(
+            is_retryable=False,
+            is_rate_limit=False,
+            is_timeout=True,
+            error_category="framework_total_item_timeout",
+        )
+    if isinstance(exception, BatchDeadlineExceeded):
+        return ErrorInfo(
+            is_retryable=False,
+            is_rate_limit=False,
+            is_timeout=True,
+            error_category="batch_deadline_exceeded",
+        )
+    if isinstance(exception, BatchBudgetExceeded):
+        return ErrorInfo(
+            is_retryable=False,
+            is_rate_limit=False,
+            is_timeout=False,
+            error_category="batch_budget_exceeded",
+        )
+    if isinstance(exception, BatchAbortedError):
+        return ErrorInfo(
+            is_retryable=False,
+            is_rate_limit=False,
+            is_timeout=False,
+            error_category="batch_aborted",
+        )
+
+    if isinstance(exception, RateLimitRetriesExceeded):
+        return ErrorInfo(False, False, False, "rate_limit_retries_exceeded")
+    return None
+
+
 class ErrorClassifier(ABC):
     """Abstract base class for classifying LLM provider errors."""
 
     def _framework_prelude(self, exception: Exception) -> ErrorInfo | None:
         """Classify framework-owned failures before provider/message dispatch."""
-        if isinstance(exception, (MiddlewareContractError, QuotaScopeError)):
-            return ErrorInfo(
-                is_retryable=False,
-                is_rate_limit=False,
-                is_timeout=False,
-                error_category=exception.error_category,
-            )
-        if isinstance(exception, ItemDeadlineExceeded):
-            return ErrorInfo(
-                is_retryable=False,
-                is_rate_limit=False,
-                is_timeout=True,
-                error_category="framework_total_item_timeout",
-            )
-        if isinstance(exception, BatchDeadlineExceeded):
-            return ErrorInfo(
-                is_retryable=False,
-                is_rate_limit=False,
-                is_timeout=True,
-                error_category="batch_deadline_exceeded",
-            )
-        if isinstance(exception, BatchBudgetExceeded):
-            return ErrorInfo(
-                is_retryable=False,
-                is_rate_limit=False,
-                is_timeout=False,
-                error_category="batch_budget_exceeded",
-            )
-        if isinstance(exception, BatchAbortedError):
-            return ErrorInfo(
-                is_retryable=False,
-                is_rate_limit=False,
-                is_timeout=False,
-                error_category="batch_aborted",
-            )
+        owned = _framework_owned_error_info(exception)
+        if owned is not None:
+            return owned
 
         if isinstance(exception, StructuredOutputSchemaError):
             return ErrorInfo(
@@ -605,8 +628,6 @@ class ErrorClassifier(ABC):
 
         if isinstance(exception, FrameworkTimeoutError):
             return ErrorInfo(True, False, True, "framework_timeout")
-        if isinstance(exception, RateLimitRetriesExceeded):
-            return ErrorInfo(False, False, False, "rate_limit_retries_exceeded")
         if isinstance(exception, TruncatedResponseError):
             return ErrorInfo(False, False, False, "response_truncated")
         if isinstance(exception, EmptyResponseError):
