@@ -11,15 +11,22 @@ import pytest
 from llm_minder import (
     ArtifactError,
     ArtifactIdentity,
+    ArtifactIdentityError,
     CallableStrategy,
     CallOutcome,
+    GeminiModel,
+    GeminiStrategy,
     JsonlArtifactStore,
     LLMCallStrategy,
     LLMWorkItem,
+    ModelStrategy,
     OpenAIModel,
     OpenAIStrategy,
+    OpenRouterModel,
+    OpenRouterStrategy,
     ParallelBatchProcessor,
     ProcessorConfig,
+    PydanticAIStrategy,
     ResumePolicy,
     SqliteArtifactStore,
     WorkItemResult,
@@ -606,3 +613,152 @@ class TestUnresolvedIdentityGuards:
         with pytest.raises(ArtifactError, match="without a\\s+resolved identity"):
             _ = [r async for r in store.iter_results()]
         await store.close()
+
+
+# --- custom-strategy model ids (1.0.0rc2) -----------------------------------
+# Before rc2 a plain-string ``self.model`` inferred provider="str",
+# model="unknown", so changing the model silently replayed stale results.
+
+
+class StringModelStrategy(LLMCallStrategy[str]):
+    """The documented custom-strategy pattern: ``self.model = model``."""
+
+    def __init__(self, model):
+        self.model = model
+        self.calls = 0
+
+    async def execute(self, prompt, attempt, timeout, state=None):
+        self.calls += 1
+        tokens = {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+        return f"{self.model}:{prompt}", tokens, None
+
+
+class NamedModel:
+    def __init__(self, **attrs):
+        for name, value in attrs.items():
+            setattr(self, name, value)
+
+
+class TestCustomModelIdInference:
+    def test_string_model_is_model_id_with_strategy_provider(self):
+        identity = infer_artifact_identity(StringModelStrategy("model-a"))
+        assert identity.provider == "StringModelStrategy"
+        assert identity.model == "model-a"
+        assert identity != infer_artifact_identity(StringModelStrategy("model-b"))
+
+    @pytest.mark.parametrize("attribute", ["model_name", "model_id", "model"])
+    def test_custom_model_object_public_id_attributes(self, attribute):
+        identity = infer_artifact_identity(
+            StringModelStrategy(NamedModel(**{attribute: "custom-1"}))
+        )
+        assert identity.provider == "NamedModel"
+        assert identity.model == "custom-1"
+
+    def test_private_model_attribute_wins(self):
+        identity = infer_artifact_identity(
+            StringModelStrategy(NamedModel(_model="private", model_name="public"))
+        )
+        assert identity.model == "private"
+
+    @pytest.mark.parametrize(
+        "model",
+        [pytest.param(NamedModel(), id="object"), pytest.param("", id="empty-string")],
+    )
+    def test_model_without_id_raises(self, model):
+        with pytest.raises(ArtifactIdentityError, match="identity=ArtifactIdentity"):
+            infer_artifact_identity(StringModelStrategy(model))
+
+    def test_explicit_identity_hook_still_wins(self):
+        class Hooked(StringModelStrategy):
+            artifact_identity = ArtifactIdentity(provider="p", model="m")
+
+        assert infer_artifact_identity(Hooked(NamedModel())) == ArtifactIdentity(
+            provider="p", model="m"
+        )
+
+
+def _fake_client():
+    from unittest.mock import MagicMock
+
+    return MagicMock()
+
+
+@pytest.mark.parametrize(
+    ("make_strategy", "provider", "model"),
+    [
+        pytest.param(
+            lambda: GeminiStrategy(GeminiModel("gemini-x", _fake_client())),
+            "gemini",
+            "gemini-x",
+            id="gemini",
+        ),
+        pytest.param(
+            lambda: OpenRouterStrategy(OpenRouterModel("vendor/m", _fake_client())),
+            "openrouter",
+            "vendor/m",
+            id="openrouter",
+        ),
+        pytest.param(
+            lambda: ModelStrategy(
+                OpenAIModel("gpt-x", _fake_client(), api_surface="chat_completions")
+            ),
+            "openai",
+            "gpt-x",
+            id="openai-chat",
+        ),
+        pytest.param(
+            lambda: PydanticAIStrategy(agent=NamedModel(model="agent-model")),
+            "PydanticAIStrategy",
+            "agent-model",
+            id="pydantic-ai",
+        ),
+    ],
+)
+def test_builtin_identities_unchanged(make_strategy, provider, model):
+    identity = infer_artifact_identity(make_strategy())
+    assert (identity.provider, identity.model) == (provider, model)
+
+
+STORES = [
+    pytest.param(JsonlArtifactStore, ".jsonl", id="jsonl"),
+    pytest.param(SqliteArtifactStore, ".sqlite", id="sqlite"),
+]
+
+
+@pytest.mark.parametrize(("store_type", "suffix"), STORES)
+async def test_changed_string_model_does_not_replay(tmp_path, store_type, suffix):
+    path = tmp_path / f"run{suffix}"
+    first = StringModelStrategy("model-a")
+    await process_prompts(first, ["p1", "p2"], artifact_store=store_type(path))
+    assert first.calls == 2
+
+    changed = StringModelStrategy("model-b")
+    batch = await process_prompts(
+        changed,
+        ["p1", "p2"],
+        artifact_store=store_type(path),
+        resume=ResumePolicy.REUSE_SUCCESSES,
+    )
+    assert changed.calls == 2
+    assert sorted(r.output for r in batch.results) == ["model-b:p1", "model-b:p2"]
+    assert not any(r.replayed_from_artifact for r in batch.results)
+
+    same = StringModelStrategy("model-b")
+    batch = await process_prompts(
+        same,
+        ["p1", "p2"],
+        artifact_store=store_type(path),
+        resume=ResumePolicy.REUSE_SUCCESSES,
+    )
+    assert same.calls == 0
+    assert all(r.replayed_from_artifact for r in batch.results)
+
+
+@pytest.mark.parametrize(("store_type", "suffix"), STORES)
+async def test_custom_model_without_id_fails_before_provider_call(tmp_path, store_type, suffix):
+    strategy = StringModelStrategy(NamedModel())
+    batch = await process_prompts(
+        strategy, ["p1"], artifact_store=store_type(tmp_path / f"run{suffix}")
+    )
+    assert strategy.calls == 0
+    assert batch.results[0].error_category == "artifact_preparation_error"

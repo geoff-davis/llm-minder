@@ -45,6 +45,7 @@ from .cache_groups import CacheGroupTracker
 from .core import ProcessorConfig
 from .llm_strategies import LLMCallStrategy
 from .single import unwrap_result
+from .strategies.errors import _framework_owned_error_info
 
 TOutput = TypeVar("TOutput")
 
@@ -276,6 +277,8 @@ class LLMCallPool(Generic[TOutput]):
         if not isinstance(result.exception, Exception):
             return None
         classifier = self._host._classifier_resolver.resolve(self._strategy)
+        if _framework_owned_error_info(result.exception) is not None:
+            return None
         try:
             return classifier.classify(result.exception).hint
         except Exception:
