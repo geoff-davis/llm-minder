@@ -17,8 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the pytest filter for the removed 2-tuple `execute()` deprecation warning is
   gone.
 - mypy now runs with `disallow_untyped_defs` on `src/llm_minder/`. The missing
-  annotations are added without runtime changes; `cleanup()` and `shutdown()` keep
-  their unannotated return so the public API snapshot is unchanged.
+  annotations are added without runtime changes. `ParallelBatchProcessor.cleanup()`
+  and `shutdown()` now declare `-> None`, which they already returned.
 
 ## [1.0.0rc2] - 2026-11-10
 
