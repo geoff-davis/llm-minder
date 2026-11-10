@@ -52,6 +52,7 @@ from ..strategies import (
     TokenEstimationError,
     TokenEstimatorRequired,
 )
+from ..strategies.errors import _framework_owned_error_info
 from ..token_estimation import TokenEstimate
 from ..token_extractor import TokenUsageObservation
 from .admission import (
@@ -188,13 +189,18 @@ def _classify_error(
             is_timeout=False,
             error_category="artifact_preparation_error",
         )
-    elif isinstance(exception, (TokenEstimationError, MiddlewareContractError, QuotaScopeError)):
+    elif isinstance(exception, TokenEstimationError):
         error_info = ErrorInfo(
             is_retryable=False,
             is_rate_limit=False,
             is_timeout=False,
             error_category=exception.error_category,
         )
+    elif (owned := _framework_owned_error_info(exception)) is not None:
+        # Guardrail, rate-limit-bound, middleware and quota failures are raised
+        # by the framework, and replay, events, metrics and fail-fast key on
+        # their categories. A custom classifier must not relabel them.
+        error_info = owned
     else:
         try:
             error_info = classifier.classify(exception)
