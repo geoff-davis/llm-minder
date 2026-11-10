@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixtures, and the context-manager typing check moved from a mypy subprocess test
   into the strict-typed public API sample (`make typecheck-user`). The default test
   run is about 40 seconds shorter.
+- The `llm_strategies` mypy override keeps only the `assignment` code it still needs,
+  and the pytest filter for the removed 2-tuple `execute()` deprecation warning is
+  gone.
 
 ## [1.0.0rc2] - 2026-11-10
 

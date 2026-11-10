@@ -201,7 +201,7 @@ warn_unused_ignores = false  # Allow unused ignores for optional dependencies
 
 [[tool.mypy.overrides]]
 module = "llm_minder.llm_strategies"
-disable_error_code = ["override", "arg-type", "attr-defined", "assignment"]
+disable_error_code = ["assignment"]  # parsed str/BaseModel output assigned to TOutput
 
 [[tool.mypy.overrides]]
 module = "llm_minder.base"
@@ -232,9 +232,6 @@ addopts = "-m 'not slow and not integration and not benchmark'"  # Skip slow, in
 timeout = 60
 filterwarnings = [
     "ignore::pytest.PytestCollectionWarning",
-    # Many test strategies still return the deprecated 2-tuple from execute();
-    # tests/test_deprecations.py asserts the warning itself.
-    "ignore:.*returned a 2-tuple \\(output, tokens\\):DeprecationWarning",
     # google-genai's own import-time warning on Python 3.14 (not ours); the
     # migration guide documents the same filter for users.
     "ignore::DeprecationWarning:google.genai.types",
