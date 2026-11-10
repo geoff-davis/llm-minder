@@ -20,6 +20,7 @@ from llm_minder.models import (
     _coerce_to_messages,
     _has_system_message,
 )
+from tests._openai_http import openai_http
 
 
 def _build_response(
@@ -579,7 +580,7 @@ def _sdk_json(request) -> dict:
 @pytest.mark.parametrize("api_surface", ["responses", "chat_completions"])
 @pytest.mark.parametrize("surface", ["call", "batch", "direct"])
 async def test_prov1_owned_model_reopens_after_cleanup(surface, api_surface, monkeypatch):
-    import httpx
+    httpx = openai_http()
     from openai import AsyncOpenAI as SDKClient
 
     import llm_minder.models as models
@@ -613,7 +614,7 @@ async def test_prov1_owned_model_reopens_after_cleanup(surface, api_surface, mon
 
 
 async def test_prov1_caller_transport_survives_model_cleanup():
-    import httpx
+    httpx = openai_http()
 
     transport = httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(200))
@@ -631,7 +632,7 @@ async def test_prov1_caller_transport_survives_model_cleanup():
 async def test_prov1_two_strategies_share_owned_model_until_last_release(api_surface, monkeypatch):
     import asyncio
 
-    import httpx
+    httpx = openai_http()
     from openai import AsyncOpenAI
 
     from llm_minder import OpenAIStrategy, ProcessorConfig, RetryConfig, call_result, models

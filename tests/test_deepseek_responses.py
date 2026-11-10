@@ -20,6 +20,7 @@ from llm_minder import (
 )
 from llm_minder.artifacts import infer_artifact_identity
 from llm_minder.classifiers.openai import OpenAIErrorClassifier
+from tests._openai_http import openai_http
 
 
 class Verdict(BaseModel):
@@ -290,7 +291,7 @@ def test_responses_requires_callable_client_capability(client):
 async def test_real_sdk_responses_request_roundtrip_without_network(model_id):
     import json
 
-    import httpx
+    httpx = openai_http()
     from openai import AsyncOpenAI
 
     requests = []
