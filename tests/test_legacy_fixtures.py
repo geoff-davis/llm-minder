@@ -36,6 +36,7 @@ RELEASES = {
     "v0_30": "0.30.0",
     "v0_31": "0.31.0",
     "v0_32": "0.32.0",
+    "v1_0": "1.0.0",
 }
 STORES = [
     (release, name, store)
@@ -71,6 +72,7 @@ def test_every_release_has_its_fixtures():
         "v0_30": 2,
         "v0_31": 2,
         "v0_32": 2,
+        "v1_0": 2,
     }
     for release, version in RELEASES.items():
         assert (FIXTURES / release / "VERSION").read_text().strip() == version
