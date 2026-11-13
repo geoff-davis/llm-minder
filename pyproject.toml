@@ -161,7 +161,7 @@ exclude = [
 # they don't change the published package metadata.
 constraint-dependencies = [
     "authlib>=1.9.1",
-    "dnspython>=2.9.0",
+    "dnspython>=2.9.2",
     "pillow>=13.0.0",
 ]
 
