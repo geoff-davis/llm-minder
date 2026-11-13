@@ -55,12 +55,68 @@ def test_tools_and_tool_choice_are_flattened_with_explicit_strict() -> None:
     out = translate_request_config(config)
     assert out["tools"] == [
         {"type": "function", "name": "a", "parameters": {"type": "object"}, "strict": False},
-        {"type": "function", "name": "b", "strict": True},
+        {
+            "type": "function",
+            "name": "b",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        },
         {"type": "web_search"},
     ]
     assert out["tool_choice"] == {"type": "function", "name": "a"}
     assert translate_request_config({"tool_choice": "required"})["tool_choice"] == "required"
     assert config == original  # never mutated
+
+
+def test_tool_without_parameters_gets_an_empty_object_schema() -> None:
+    # Chat lets a no-argument function omit "parameters"; the Responses
+    # function tool requires the key.
+    out = translate_request_config(
+        {"tools": [{"type": "function", "function": {"name": "now", "description": "time"}}]}
+    )
+    assert out["tools"] == [
+        {
+            "type": "function",
+            "name": "now",
+            "description": "time",
+            "parameters": {"type": "object", "properties": {}},
+            "strict": False,
+        }
+    ]
+
+
+def test_translated_tools_validate_against_the_sdk_tool_schema() -> None:
+    pydantic = pytest.importorskip("pydantic")
+    from openai.types.responses import FunctionToolParam
+
+    adapter = pydantic.TypeAdapter(FunctionToolParam)
+    out = translate_request_config(
+        {
+            "tools": [
+                {"type": "function", "function": {"name": "now"}},
+                {"type": "function", "function": {"name": "strict_now", "strict": True}},
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "with_args",
+                        "parameters": {"type": "object", "properties": {"x": {"type": "string"}}},
+                    },
+                },
+            ]
+        }
+    )
+    for tool in out["tools"]:
+        adapter.validate_python(tool)
+    # Tools that declare parameters keep them unchanged.
+    assert out["tools"][2]["parameters"] == {
+        "type": "object",
+        "properties": {"x": {"type": "string"}},
+    }
 
 
 def test_message_translation_covers_parts_tool_calls_and_native_items() -> None:

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
+  single string, including a lone `ErrorCategory` member. It used to accept one
+  and match categories by substring, so `"auth"` tripped on `"authentication"`.
+  Code that passed a bare string must wrap it, for example
+  `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
+  config, so the check covers both.
+- On the OpenAI Responses API, a Chat-style function tool with no `parameters`
+  now gets an empty object schema. The translated tool used to omit the key,
+  which the Responses function-tool type requires. Tools that declare
+  `parameters` are unchanged.
 - A `batch_timeout` abort no longer loses `BATCH_ABORTED` for later observers when an
   earlier observer awaits in `on_event`. The run could finish (in either abort mode)
   while the deadline task was still announcing, and finishing cancelled that task.

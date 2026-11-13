@@ -131,7 +131,17 @@ def translate_tool(tool: Any) -> Any:
             translated[key] = copy.deepcopy(function[key])
     # Chat functions are non-strict unless strict is set; Responses defaults
     # differ, so make the Chat behavior explicit.
-    translated["strict"] = bool(function.get("strict", False))
+    strict = bool(function.get("strict", False))
+    translated["strict"] = strict
+    if "parameters" not in translated:
+        # Chat lets a no-argument function omit parameters; Responses function
+        # tools require the key. Send an empty object schema (strict mode also
+        # needs required and additionalProperties spelled out).
+        translated["parameters"] = (
+            {"type": "object", "properties": {}, "required": [], "additionalProperties": False}
+            if strict
+            else {"type": "object", "properties": {}}
+        )
     return translated
 
 

@@ -92,7 +92,7 @@ keep working:
 | `response_format` (JSON object or JSON schema), `json_mode=True` | `text.format` |
 | `reasoning_effort` | `reasoning.effort` |
 | `logprobs=True`, `top_logprobs` | `include=["message.output_text.logprobs"]`, `top_logprobs` |
-| Chat `tools` / `tool_choice` | Responses function tools. An omitted `strict` becomes `false`, matching Chat. |
+| Chat `tools` / `tool_choice` | Responses function tools. An omitted `strict` becomes `false`, matching Chat, and an omitted `parameters` becomes an empty object schema. |
 | Chat message lists, including image parts, assistant `tool_calls` and `tool` replies | Responses input items |
 
 A per-call `config` (or an `attempt_generation_config()` override) replaces the
