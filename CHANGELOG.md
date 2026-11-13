@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `opentelemetry-api` arrives only through optional extras, and the wheel doesn't pin it.
   Two `ty:ignore` comments use the rules' new names.
 - Dependabot no longer proposes `pymdown-extensions` 13, which needs Python 3.11.5 or later.
+- The lock-only floor for `dnspython` rises to 2.9.2, for CVE-2026-128089. It arrives only
+  through optional extras, and the wheel doesn't pin it.
 
 ## [1.0.0] - 2026-11-12
 
