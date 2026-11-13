@@ -525,8 +525,9 @@ Key test files:
 - `test_cache_expiration_multiworker.py`, `test_cache_tag_matching.py`
   — Gemini cache lifecycle.
 - `test_legacy_fixtures.py` — artifacts written by v0.18, v0.21, v0.24.1, v0.26,
-  v0.27, v0.28, v0.29, v0.30, v0.31, v0.32, and v1.0 still read and replay (fixtures in `tests/fixtures/`; add one
-  per release via `scripts/write_legacy_fixtures.py`, see `/release-prep`).
+  v0.27, v0.28, v0.29, v0.30, v0.31, v0.32, v1.0, and v1.0.1 still read and replay
+  (fixtures in `tests/fixtures/`; add one per release via
+  `scripts/write_legacy_fixtures.py`, see `/release-prep`).
 - `test_removed_in_1_0.py`, `test_stability_page.py`, `test_categories.py` —
   the 1.0 removals and their hints, every `__all__` name classified on `docs/stability.md`,
   and every produced error/timeout category in `ErrorCategory`/`TimeoutCategory`.
