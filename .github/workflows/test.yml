@@ -207,6 +207,13 @@ jobs:
             tests/test_gemini_strategies.py tests/test_gemini_api_versions.py
             tests/test_cache_tag_matching.py tests/test_cache_expiration_multiworker.py
             tests/test_cache_auto_renew.py tests/test_error_classifiers.py
+        - label: "google-genai 3.x"
+          requirement: "google-genai>=3,<4"
+          companions: "openai pydantic-ai-slim"
+          tests: >-
+            tests/test_gemini_strategies.py tests/test_gemini_api_versions.py
+            tests/test_cache_tag_matching.py tests/test_cache_expiration_multiworker.py
+            tests/test_cache_auto_renew.py tests/test_error_classifiers.py
         - label: "pydantic-ai floor"
           requirement: "pydantic-ai==1.32.0"
           companions: "google-genai"

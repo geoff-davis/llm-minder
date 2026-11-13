@@ -427,7 +427,7 @@ the project's release-prep flow.
     `test-macos`;
   - `quality` (ruff lint and format, mypy, ty, `make package-check`; markdownlint
     runs only in the prek hook and `make ci`, not in CI);
-  - `sdk-compat`, a ten-leg matrix running each SDK's floor and the latest release
+  - `sdk-compat`, an eleven-leg matrix running each SDK's floor and the latest release
     of every supported major (openai, google-genai, pydantic-ai);
   - `scale-smoke`, `docs-build`, and `security` (pip-audit on the locked runtime
     deps, npm audit).
