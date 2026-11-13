@@ -16,6 +16,7 @@
 | v1.0.0rc1 | Release candidate for 1.0: renamed to `llm-minder`, 0.27/0.28 deprecations removed, Python 3.11+, stable provider-output views, and the frozen [stable API](stability.md). See the [migration guide](migration/v1.0.md). |
 | v1.0.0rc2 | Second release candidate: fixes from a full review of rc1 (cancellation, capacity, classifier categories, checkpoint identity, Responses overrides, upgrade hints). See the [migration guide](migration/v1.0.md). |
 | v1.0.0 | First stable release, identical to rc2, and the start of the [API stability promise](stability.md). See the [migration guide](migration/v1.0.md). |
+| v1.0.1 | Bug fixes from a review of 1.0: abort events, deadline-expired checkpoint inputs, guardrail category validation, Responses tool schemas, and store crash recovery. |
 
 Deferred executor, storage, and API simplification work is tracked in
 [#176](https://github.com/geoff-davis/llm-minder/issues/176).
