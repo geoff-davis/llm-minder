@@ -26,6 +26,10 @@ updates:
       # banner during builds; pyproject.toml pins <1.2.3 (#209).
       - dependency-name: "mkdocs-redirects"
         versions: [">=1.2.3"]
+      # 13.0 requires Python >=3.11.5, below our 3.11 floor, so the lockfile can't
+      # resolve it. Drop this when requires-python reaches 3.11.5 or later.
+      - dependency-name: "pymdown-extensions"
+        versions: [">=13"]
     groups:
       python:
         patterns:
