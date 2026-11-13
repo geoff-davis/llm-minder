@@ -14,6 +14,7 @@ from openai import APIStatusError
 from llm_minder import (
     AbortMode,
     DefaultErrorClassifier,
+    ErrorCategory,
     ErrorInfo,
     GuardrailConfig,
     ItemDeadlineExceeded,
@@ -500,6 +501,106 @@ async def test_batch_deadline_stops_async_producer_without_task_leaks() -> None:
     assert after - before == set()
 
 
+class _AwaitingAbortObserver(BaseObserver):
+    """Awaits on BATCH_ABORTED (e.g. posting an alert) longer than the run lasts."""
+
+    def __init__(self, delay: float) -> None:
+        self.delay = delay
+
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None:
+        if event is ProcessingEvent.BATCH_ABORTED:
+            await asyncio.sleep(self.delay)
+
+
+class _EventRecorder(BaseObserver):
+    def __init__(self) -> None:
+        self.events: list[ProcessingEvent] = []
+
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None:
+        self.events.append(event)
+
+
+def _terminal_events(recorder: _EventRecorder) -> list[ProcessingEvent]:
+    return [
+        event
+        for event in recorder.events
+        if event in (ProcessingEvent.BATCH_ABORTED, ProcessingEvent.BATCH_COMPLETED)
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("abort_mode", [AbortMode.CANCEL_ACTIVE, AbortMode.DRAIN_ACTIVE])
+@pytest.mark.parametrize("api", ["process_all", "process_prompts", "process_stream"])
+async def test_batch_deadline_abort_event_reaches_observers_after_awaiting_one(
+    abort_mode: AbortMode, api: str
+) -> None:
+    # The run finishes (cancelled or drained) while the first observer is still
+    # awaiting on BATCH_ABORTED; finishing must not cancel the announcement.
+    recorders = [_EventRecorder(), _EventRecorder()]
+    observers: list[Any] = [recorders[0], _AwaitingAbortObserver(0.5), recorders[1]]
+    config = ProcessorConfig(
+        max_workers=2,
+        guardrails=GuardrailConfig(batch_timeout=0.1, abort_mode=abort_mode),
+    )
+    prompts = [str(index) for index in range(4)]
+    if api == "process_all":
+        async with ParallelBatchProcessor[None, str, None](
+            config=config, observers=observers
+        ) as processor:
+            for index, prompt in enumerate(prompts):
+                await processor.add_work(
+                    LLMWorkItem(item_id=f"i{index}", strategy=_SlowStrategy(0.25), prompt=prompt)
+                )
+            result = await processor.process_all()
+        assert result.termination.kind == "batch_timeout"
+    elif api == "process_stream":
+        results = [
+            item
+            async for item in process_stream(
+                _SlowStrategy(0.25), prompts, config=config, observers=observers
+            )
+        ]
+        assert len(results) == 4
+    else:
+        result = await process_prompts(
+            _SlowStrategy(0.25), prompts, config=config, observers=observers
+        )
+        assert result.termination.kind == "batch_timeout"
+
+    for recorder in recorders:
+        assert _terminal_events(recorder) == [
+            ProcessingEvent.BATCH_ABORTED,
+            ProcessingEvent.BATCH_COMPLETED,
+        ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("abort_mode", [AbortMode.CANCEL_ACTIVE, AbortMode.DRAIN_ACTIVE])
+async def test_fail_fast_abort_event_reaches_observers_after_awaiting_one(
+    abort_mode: AbortMode,
+) -> None:
+    # Sibling path: fail-fast announces from the worker, which the run awaits.
+    recorder = _EventRecorder()
+    result = await process_prompts(
+        _CategoryStrategy("authentication"),
+        [("trigger", "trigger"), ("later", "later")],
+        config=ProcessorConfig(
+            max_workers=1,
+            guardrails=GuardrailConfig(
+                abort_on_error_categories=frozenset({"authentication"}),
+                abort_mode=abort_mode,
+            ),
+        ),
+        error_classifier=_CategoryClassifier(),
+        observers=[_AwaitingAbortObserver(0.3), recorder],
+    )
+    assert result.termination.kind == "fail_fast"
+    assert _terminal_events(recorder) == [
+        ProcessingEvent.BATCH_ABORTED,
+        ProcessingEvent.BATCH_COMPLETED,
+    ]
+
+
 class _CategoryError(Exception):
     def __init__(self, category: str) -> None:
         super().__init__(category)
@@ -670,6 +771,40 @@ def test_guardrail_timeout_rejects_non_numbers(field: str, value: object) -> Non
     # guardrail timeout must reject it (and non-numbers) with ValueError.
     with pytest.raises(ValueError, match=f"{field} must be a finite number"):
         GuardrailConfig(**{field: value})
+
+
+@pytest.mark.parametrize(
+    "value", ["authentication", "auth", ErrorCategory.AUTHENTICATION], ids=repr
+)
+def test_abort_on_error_categories_rejects_bare_string(value: str) -> None:
+    # A bare string would be iterated per character and matched with substring
+    # ``in``, so "auth" would trip on "authentication".
+    with pytest.raises(TypeError, match="not a single string"):
+        GuardrailConfig(abort_on_error_categories=value)  # type: ignore[arg-type]
+
+
+def test_abort_on_error_categories_string_rejected_on_revalidation() -> None:
+    guardrails = GuardrailConfig()
+    guardrails.abort_on_error_categories = "authentication"  # type: ignore[assignment]
+    with pytest.raises(TypeError, match="not a single string"):
+        ProcessorConfig(guardrails=guardrails)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        frozenset({"authentication"}),
+        {"authentication"},
+        ["authentication"],
+        ("authentication",),
+        frozenset({ErrorCategory.AUTHENTICATION}),
+    ],
+    ids=lambda v: type(v).__name__,
+)
+def test_abort_on_error_categories_accepts_collections(value: Any) -> None:
+    guardrails = GuardrailConfig(abort_on_error_categories=value)
+    assert "authentication" in guardrails.abort_on_error_categories
+    assert "auth" not in guardrails.abort_on_error_categories
 
 
 def test_openai_classifier_distinguishes_authentication_and_permission() -> None:

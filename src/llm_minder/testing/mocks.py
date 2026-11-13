@@ -91,7 +91,7 @@ class MockAgent(Generic[TOutput]):
         """Default response generator."""
         return {"response": f"Mock response to: {prompt[:50]}"}
 
-    async def run(self, prompt: str, **kwargs) -> MockResult[TOutput]:
+    async def run(self, prompt: str, **kwargs: Any) -> MockResult[TOutput]:
         """
         Simulate agent.run().
 

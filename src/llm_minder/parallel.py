@@ -426,10 +426,43 @@ class ParallelBatchProcessor(
             return
         await cancel_and_join(task, propagate_errors=True)
 
+    async def _finish_batch_timeout(self) -> None:
+        """Let a tripped deadline finish announcing; cancel one that has not fired.
+
+        Once the deadline wins the abort, its task is only delivering
+        BATCH_ABORTED. Cancelling it then (the run can finish while an observer
+        awaits) drops the event for later observers, so wait for it instead.
+        Each third-party observer is bounded by the dispatcher's timeout.
+        """
+        task = self._batch_timeout_task
+        controller = self._abort_controller
+        if (
+            task is not None
+            and not task.done()
+            and task is not asyncio.current_task()
+            and controller is not None
+            and controller.cause is not None
+            and controller.cause.kind == "batch_timeout"
+        ):
+            # asyncio.wait: our own cancellation leaves the task for the
+            # cleanup step, and a cancelled task is not mistaken for ours.
+            await asyncio.wait({task})
+            if not task.cancelled():
+                task.result()
+            return
+        await self._cancel_batch_timeout()
+
     def _cleanup_steps(self) -> list[CleanupAction]:
         """Runtime tasks, then admission resources, then strategies, then the store."""
         steps: list[CleanupAction] = [
-            CleanupStep("batch timeout", self._cancel_batch_timeout),
+            # A normal stream close delivers BATCH_COMPLETED later in this
+            # sequence, so let a tripped deadline's BATCH_ABORTED finish first.
+            CleanupStep(
+                "batch timeout",
+                self._finish_batch_timeout
+                if self._normal_stream_close
+                else self._cancel_batch_timeout,
+            ),
             *super()._cleanup_steps(),
             self._strategy_lifecycle.resource_cleanup_phase(
                 self._admission_registry,
@@ -579,7 +612,7 @@ class ParallelBatchProcessor(
     async def _on_batch_completed(self) -> None:
         """Emit batch completion event with final stats snapshot."""
         self._executor.summarize_failures()
-        await self._cancel_batch_timeout()
+        await self._finish_batch_timeout()
         async with self._stats_lock:
             stats_snapshot = self._stats.copy()
 
@@ -659,7 +692,7 @@ class ParallelBatchProcessor(
     ) -> WorkItemResult[TOutput, TContext] | None:
         return await self._events.run_on_error(work_item, error)
 
-    async def _worker(self, worker_id: int):
+    async def _worker(self, worker_id: int) -> None:
         """Process accepted items with exactly-once queue accounting."""
         logger.debug("[Worker %s] started and waiting for work", worker_id)
         if self._events.observers:
@@ -774,7 +807,14 @@ class ParallelBatchProcessor(
                 artifact_key = await self.artifact_store.prepare_item(work_item)
                 artifact_prepared = True
             except ArtifactError as exc:
-                if not best_effort_audit:
+                # As in the main path, input that cannot be checkpointed is
+                # local to this item: the item keeps its guardrail failure and
+                # loses only its audit record. Persistence and format failures
+                # still terminate the batch unless the audit is best-effort.
+                local_input_error = isinstance(
+                    exc, (ArtifactIdentityError, ArtifactSerializationError)
+                )
+                if not best_effort_audit and not local_input_error:
                     raise
                 logger.warning("Cannot checkpoint terminal item %s: %s", work_item.item_id, exc)
 
@@ -1042,7 +1082,7 @@ class ParallelBatchProcessor(
             exception, work_item, worker_id, attempt_number
         )
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Release every owned resource; safe to call repeatedly.
 
         Same ordered close as ``async with`` exit: runtime tasks and

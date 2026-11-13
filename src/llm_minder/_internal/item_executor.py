@@ -392,7 +392,7 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
     ) -> WorkItemResult[TOutput, TContext] | None:
         return await self._events.run_on_error(work_item, error)
 
-    async def _ensure_strategy_prepared(self, strategy) -> None:
+    async def _ensure_strategy_prepared(self, strategy: LLMCallStrategy[TOutput]) -> None:
         await self._strategy_lifecycle.ensure_prepared(strategy)
 
     async def _handle_rate_limit(
@@ -414,11 +414,21 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
         )
 
     def _log_retryable_error(
-        self, exception, work_item, attempt_number, failed_token_usage
+        self,
+        exception: Exception,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        attempt_number: int,
+        failed_token_usage: dict[str, int],
     ) -> None:
         log_retryable_error(exception, work_item.item_id, attempt_number, failed_token_usage)
 
-    def _log_validation_error(self, exception, work_item, attempt_number, token_msg) -> None:
+    def _log_validation_error(
+        self,
+        exception: Exception,
+        work_item: LLMWorkItem[TInput, TOutput, TContext],
+        attempt_number: int,
+        token_msg: str,
+    ) -> None:
         log_validation_error(exception, work_item.item_id, attempt_number, token_msg)
 
     async def _resolve_token_estimate(

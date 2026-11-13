@@ -145,6 +145,19 @@ async def run_high_level() -> list[dict[str, int]]:
     return outputs
 
 
+async def run_callable_processor() -> dict[str, int] | None:
+    """The context manager and a CallableStrategy keep the processor's output type."""
+    async with ParallelBatchProcessor[str, dict[str, int], None]() as processor:
+        assert_type(processor, ParallelBatchProcessor[str, dict[str, int], None])
+        await processor.add_work(
+            LLMWorkItem(item_id="x", prompt="xyz", strategy=CallableStrategy(_invoke))
+        )
+        result = await processor.process_all()
+    output = result.results[0].output
+    assert_type(output, dict[str, int] | None)
+    return output
+
+
 def describe(response: LLMResponse | WorkItemResult[str, Any]) -> str:
     """The typed provider-output views, without touching raw metadata dicts."""
     parts: list[str] = []

@@ -18,6 +18,7 @@ import pytest
 import llm_minder
 import llm_minder.sqlite_artifacts as sqlite_artifacts_module
 from llm_minder import (
+    ArtifactError,
     ArtifactFormatError,
     ArtifactIdentity,
     ArtifactIOError,
@@ -907,6 +908,99 @@ async def test_schema_and_path_rejections(tmp_path: Path) -> None:
         artifact_store=SqliteArtifactStore(zero_path, identity=_identity()),
     )
     assert zero_path.stat().st_size > 0
+
+
+_CRASH_DURING_INIT = r"""
+import asyncio, os, sqlite3, sys
+import llm_minder.sqlite_artifacts as module
+from llm_minder import ArtifactIdentity, SqliteArtifactStore
+
+
+class CrashingConnection(sqlite3.Connection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # One cached page forces initialization pages to spill into the
+        # database file before commit, leaving a non-empty file and a hot
+        # journal behind, as a real crash mid-transaction can.
+        super().execute("PRAGMA cache_size=1")
+
+    def execute(self, sql, *args):
+        if sql.startswith("PRAGMA user_version="):
+            os._exit(17)  # crash just before the initialization commit
+        return super().execute(sql, *args)
+
+
+real_connect = sqlite3.connect
+module.sqlite3.connect = lambda *a, **k: real_connect(*a, factory=CrashingConnection, **k)
+store = SqliteArtifactStore(sys.argv[1], identity=ArtifactIdentity(provider="p", model="m"))
+asyncio.run(store._prepare())
+"""
+
+
+@pytest.mark.asyncio
+async def test_crash_during_initialization_reinitializes_on_reopen(tmp_path: Path) -> None:
+    """Initialization is one transaction; a crash inside it leaves a non-empty
+    file plus a hot journal that rolls back to a blank database, which the
+    next writable open must initialize rather than reject."""
+    path = tmp_path / "crashed.sqlite"
+    completed = subprocess.run(
+        [sys.executable, "-c", _CRASH_DURING_INIT, os.fspath(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 17, completed.stderr
+    assert path.stat().st_size > 0
+    assert Path(f"{path}-journal").exists()
+
+    identity = ArtifactIdentity(provider="p", model="m")
+    result = await process_prompts(
+        _CountingStrategy(),
+        [("id", "p")],
+        artifact_store=SqliteArtifactStore(path, identity=identity),
+    )
+    assert result.succeeded == 1
+    reread = await SqliteArtifactStore.read_results(path)
+    assert [item.item_id for item in reread.results] == ["id"]
+
+
+def _blank_nonempty_database(path: Path) -> None:
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE scratch (id INTEGER)")
+    connection.execute("DROP TABLE scratch")
+    connection.commit()
+    connection.close()
+    assert path.stat().st_size > 0
+
+
+@pytest.mark.asyncio
+async def test_blank_database_errors_name_incomplete_initialization(tmp_path: Path) -> None:
+    path = tmp_path / "blank.sqlite"
+    _blank_nonempty_database(path)
+    with pytest.raises(ArtifactFormatError, match="initialization never completed"):
+        await SqliteArtifactStore.read_results(path)
+    no_identity = SqliteArtifactStore(path)
+    with pytest.raises(ArtifactError, match="without a resolved identity"):
+        await no_identity._prepare()
+    await no_identity.close()
+
+    await process_prompts(
+        _CountingStrategy(),
+        [("id", "p")],
+        artifact_store=SqliteArtifactStore(path, identity=_identity()),
+    )
+    assert len((await SqliteArtifactStore.read_results(path)).results) == 1
+
+    # A database with any schema object, or a foreign application_id, is
+    # still not ours and is left alone.
+    tagged = tmp_path / "tagged.sqlite"
+    _blank_nonempty_database(tagged)
+    with sqlite3.connect(tagged) as connection:
+        connection.execute("PRAGMA application_id=1234")
+    store = SqliteArtifactStore(tagged, identity=_identity())
+    with pytest.raises(ArtifactFormatError, match="not an llm-minder artifact"):
+        await store._prepare()
+    await store.close()
 
 
 @pytest.mark.asyncio
