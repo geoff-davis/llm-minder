@@ -921,7 +921,12 @@ class SqliteArtifactStore:
             connection.row_factory = sqlite3.Row
             self._connection = connection
             connection.execute(f"PRAGMA busy_timeout={int(self.busy_timeout_seconds * 1000)}")
-            if initialize:
+            # A non-empty file can still hold a blank database: a crash during
+            # the first (single-transaction) initialization leaves a hot
+            # journal that SQLite rolls back on first read, restoring an
+            # empty database. Treat that like a new file. The read below is
+            # what triggers the rollback, so the decision sees the result.
+            if initialize or self._is_blank_database_sync(connection):
                 self._initialize_schema_sync(connection)
             else:
                 self._validate_schema_connection_sync(connection, self.path)
@@ -961,7 +966,23 @@ class SqliteArtifactStore:
         if connection is not None:
             connection.close()
 
+    @staticmethod
+    def _is_blank_database_sync(connection: sqlite3.Connection) -> bool:
+        """Return whether a database holds no schema and no llm-minder header."""
+        return (
+            int(connection.execute("PRAGMA application_id").fetchone()[0]) == 0
+            and int(connection.execute("PRAGMA user_version").fetchone()[0]) == 0
+            and connection.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone() is None
+        )
+
     def _initialize_schema_sync(self, connection: sqlite3.Connection) -> None:
+        if self.identity_fingerprint is None:
+            raise ArtifactError(
+                f"Cannot initialize artifact {self.path} without a resolved identity: the "
+                "database is blank (a previous initialization did not complete). Pass "
+                "identity=ArtifactIdentity(...) to SqliteArtifactStore, or run the store "
+                "through a processor so it can be inferred from the strategy."
+            )
         identity, identity_value, identity_fingerprint = self._require_resolved_identity()
         del identity
         manifest = build_manifest_record(
@@ -971,10 +992,18 @@ class SqliteArtifactStore:
             identity_fingerprint=identity_fingerprint,
             user_metadata=self._user_metadata_value,
         )
+        connection.execute("BEGIN IMMEDIATE")
         try:
-            connection.executescript(
-                """
-                BEGIN IMMEDIATE;
+            # Re-check under the write lock: another opener may have finished
+            # initializing between the caller's check and this transaction.
+            if not self._is_blank_database_sync(connection):
+                connection.rollback()
+                self._validate_schema_connection_sync(connection, self.path)
+                return
+            # Execute statements one by one rather than via executescript(),
+            # which on Python 3.11 commits a pending transaction first and
+            # would split initialization into separately durable steps.
+            schema = """
                 CREATE TABLE manifest (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     logical_schema_version INTEGER NOT NULL,
@@ -1027,7 +1056,9 @@ class SqliteArtifactStore:
                 CREATE INDEX idx_item_records_success_sequence
                     ON item_records (record_sequence) WHERE success = 1;
                 """
-            )
+            for statement in schema.split(";"):
+                if statement.strip():
+                    connection.execute(statement)
             connection.execute(
                 """
                 INSERT INTO manifest VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1056,6 +1087,11 @@ class SqliteArtifactStore:
         path: Path,
     ) -> None:
         application_id = int(connection.execute("PRAGMA application_id").fetchone()[0])
+        if application_id == 0 and SqliteArtifactStore._is_blank_database_sync(connection):
+            raise ArtifactFormatError(
+                f"SQLite artifact {path} is blank: its initialization never completed. "
+                "Open it with a writable SqliteArtifactStore to initialize it."
+            )
         if application_id != SQLITE_APPLICATION_ID:
             raise ArtifactFormatError(f"SQLite file is not an llm-minder artifact: {path}")
         schema_version = int(connection.execute("PRAGMA user_version").fetchone()[0])

@@ -1306,6 +1306,48 @@ async def test_art1_torn_manifest_recovers_but_foreign_file_is_untouched(tmp_pat
     assert foreign.read_bytes() == original
 
 
+async def test_torn_manifest_at_every_length_reinitializes(tmp_path):
+    """A crash during the first write can tear the manifest at any byte,
+    including inside its canonical prefix; each length must reopen as new."""
+    source = tmp_path / "source.jsonl"
+    store = JsonlArtifactStore(source, identity=_identity())
+    await store._prepare()
+    await store.close()
+    manifest = source.read_bytes()
+    assert manifest.endswith(b"\n")
+    for length in range(1, len(manifest)):
+        path = tmp_path / f"torn-{length}.jsonl"
+        path.write_bytes(manifest[:length])
+        result = await process_prompts(
+            _CountingStrategy(),
+            ["x"],
+            artifact_store=JsonlArtifactStore(path, identity=_identity()),
+        )
+        assert result.succeeded == 1, length
+        reread = JsonlArtifactStore.read_results(path)
+        assert [r.item_id for r in reread.results] == [result.results[0].item_id], length
+
+
+async def test_torn_short_prefix_keeps_foreign_and_read_only_checks(tmp_path):
+    """Short-prefix recovery stays limited to the writable path and to bytes
+    that are a leading slice of the canonical manifest."""
+    torn = tmp_path / "torn.jsonl"
+    torn.write_bytes(b'{"artifact_sch')
+    with pytest.raises(ArtifactFormatError, match="no complete manifest"):
+        JsonlArtifactStore.read_results(torn)
+    assert torn.read_bytes() == b'{"artifact_sch'
+    for original in (b'{"artifact_schema_version":2', b'{"artifacts', b"[", b" {"):
+        foreign = tmp_path / "foreign.jsonl"
+        foreign.write_bytes(original)
+        with pytest.raises(ArtifactFormatError):
+            await process_prompts(
+                _CountingStrategy(),
+                ["x"],
+                artifact_store=JsonlArtifactStore(foreign, identity=_identity()),
+            )
+        assert foreign.read_bytes() == original
+
+
 @pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
 @pytest.mark.parametrize("mode", ["error", "metadata", "cost"])
 async def test_art3_surrogate_diagnostics_and_bad_metadata_are_isolated(tmp_path, store_type, mode):

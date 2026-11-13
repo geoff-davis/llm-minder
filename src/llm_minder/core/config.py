@@ -269,6 +269,14 @@ class GuardrailConfig:
             _validate_number(value, name=name)
             if value <= 0:
                 raise ValueError(f"{name} must be finite and > 0 or None (got {value!r})")
+        if isinstance(self.abort_on_error_categories, str):
+            # A bare string (or one ErrorCategory member, which is a str) would
+            # be iterated character by character and matched as a substring.
+            raise TypeError(
+                "abort_on_error_categories must be a collection of category strings, "
+                f"not a single string (got {self.abort_on_error_categories!r}); "
+                f"wrap it, e.g. frozenset({{{self.abort_on_error_categories!r}}})"
+            )
         if any(
             not isinstance(category, str) or not category
             for category in self.abort_on_error_categories
