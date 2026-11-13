@@ -19,6 +19,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an identity, says initialization never completed), and `read_results` names the
   incomplete initialization. Databases with any schema or a foreign
   `application_id` are still rejected.
+- `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
+  single string, including a lone `ErrorCategory` member. It used to accept one
+  and match categories by substring, so `"auth"` tripped on `"authentication"`.
+  Code that passed a bare string must wrap it, for example
+  `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
+  config, so the check covers both.
+- On the OpenAI Responses API, a Chat-style function tool with no `parameters`
+  now gets an empty object schema. The translated tool used to omit the key,
+  which the Responses function-tool type requires. Tools that declare
+  `parameters` are unchanged.
+- A `batch_timeout` abort no longer loses `BATCH_ABORTED` for later observers when an
+  earlier observer awaits in `on_event`. The run could finish (in either abort mode)
+  while the deadline task was still announcing, and finishing cancelled that task.
+  The processor now waits for a tripped deadline's announcement before
+  `BATCH_COMPLETED`, so every observer sees `BATCH_ABORTED` first.
+- An item whose deadline expired before its input was prepared for checkpointing
+  no longer aborts the whole run when that input can't be checkpointed (an
+  unserializable context or a mismatched strategy identity). The item fails
+  with `framework_total_item_timeout`, its audit record is skipped with a
+  warning, and the batch continues, on both JSONL and SQLite stores.
+
+### Development
+
+- The lockfile moves `opentelemetry-api` to 1.45.2 for CVE-2026-126360, and `ty` to 0.0.103.
+  `opentelemetry-api` arrives only through optional extras, and the wheel doesn't pin it.
+  Two `ty:ignore` comments use the rules' new names.
+- Dependabot no longer proposes `pymdown-extensions` 13, which needs Python 3.11.5 or later.
+
+## [1.0.0] - 2026-11-12
+
+The first stable release of llm-minder, and the first covered by the
+[API stability promise](docs/stability.md): stable names keep working, and only change
+incompatibly in a new major version.
+
+The code is identical to [1.0.0rc2](#100rc2---2026-11-10). If you're upgrading from
+async-batch-llm 0.32 or earlier, read the [1.0 migration guide](docs/migration/v1.0.md)
+and the notes for [1.0.0rc1](#100rc1---2026-11-04) and [1.0.0rc2](#100rc2---2026-11-10).
+In summary:
+
+- The package is renamed from `async-batch-llm` to `llm-minder` (import `llm_minder`).
+- Everything 0.27 and 0.28 deprecated is removed, and Python 3.10 is no longer supported.
+- Custom strategies now include their model in the automatic checkpoint identity, so
+  their old checkpoints run again on resume.
 
 ## [1.0.0rc2] - 2026-11-10
 
@@ -2951,7 +2994,8 @@ See **[Migration Guide](docs/archive/MIGRATION_V0_1.md)** for complete upgrade i
 [#122]: https://github.com/geoff-davis/async-batch-llm/issues/122
 [#125]: https://github.com/geoff-davis/async-batch-llm/issues/125
 
-[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc2...HEAD
+[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc2...v1.0.0
 [1.0.0rc2]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc1...v1.0.0rc2
 [1.0.0rc1]: https://github.com/geoff-davis/llm-minder/compare/v0.32.0...v1.0.0rc1
 [0.32.0]: https://github.com/geoff-davis/async-batch-llm/compare/v0.31.0...v0.32.0
