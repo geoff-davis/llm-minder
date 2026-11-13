@@ -12,8 +12,8 @@ here.
 **strategy pattern** — provider-agnostic at the framework level, with
 first-class support for several providers built in.
 
-**Current version:** v1.0.0, the first stable release, covered by the API stability
-promise (`docs/stability.md`). v0.32.0 was the last release for
+**Current version:** v1.0.1, a bug-fix release; v1.0.0 was the first stable release,
+covered by the API stability promise (`docs/stability.md`). v0.32.0 was the last release for
 Python 3.10 and the last as `async-batch-llm` (see `CHANGELOG.md`; `pyproject.toml` is bumped
 by the release-prep flow, so it may briefly lag `main` between releases).
 
@@ -773,6 +773,11 @@ assert result.total_items == result.succeeded + result.failed
 ## Version history
 
 Most recent first. See `CHANGELOG.md` for full per-release detail.
+
+- **v1.0.1** — fixes from a review of 1.0: lost `BATCH_ABORTED` events, deadline-expired
+  items whose input can't be checkpointed, bare-string `abort_on_error_categories`
+  (now a `TypeError`), Responses tools without `parameters`, and crash recovery for
+  newly created JSONL and SQLite stores.
 
 - **v1.0.0** — first stable release; the code is identical to rc2. The public API is
   frozen under `docs/stability.md`.

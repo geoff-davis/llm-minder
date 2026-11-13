@@ -7,28 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-13
+
+Fixes for defects found in a review of 1.0. The one behavior change:
+`GuardrailConfig(abort_on_error_categories=...)` now rejects a bare string, which it
+used to match by substring. Wrap it in a set.
+
 ### Fixed
 
-- `JsonlArtifactStore` reopens a file torn inside the first 42 bytes of its
-  manifest, as it already did for a manifest torn later. A crash during the very
-  first write left a file that could not be reopened. Files that are not a prefix
-  of a manifest are still rejected and left untouched.
-- `SqliteArtifactStore` completes initialization when a crash interrupted the
-  first one. The rolled-back database is blank, and reopening it raised
-  "not an llm-minder artifact". A writable open now initializes it (or, without
-  an identity, says initialization never completed), and `read_results` names the
-  incomplete initialization. Databases with any schema or a foreign
-  `application_id` are still rejected.
-- `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
-  single string, including a lone `ErrorCategory` member. It used to accept one
-  and match categories by substring, so `"auth"` tripped on `"authentication"`.
-  Code that passed a bare string must wrap it, for example
-  `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
-  config, so the check covers both.
-- On the OpenAI Responses API, a Chat-style function tool with no `parameters`
-  now gets an empty object schema. The translated tool used to omit the key,
-  which the Responses function-tool type requires. Tools that declare
-  `parameters` are unchanged.
 - A `batch_timeout` abort no longer loses `BATCH_ABORTED` for later observers when an
   earlier observer awaits in `on_event`. The run could finish (in either abort mode)
   while the deadline task was still announcing, and finishing cancelled that task.
@@ -39,6 +25,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unserializable context or a mismatched strategy identity). The item fails
   with `framework_total_item_timeout`, its audit record is skipped with a
   warning, and the batch continues, on both JSONL and SQLite stores.
+- `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
+  single string, including a lone `ErrorCategory` member. It used to accept one
+  and match categories by substring, so `"auth"` tripped on `"authentication"`.
+  Code that passed a bare string must wrap it, for example
+  `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
+  config, so the check covers both.
+- On the OpenAI Responses API, a Chat-style function tool with no `parameters`
+  now gets an empty object schema. The translated tool used to omit the key,
+  which the Responses function-tool type requires. Tools that declare
+  `parameters` are unchanged.
+- `JsonlArtifactStore` reopens a file torn inside the first 42 bytes of its
+  manifest, as it already did for a manifest torn later. A crash during the very
+  first write left a file that could not be reopened. Files that are not a prefix
+  of a manifest are still rejected and left untouched.
+- `SqliteArtifactStore` completes initialization when a crash interrupted the
+  first one. The rolled-back database is blank, and reopening it raised
+  "not an llm-minder artifact". A writable open now initializes it (or, without
+  an identity, says initialization never completed), and `read_results` names the
+  incomplete initialization. Databases with any schema or a foreign
+  `application_id` are still rejected.
 
 ### Development
 
@@ -3006,7 +3012,8 @@ See **[Migration Guide](docs/archive/MIGRATION_V0_1.md)** for complete upgrade i
 [#122]: https://github.com/geoff-davis/async-batch-llm/issues/122
 [#125]: https://github.com/geoff-davis/async-batch-llm/issues/125
 
-[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc2...v1.0.0
 [1.0.0rc2]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc1...v1.0.0rc2
 [1.0.0rc1]: https://github.com/geoff-davis/llm-minder/compare/v0.32.0...v1.0.0rc1
