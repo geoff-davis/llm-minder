@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `JsonlArtifactStore` reopens a file torn inside the first 42 bytes of its
+  manifest, as it already did for a manifest torn later. A crash during the very
+  first write left a file that could not be reopened. Files that are not a prefix
+  of a manifest are still rejected and left untouched.
+- `SqliteArtifactStore` completes initialization when a crash interrupted the
+  first one. The rolled-back database is blank, and reopening it raised
+  "not an llm-minder artifact". A writable open now initializes it (or, without
+  an identity, says initialization never completed), and `read_results` names the
+  incomplete initialization. Databases with any schema or a foreign
+  `application_id` are still rejected.
 - `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
   single string, including a lone `ErrorCategory` member. It used to accept one
   and match categories by substring, so `"auth"` tripped on `"authentication"`.
