@@ -1012,7 +1012,7 @@ class ParallelBatchProcessor(
         """
         return await self._executor._process_item_with_retries(work_item, worker_id, deadline)
 
-    async def _process_item(  # type: ignore[override]  # ty:ignore[invalid-method-override]
+    async def _process_item(  # type: ignore[override]  # ty:ignore[incompatible-method-override]
         self,
         work_item: LLMWorkItem[TInput, TOutput, TContext],
         worker_id: int,

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Development
+
+- The lockfile moves `opentelemetry-api` to 1.45.2 for CVE-2026-126360, and `ty` to 0.0.103.
+  `opentelemetry-api` arrives only through optional extras, and the wheel doesn't pin it.
+  Two `ty:ignore` comments use the rules' new names.
+- Dependabot no longer proposes `pymdown-extensions` 13, which needs Python 3.11.5 or later.
+
 ## [1.0.0] - 2026-11-12
 
 The first stable release of llm-minder, and the first covered by the
