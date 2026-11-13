@@ -32,7 +32,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
@@ -59,7 +59,7 @@ jobs:
         uv run pytest tests/ -v --tb=short
 
     - name: Coverage comment
-      uses: py-cov-action/python-coverage-comment-action@v4.5
+      uses: py-cov-action/python-coverage-comment-action@v4.6
       if: matrix.python-version == '3.12'
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,7 +73,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
@@ -97,7 +97,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
@@ -207,6 +207,13 @@ jobs:
             tests/test_gemini_strategies.py tests/test_gemini_api_versions.py
             tests/test_cache_tag_matching.py tests/test_cache_expiration_multiworker.py
             tests/test_cache_auto_renew.py tests/test_error_classifiers.py
+        - label: "google-genai 3.x"
+          requirement: "google-genai>=3,<4"
+          companions: "openai pydantic-ai-slim"
+          tests: >-
+            tests/test_gemini_strategies.py tests/test_gemini_api_versions.py
+            tests/test_cache_tag_matching.py tests/test_cache_expiration_multiworker.py
+            tests/test_cache_auto_renew.py tests/test_error_classifiers.py
         - label: "pydantic-ai floor"
           requirement: "pydantic-ai==1.32.0"
           companions: "google-genai"
@@ -230,7 +237,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
@@ -273,7 +280,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
@@ -303,7 +310,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
@@ -323,7 +330,7 @@ jobs:
     - uses: actions/checkout@v7.0.1
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.2
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         enable-cache: true
 
