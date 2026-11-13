@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.1] - 2026-11-13
 
-Fixes for defects found in a review of 1.0. The one behavior change:
+Fixes for defects found in a review of 1.0. One fix needs a change from callers:
 `GuardrailConfig(abort_on_error_categories=...)` now rejects a bare string, which it
 used to match by substring. Wrap it in a set.
 
@@ -27,7 +27,8 @@ used to match by substring. Wrap it in a set.
   warning, and the batch continues, on both JSONL and SQLite stores.
 - `GuardrailConfig(abort_on_error_categories=...)` now raises `TypeError` for a
   single string, including a lone `ErrorCategory` member. It used to accept one
-  and match categories by substring, so `"auth"` tripped on `"authentication"`.
+  and check whether each failure's category was a substring of it, so a setting of
+  `"authentication"` also aborted on a custom `"auth"` category.
   Code that passed a bare string must wrap it, for example
   `frozenset({"authentication"})`. Processors and `LLMCallPool` both read this
   config, so the check covers both.
