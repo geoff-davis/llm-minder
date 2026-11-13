@@ -500,6 +500,106 @@ async def test_batch_deadline_stops_async_producer_without_task_leaks() -> None:
     assert after - before == set()
 
 
+class _AwaitingAbortObserver(BaseObserver):
+    """Awaits on BATCH_ABORTED (e.g. posting an alert) longer than the run lasts."""
+
+    def __init__(self, delay: float) -> None:
+        self.delay = delay
+
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None:
+        if event is ProcessingEvent.BATCH_ABORTED:
+            await asyncio.sleep(self.delay)
+
+
+class _EventRecorder(BaseObserver):
+    def __init__(self) -> None:
+        self.events: list[ProcessingEvent] = []
+
+    async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None:
+        self.events.append(event)
+
+
+def _terminal_events(recorder: _EventRecorder) -> list[ProcessingEvent]:
+    return [
+        event
+        for event in recorder.events
+        if event in (ProcessingEvent.BATCH_ABORTED, ProcessingEvent.BATCH_COMPLETED)
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("abort_mode", [AbortMode.CANCEL_ACTIVE, AbortMode.DRAIN_ACTIVE])
+@pytest.mark.parametrize("api", ["process_all", "process_prompts", "process_stream"])
+async def test_batch_deadline_abort_event_reaches_observers_after_awaiting_one(
+    abort_mode: AbortMode, api: str
+) -> None:
+    # The run finishes (cancelled or drained) while the first observer is still
+    # awaiting on BATCH_ABORTED; finishing must not cancel the announcement.
+    recorders = [_EventRecorder(), _EventRecorder()]
+    observers: list[Any] = [recorders[0], _AwaitingAbortObserver(0.5), recorders[1]]
+    config = ProcessorConfig(
+        max_workers=2,
+        guardrails=GuardrailConfig(batch_timeout=0.1, abort_mode=abort_mode),
+    )
+    prompts = [str(index) for index in range(4)]
+    if api == "process_all":
+        async with ParallelBatchProcessor[None, str, None](
+            config=config, observers=observers
+        ) as processor:
+            for index, prompt in enumerate(prompts):
+                await processor.add_work(
+                    LLMWorkItem(item_id=f"i{index}", strategy=_SlowStrategy(0.25), prompt=prompt)
+                )
+            result = await processor.process_all()
+        assert result.termination.kind == "batch_timeout"
+    elif api == "process_stream":
+        results = [
+            item
+            async for item in process_stream(
+                _SlowStrategy(0.25), prompts, config=config, observers=observers
+            )
+        ]
+        assert len(results) == 4
+    else:
+        result = await process_prompts(
+            _SlowStrategy(0.25), prompts, config=config, observers=observers
+        )
+        assert result.termination.kind == "batch_timeout"
+
+    for recorder in recorders:
+        assert _terminal_events(recorder) == [
+            ProcessingEvent.BATCH_ABORTED,
+            ProcessingEvent.BATCH_COMPLETED,
+        ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("abort_mode", [AbortMode.CANCEL_ACTIVE, AbortMode.DRAIN_ACTIVE])
+async def test_fail_fast_abort_event_reaches_observers_after_awaiting_one(
+    abort_mode: AbortMode,
+) -> None:
+    # Sibling path: fail-fast announces from the worker, which the run awaits.
+    recorder = _EventRecorder()
+    result = await process_prompts(
+        _CategoryStrategy("authentication"),
+        [("trigger", "trigger"), ("later", "later")],
+        config=ProcessorConfig(
+            max_workers=1,
+            guardrails=GuardrailConfig(
+                abort_on_error_categories=frozenset({"authentication"}),
+                abort_mode=abort_mode,
+            ),
+        ),
+        error_classifier=_CategoryClassifier(),
+        observers=[_AwaitingAbortObserver(0.3), recorder],
+    )
+    assert result.termination.kind == "fail_fast"
+    assert _terminal_events(recorder) == [
+        ProcessingEvent.BATCH_ABORTED,
+        ProcessingEvent.BATCH_COMPLETED,
+    ]
+
+
 class _CategoryError(Exception):
     def __init__(self, category: str) -> None:
         super().__init__(category)

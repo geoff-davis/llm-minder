@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A `batch_timeout` abort no longer loses `BATCH_ABORTED` for later observers when an
+  earlier observer awaits in `on_event`. The run could finish (in either abort mode)
+  while the deadline task was still announcing, and finishing cancelled that task.
+  The processor now waits for a tripped deadline's announcement before
+  `BATCH_COMPLETED`, so every observer sees `BATCH_ABORTED` first.
 - An item whose deadline expired before its input was prepared for checkpointing
   no longer aborts the whole run when that input can't be checkpointed (an
   unserializable context or a mismatched strategy identity). The item fails
