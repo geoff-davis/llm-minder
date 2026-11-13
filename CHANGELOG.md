@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `google-genai` 3.x is supported: CI now tests its latest release alongside the
+  1.x and 2.x lines and the 1.49.0 floor. The requirement is unchanged
+  (`google-genai>=1.49.0`), so 3.x could already be installed; it was untested.
+
 ## [1.0.1] - 2026-11-13
 
 Fixes for defects found in a review of 1.0. One fix needs a change from callers:
