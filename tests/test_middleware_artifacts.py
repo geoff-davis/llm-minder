@@ -208,6 +208,54 @@ async def test_invalid_artifact_input_fails_only_its_item(store_factory, bad_inp
     assert middleware.errors == 0
 
 
+@pytest.mark.parametrize("bad_input", ["identity", "context"])
+@pytest.mark.asyncio
+async def test_invalid_input_after_item_deadline_fails_only_its_item(
+    store_factory, bad_input, caplog
+):
+    # The deadline expires in preprocessing, before artifact preparation, so
+    # the audit path prepares the item for the first time.
+    class SlowForBad(BaseMiddleware):
+        async def before_process(self, item):
+            if item.item_id == "bad":
+                await asyncio.Event().wait()
+            return item
+
+    strategy = Strategy()
+    other = Strategy("different")
+    store = store_factory()
+    results = await run(
+        store,
+        strategy,
+        SlowForBad(),
+        # The deadline applies to the good items too, and the first one also
+        # pays for opening the store, so leave room for a slow CI runner.
+        config=ProcessorConfig(
+            max_workers=1, guardrails=GuardrailConfig(total_timeout_per_item=1.0)
+        ),
+        items=[
+            LLMWorkItem("first", strategy, "first"),
+            LLMWorkItem(
+                "bad",
+                other if bad_input == "identity" else strategy,
+                "bad",
+                object() if bad_input == "context" else None,
+            ),
+            LLMWorkItem("last", strategy, "last"),
+        ],
+    )
+    assert [result.success for result in results] == [True, False, True]
+    assert results[1].error_category == "framework_total_item_timeout"
+    assert strategy.calls == ["first", "last"] and other.calls == []
+    assert sum("Cannot checkpoint terminal item bad" in r.message for r in caplog.records) == 1
+    reader = store_factory()
+    try:
+        records = [entry async for entry in reader.iter_results()]
+        assert sorted(record.item_id for record in records) == ["first", "last"]
+    finally:
+        await reader.close()
+
+
 @pytest.mark.parametrize("guard", ["item", "abort", "batch"])
 @pytest.mark.asyncio
 async def test_completed_lookup_wins_guardrail_and_preserves_stored_success(store_factory, guard):

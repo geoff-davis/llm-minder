@@ -774,7 +774,14 @@ class ParallelBatchProcessor(
                 artifact_key = await self.artifact_store.prepare_item(work_item)
                 artifact_prepared = True
             except ArtifactError as exc:
-                if not best_effort_audit:
+                # As in the main path, input that cannot be checkpointed is
+                # local to this item: the item keeps its guardrail failure and
+                # loses only its audit record. Persistence and format failures
+                # still terminate the batch unless the audit is best-effort.
+                local_input_error = isinstance(
+                    exc, (ArtifactIdentityError, ArtifactSerializationError)
+                )
+                if not best_effort_audit and not local_input_error:
                     raise
                 logger.warning("Cannot checkpoint terminal item %s: %s", work_item.item_id, exc)
 
