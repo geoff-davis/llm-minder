@@ -67,7 +67,7 @@
             <a id="nextFileLink" class="nav" href="z_4fe35cc5af82c481_parsing_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-13 21:03 +0000
+            created at 2026-11-13 21:29 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -776,7 +776,7 @@
     <p class="run run2"><span class="n"><a id="t692" href="#t692">692</a></span><span class="t">    <span class="op">)</span> <span class="op">-&gt;</span> <span class="nam">WorkItemResult</span><span class="op">[</span><span class="nam">TOutput</span><span class="op">,</span> <span class="nam">TContext</span><span class="op">]</span> <span class="op">|</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t693" href="#t693">693</a></span><span class="t">        <span class="key">return</span> <span class="key">await</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_events</span><span class="op">.</span><span class="nam">run_on_error</span><span class="op">(</span><span class="nam">work_item</span><span class="op">,</span> <span class="nam">error</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t694" href="#t694">694</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t695" href="#t695">695</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">_worker</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">worker_id</span><span class="op">:</span> <span class="nam">int</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t695" href="#t695">695</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">_worker</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">worker_id</span><span class="op">:</span> <span class="nam">int</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t696" href="#t696">696</a></span><span class="t">        <span class="str">&quot;&quot;&quot;Process accepted items with exactly-once queue accounting.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t697" href="#t697">697</a></span><span class="t">        <span class="nam">logger</span><span class="op">.</span><span class="nam">debug</span><span class="op">(</span><span class="str">&quot;[Worker %s] started and waiting for work&quot;</span><span class="op">,</span> <span class="nam">worker_id</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t698" href="#t698">698</a></span><span class="t">        <span class="key">if</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_events</span><span class="op">.</span><span class="nam">observers</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -1166,7 +1166,7 @@
     <p class="run run2"><span class="n"><a id="t1082" href="#t1082">1082</a></span><span class="t">            <span class="nam">exception</span><span class="op">,</span> <span class="nam">work_item</span><span class="op">,</span> <span class="nam">worker_id</span><span class="op">,</span> <span class="nam">attempt_number</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t1083" href="#t1083">1083</a></span><span class="t">        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1084" href="#t1084">1084</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1085" href="#t1085">1085</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">shutdown</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1085" href="#t1085">1085</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">shutdown</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1086" href="#t1086">1086</a></span><span class="t">        <span class="str">&quot;&quot;&quot;Release every owned resource; safe to call repeatedly.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1087" href="#t1087">1087</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1088" href="#t1088">1088</a></span><span class="t"><span class="str">        Same ordered close as ``async with`` exit: runtime tasks and</span>&nbsp;</span><span class="r"></span></p>
@@ -1186,7 +1186,7 @@
             <a class="nav" href="z_4fe35cc5af82c481_parsing_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-13 21:03 +0000
+            created at 2026-11-13 21:29 +0000
         </p>
     </div>
 </footer>
