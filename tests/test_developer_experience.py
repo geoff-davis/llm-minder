@@ -166,31 +166,10 @@ async def test_classifier_bug_has_one_user_traceback(caplog):
     assert all(r.error_category == "classifier_error" for r in batch.results)
 
 
-def test_context_manager_retains_output_type(tmp_path):
-    import subprocess
-    import sys
-
-    snippet = tmp_path / "typing_case.py"
-    snippet.write_text("""
-from typing_extensions import assert_type
-from llm_minder import ParallelBatchProcessor, LLMWorkItem, CallableStrategy, CallOutcome
-class Output: pass
-async def invoke(prompt: str, **kwargs: object) -> CallOutcome[Output]:
-    return CallOutcome(Output())
-async def run() -> None:
-    async with ParallelBatchProcessor[str, Output, None]() as processor:
-        assert_type(processor, ParallelBatchProcessor[str, Output, None])
-        await processor.add_work(LLMWorkItem(item_id="x", prompt="x", strategy=CallableStrategy(invoke)))
-        result = await processor.process_all()
-        assert_type(result.results[0].output, Output | None)
-""")
-    completed = subprocess.run(
-        [sys.executable, "-m", "mypy", str(snippet), "--follow-imports=silent"],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
+# The context-manager output-type check (``async with ParallelBatchProcessor[...]``
+# keeps its type parameters, and a CallableStrategy result keeps its output type)
+# lives in tests/user_typing/sample_app.py::run_callable_processor, which
+# ``make typecheck-user`` checks with mypy --strict and pyright in CI and ``make ci``.
 
 
 def test_processor_config_wrapper_preserves_dataclass_contracts():

@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
+from types import TracebackType
 from typing import (  # noqa: F401
     TYPE_CHECKING,
     Any,
@@ -273,7 +274,7 @@ class LLMWorkItem(Generic[TInput, TOutput, TContext]):
         default=None, repr=False, compare=False
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate work item fields."""
         self._validate_fields()
 
@@ -571,7 +572,7 @@ class BatchResult(Generic[TOutput, TContext]):
     # assembled by hand or restored from records created before v0.20.
     wall_time_seconds: float | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Calculate summary statistics from results."""
         self.total_items = len(self.results)
         self.succeeded = sum(1 for r in self.results if r.success)
@@ -1429,7 +1430,12 @@ class BatchProcessor(ABC, Generic[TInput, TOutput, TContext]):
         """Context manager entry - returns self for use in async with."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
         """Context manager exit - releases every owned resource (see :meth:`cleanup`).
 
         A body exception stays primary and cleanup failures are logged. With
@@ -1441,7 +1447,7 @@ class BatchProcessor(ABC, Generic[TInput, TOutput, TContext]):
             report.raise_first()
         return False  # Don't suppress exceptions
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Release every owned resource in dependency order.
 
         Runtime tasks and callbacks stop first (stream finalizer, workers,
@@ -1618,7 +1624,7 @@ class BatchProcessor(ABC, Generic[TInput, TOutput, TContext]):
         except BaseException:  # noqa: BLE001 - already surfaced via the terminal or logs
             pass
 
-    async def add_work(self, work_item: LLMWorkItem[TInput, TOutput, TContext]):
+    async def add_work(self, work_item: LLMWorkItem[TInput, TOutput, TContext]) -> None:
         """
         Add a work item to the processing queue.
 
@@ -2125,7 +2131,7 @@ class BatchProcessor(ABC, Generic[TInput, TOutput, TContext]):
         )
 
     @abstractmethod
-    async def _worker(self, worker_id: int):
+    async def _worker(self, worker_id: int) -> None:
         """
         Worker coroutine that processes items from the queue.
 

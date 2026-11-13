@@ -450,12 +450,12 @@ class ParallelBatchProcessor(BatchProcessor, Generic)
     __init__(self, *, post_processor: Callable[[WorkItemResult[~TOutput, ~TContext]], Awaitable[None] | None] | None = None, config: ProcessorConfig | None = None, error_classifier: ErrorClassifier | None = None, rate_limit_strategy: RateLimitStrategy | None = None, middlewares: list[Middleware[~TInput, ~TOutput, ~TContext]] | None = None, observers: list[ProcessorObserver] | None = None, progress_callback: ProgressCallbackFunc | None = None, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>)
     property aborted -> bool
     async def add_work(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext]) -> None
-    async def cleanup(self)
+    async def cleanup(self) -> None
     async def finish(self) -> None
     async def get_stats(self) -> dict
     async def process_all(self) -> BatchResult[~TOutput, ~TContext]
     def results(self) -> AsyncIterator[WorkItemResult[~TOutput, ~TContext]]
-    async def shutdown(self)
+    async def shutdown(self) -> None
     def start(self) -> None
     async def wait_for_abort(self) -> None
 PostProcessorFunc: Callable[[WorkItemResult[~TOutput, ~TContext]], Awaitable[None] | None]

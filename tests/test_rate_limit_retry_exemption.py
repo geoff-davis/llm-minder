@@ -1,5 +1,7 @@
 """Tests for rate-limit errors being exempt from the max_attempts retry budget."""
 
+import dataclasses
+
 import pytest
 
 from llm_minder import (
@@ -51,18 +53,26 @@ class _SequenceStrategy(LLMCallStrategy[str]):
         self.on_error_attempts.append(attempt)
 
 
-def _fast_config(*, max_attempts: int = 3, max_rate_limit_retries: int = 20) -> ProcessorConfig:
-    # cooldown_seconds=0 so coordinated cooldowns don't actually sleep in tests.
-    return ProcessorConfig(
-        max_workers=1,
-        retry=RetryConfig(
-            max_attempts=max_attempts,
-            initial_wait=0.01,
-            jitter=False,
-            max_rate_limit_retries=max_rate_limit_retries,
-        ),
-        rate_limit=RateLimitConfig(cooldown_seconds=0.0),
-    )
+@pytest.fixture
+def make_config(fast_retry: RetryConfig, fast_rate_limit: RateLimitConfig):
+    """Build a one-worker config from the shared fast retry/rate-limit fixtures.
+
+    The shared rate-limit fixture turns off the slow-start ramp, whose 2s
+    default delay otherwise dominated these tests' runtime.
+    """
+
+    def build(*, max_attempts: int = 3, max_rate_limit_retries: int = 20) -> ProcessorConfig:
+        return ProcessorConfig(
+            max_workers=1,
+            retry=dataclasses.replace(
+                fast_retry,
+                max_attempts=max_attempts,
+                max_rate_limit_retries=max_rate_limit_retries,
+            ),
+            rate_limit=fast_rate_limit,
+        )
+
+    return build
 
 
 async def _run_one(strategy: LLMCallStrategy, config: ProcessorConfig):
@@ -75,10 +85,10 @@ async def _run_one(strategy: LLMCallStrategy, config: ProcessorConfig):
 
 
 @pytest.mark.asyncio
-async def test_rate_limits_do_not_consume_attempt_budget():
+async def test_rate_limits_do_not_consume_attempt_budget(make_config):
     # 5 rate limits then success, with only max_attempts=3.
     strategy = _SequenceStrategy(["429", "429", "429", "429", "429", "ok"])
-    result = await _run_one(strategy, _fast_config(max_attempts=3))
+    result = await _run_one(strategy, make_config(max_attempts=3))
 
     assert result.succeeded == 1
     assert result.failed == 0
@@ -90,10 +100,10 @@ async def test_rate_limits_do_not_consume_attempt_budget():
 
 
 @pytest.mark.asyncio
-async def test_mixed_failures_attempt_numbering():
+async def test_mixed_failures_attempt_numbering(make_config):
     # 429 (no consume), validation (consume -> attempt 2), 429 (no consume), success.
     strategy = _SequenceStrategy(["429", "val", "429", "ok"])
-    result = await _run_one(strategy, _fast_config(max_attempts=3))
+    result = await _run_one(strategy, make_config(max_attempts=3))
 
     assert result.succeeded == 1
     assert strategy.execute_attempts == [1, 1, 2, 2]
@@ -105,9 +115,9 @@ async def test_mixed_failures_attempt_numbering():
 
 
 @pytest.mark.asyncio
-async def test_exceeding_max_rate_limit_retries_fails_item():
+async def test_exceeding_max_rate_limit_retries_fails_item(make_config):
     strategy = _SequenceStrategy(["429"] * 10)
-    result = await _run_one(strategy, _fast_config(max_rate_limit_retries=2))
+    result = await _run_one(strategy, make_config(max_rate_limit_retries=2))
 
     assert result.failed == 1
     assert result.succeeded == 0
@@ -121,9 +131,9 @@ async def test_exceeding_max_rate_limit_retries_fails_item():
 
 
 @pytest.mark.asyncio
-async def test_max_rate_limit_retries_zero_fails_on_first_rate_limit():
+async def test_max_rate_limit_retries_zero_fails_on_first_rate_limit(make_config):
     strategy = _SequenceStrategy(["429"] * 5)
-    result = await _run_one(strategy, _fast_config(max_rate_limit_retries=0))
+    result = await _run_one(strategy, make_config(max_rate_limit_retries=0))
 
     assert result.failed == 1
     assert strategy.calls == 1  # first 429 immediately fails
@@ -150,9 +160,9 @@ class _RateLimitWithTokens(LLMCallStrategy[str]):
 
 
 @pytest.mark.asyncio
-async def test_rate_limit_exhaustion_includes_cumulative_tokens():
+async def test_rate_limit_exhaustion_includes_cumulative_tokens(make_config):
     strategy = _RateLimitWithTokens()
-    result = await _run_one(strategy, _fast_config(max_rate_limit_retries=2))
+    result = await _run_one(strategy, make_config(max_rate_limit_retries=2))
 
     assert result.failed == 1
     # 3 billed attempts (2 retries + the one that trips the cap) * 30 tokens.
@@ -173,22 +183,22 @@ def test_max_rate_limit_retries_default_is_20():
 
 
 @pytest.mark.asyncio
-async def test_raises_rate_limit_retries_exceeded_type():
+async def test_raises_rate_limit_retries_exceeded_type(make_config):
     """The dedicated exception is what propagates (catchable by users)."""
     strategy = _SequenceStrategy(["429"] * 5)
-    result = await _run_one(strategy, _fast_config(max_rate_limit_retries=1))
+    result = await _run_one(strategy, make_config(max_rate_limit_retries=1))
     assert result.failed == 1
     # Sanity: the exception class is importable and named in the error string.
     assert RateLimitRetriesExceeded.__name__ in result.results[0].error
 
 
 @pytest.mark.asyncio
-async def test_adm6_exhausted_item_reports_without_waiting_for_shared_cooldown():
+async def test_adm6_exhausted_item_reports_without_waiting_for_shared_cooldown(make_config):
     import asyncio
 
     from llm_minder import LLMCallPool
 
-    config = _fast_config(max_rate_limit_retries=0)
+    config = make_config(max_rate_limit_retries=0)
     config.rate_limit.cooldown_seconds = 2
     config.rate_limit.slow_start_items = 0
     strategy = _SequenceStrategy(["429", "ok"])

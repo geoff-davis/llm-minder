@@ -42,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Development
 
+- The rate-limit retry-exemption tests use the shared fast retry and rate-limit
+  fixtures, and the context-manager typing check moved from a mypy subprocess test
+  into the strict-typed public API sample (`make typecheck-user`). The default test
+  run is about 40 seconds shorter.
+- The `llm_strategies` mypy override keeps only the `assignment` code it still needs,
+  and the pytest filter for the removed 2-tuple `execute()` deprecation warning is
+  gone.
+- mypy now runs with `disallow_untyped_defs` on `src/llm_minder/`. The missing
+  annotations are added without runtime changes. `ParallelBatchProcessor.cleanup()`
+  and `shutdown()` now declare `-> None`, which they already returned.
 - The lockfile moves `opentelemetry-api` to 1.45.2 for CVE-2026-126360, and `ty` to 0.0.103.
   `opentelemetry-api` arrives only through optional extras, and the wheel doesn't pin it.
   Two `ty:ignore` comments use the rules' new names.
