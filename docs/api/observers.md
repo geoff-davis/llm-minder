@@ -12,6 +12,120 @@
 
 ::: llm_minder.observers.MetricsObserver
 
+## Prometheus export
+
+`await metrics.export_prometheus()` returns what a `MetricsObserver` has collected
+as a string in the Prometheus text exposition format. It is a point-in-time
+snapshot, not a registered `prometheus_client` collector: call it whenever you want
+fresh values and publish the string yourself. Values accumulate across every batch
+the observer sees until `await metrics.reset()`.
+
+### Serving it
+
+A batch job usually exits before a scraper would reach it, so write the text for the
+node-exporter [textfile collector](https://github.com/prometheus/node_exporter#textfile-collector)
+when the job finishes. Write to a temporary file and rename it, so the collector
+never reads a half-written file:
+
+```python
+import os
+from pathlib import Path
+
+from llm_minder import MetricsObserver, llm, process_prompts
+
+
+async def run_and_export(prompts: list[str], textfile_dir: Path) -> None:
+    metrics = MetricsObserver()
+    await process_prompts(llm("openai:gpt-6-luna"), prompts, observers=[metrics])
+    target = textfile_dir / "llm_minder.prom"
+    partial = textfile_dir / "llm_minder.prom.tmp"
+    partial.write_text(await metrics.export_prometheus(), encoding="utf-8")
+    os.replace(partial, target)
+```
+
+A long-running service can serve it over HTTP instead. This uses only the standard
+library; any web framework's handler works the same way:
+
+```python
+import asyncio
+
+from llm_minder import MetricsObserver
+
+
+async def serve_metrics(metrics: MetricsObserver, port: int = 9108) -> None:
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        await reader.readuntil(b"\r\n\r\n")  # ignore the request; every path is /metrics
+        body = (await metrics.export_prometheus()).encode()
+        writer.write(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/plain; version=0.0.4\r\n"
+            + f"Content-Length: {len(body)}\r\n\r\n".encode()
+            + body
+        )
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", port)
+    async with server:
+        await server.serve_forever()
+```
+
+### What it exports
+
+Every metric is prefixed `llm_minder_` and unlabelled, except the two labelled
+counters at the end. Names don't follow the `_total` suffix convention for
+counters; dashboards should use them as listed.
+
+<!-- The test_prometheus_docs test keeps this table in step with export_prometheus(). -->
+
+| Metric | Type | Meaning |
+| --- | --- | --- |
+| `llm_minder_items_processed` | counter | Total items processed |
+| `llm_minder_items_succeeded` | counter | Total items succeeded |
+| `llm_minder_items_failed` | counter | Total items failed |
+| `llm_minder_rate_limits_hit` | counter | Total rate limits encountered |
+| `llm_minder_structured_output_recoveries` | counter | Total structured outputs recovered |
+| `llm_minder_items_replayed` | counter | Total terminal items replayed from artifacts |
+| `llm_minder_items_aborted` | counter | Total collateral items aborted by guardrails |
+| `llm_minder_batches_aborted` | counter | Total batches stopped by guardrails |
+| `llm_minder_quota_admitted_attempts` | counter | Total live quota reservations admitted |
+| `llm_minder_reserved_tokens` | counter | Total tokens reserved for TPM admission |
+| `llm_minder_reported_reconciliation_tokens` | counter | Total known tokens used for reconciliation |
+| `llm_minder_refunded_tokens` | counter | Total unused reserved tokens refunded |
+| `llm_minder_underestimated_tokens` | counter | Total token underestimation charged as debt |
+| `llm_minder_unknown_usage_attempts` | counter | Started quota attempts with unknown usage |
+| `llm_minder_known_zero_usage_attempts` | counter | Started quota attempts reporting zero usage |
+| `llm_minder_token_estimation_failures` | counter | Total framework token-estimation failures |
+| `llm_minder_structured_output_retries_avoided` | counter | Total validation retries avoided by structured-output recovery |
+| `llm_minder_avg_processing_time` | gauge | Average processing time in seconds |
+| `llm_minder_success_rate` | gauge | Success rate (0.0 to 1.0) |
+| `llm_minder_total_cooldown_time` | gauge | Total time spent in rate limit cooldown (seconds) |
+| `llm_minder_processing_times_count` | gauge | Number of recorded processing time samples |
+| `llm_minder_admission_wait_count` | gauge | Number of provider-capacity admissions |
+| `llm_minder_admission_wait_seconds_sum` | gauge | Total provider-capacity wait time in seconds |
+| `llm_minder_admission_wait_seconds_max` | gauge | Maximum provider-capacity wait time in seconds |
+| `llm_minder_avg_admission_wait_seconds` | gauge | Average provider-capacity wait time in seconds |
+| `llm_minder_quota_wait_seconds_sum` | gauge | Total RPM/TPM quota wait time in seconds |
+| `llm_minder_quota_wait_seconds_max` | gauge | Maximum RPM/TPM quota wait time in seconds |
+| `llm_minder_avg_quota_wait_seconds` | gauge | Average RPM/TPM quota wait time in seconds |
+| `llm_minder_estimated_input_tokens` | gauge | Total estimated input tokens |
+| `llm_minder_estimated_output_tokens` | gauge | Total estimated output tokens |
+| `llm_minder_quota_scope_count` | gauge | Number of run-local quota scopes observed |
+| `llm_minder_errors_total{error_type}` | counter | Failed items by exception class name |
+| `llm_minder_structured_output_recoveries_by_reason{reason}` | counter | Structured-output recoveries by reason |
+
+The two labelled counters appear only once they have a value. Their label values
+are exception class names (`error_type`) and the library's own recovery reasons
+(`reason`), so cardinality stays small unless your strategies raise many distinct
+exception classes. Double quotes in a label value are escaped.
+
+There are no histograms or summaries. Processing time and admission wait are
+exported as averages, sums and maxima; the p50/p95/p99 percentiles are in
+`await processor.get_stats()` and the `BATCH_COMPLETED` event payload instead.
+
+Metric names changed in 1.0 from `async_batch_llm_*` to `llm_minder_*`; dashboards
+and alerts built on 0.x output need the new names.
+
 ## ProcessingEvent
 
 ::: llm_minder.ProcessingEvent

@@ -44,6 +44,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that blamed the cost calculator. Runs through a processor never hit this, since
   `prepare_item()` resolves the identity first.
 
+### Documentation
+
+- `MetricsObserver.export_prometheus()` is documented: every exported metric
+  with its type, how to publish the text through the node-exporter textfile
+  collector or an HTTP endpoint, and what it doesn't export ([#344]).
+
 ### Development
 
 - The JSONL and SQLite artifact stores share private helpers for identity
@@ -65,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#349]: https://github.com/geoff-davis/llm-minder/issues/349
 [#353]: https://github.com/geoff-davis/llm-minder/issues/353
 [#322]: https://github.com/geoff-davis/llm-minder/issues/322
+[#344]: https://github.com/geoff-davis/llm-minder/issues/344
 
 ## [1.0.1] - 2026-11-13
 
