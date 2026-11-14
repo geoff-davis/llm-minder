@@ -1071,6 +1071,11 @@ class JsonlArtifactStore:
         manifest_seen = False
         done = False
         while not done:
+            # A running iterator stops at its next page once the store closes,
+            # as SqliteArtifactStore's does. Pages are read by path without the
+            # lock; close() sets _closed on the loop, so this check can't tear.
+            if self._closed:
+                raise ArtifactIOError(f"Artifact store is closed: {self.path}")
             page, offset, line_number, manifest_seen, done = await asyncio.to_thread(
                 _read_artifact_page,
                 self.path,

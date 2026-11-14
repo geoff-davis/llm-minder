@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   methods and like `SqliteArtifactStore.iter_results()`. It used to keep yielding
   the stored results. To read a closed artifact, use
   `JsonlArtifactStore.read_results(path)` ([#349]).
+- A JSONL `iter_results()` iterator that is already running raises the same
+  "closed" error at its next page once the store is closed, as a SQLite one
+  does. It used to yield the rest of its snapshot. Both stores check between
+  pages, not between items, so results from a page already read can still come
+  out first ([#353]).
 
 ### Fixed
 
@@ -58,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
 [#272]: https://github.com/geoff-davis/llm-minder/issues/272
 [#349]: https://github.com/geoff-davis/llm-minder/issues/349
+[#353]: https://github.com/geoff-davis/llm-minder/issues/353
 [#322]: https://github.com/geoff-davis/llm-minder/issues/322
 
 ## [1.0.1] - 2026-11-13

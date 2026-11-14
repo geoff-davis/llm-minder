@@ -469,7 +469,11 @@ does not invoke the stored-context decoder. It always attaches the current work
 item's context and submission index to the replayed result.
 
 For asynchronous inspection through an open store, use
-`async for item in store.iter_results(successes_only=True)`.
+`async for item in store.iter_results(successes_only=True)`. On both stores,
+`iter_results()` raises `ArtifactIOError` once the store is closed: at the start
+if it was already closed, otherwise at the iterator's next page read, so results
+from a page already read may still come out first. To read a closed artifact,
+use `read_results(path)`.
 
 Costs are optional and caller-supplied because this package does not maintain a
 provider price database:
