@@ -1673,6 +1673,8 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                         )
                                     raise
                                 except (BatchDeadlineExceeded, BatchAbortedError):
+                                    if self._abort_controller is not None:
+                                        await self._abort_controller.announce_call_cap()
                                     raise
                                 except _OperationTimerExpired as timeout_exc:
                                     elapsed = time.time() - llm_start_time

@@ -204,7 +204,10 @@ class ParallelBatchProcessor(
         self._extra_cleanup_steps: list[CleanupStep] = []
         self.resume = ResumePolicy(resume)
         self._abort_controller: AbortController | None = AbortController(
-            config.guardrails.abort_mode
+            config.guardrails.abort_mode,
+            max_provider_calls=config.guardrails.max_provider_calls,
+            trip_hook=self._trip_abort_now,
+            announce=self._announce_abort,
         )
         self._guardrails_started = False
         self._batch_timeout_task: asyncio.Task[None] | None = None
@@ -509,6 +512,8 @@ class ParallelBatchProcessor(
             stats = self._stats.copy()
         if self._budget_tracker is not None:
             stats.update(self._budget_tracker.stats())
+        if self._abort_controller is not None:
+            stats["provider_calls_started"] = self._abort_controller.provider_calls_started
         if self._cache_tracker is not None:
             stats.update(self._cache_tracker.stats())
         return stats

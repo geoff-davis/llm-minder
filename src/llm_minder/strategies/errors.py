@@ -472,7 +472,7 @@ class BatchAbortedError(RuntimeError, LLMMinderError):
 
 
 class BatchBudgetExceeded(BatchAbortedError):
-    """The run's token or cost budget stopped an accepted item before completion."""
+    """The run's token, cost or provider-call cap stopped an accepted item before completion."""
 
 
 # Terminal categories of items stopped by a controlled batch abort. The single

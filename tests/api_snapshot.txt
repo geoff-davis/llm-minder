@@ -292,9 +292,10 @@ class GuardrailConfig
     field max_total_tokens: int | None (kw_only) = None
     field max_total_cost: float | None (kw_only) = None
     field cost_function: Callable[[AttemptUsage], float] | None (kw_only) = None
+    field max_provider_calls: int | None (kw_only) = None
     field min_cache_hit_rate: float | None (kw_only) = None
     field cache_hit_window: int (kw_only) = 50
-    __init__(self, *, total_timeout_per_item: float | None = None, batch_timeout: float | None = None, abort_on_error_categories: frozenset[str] = <factory>, abort_mode: AbortMode = <AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens: int | None = None, max_total_cost: float | None = None, cost_function: Callable[[AttemptUsage], float] | None = None, min_cache_hit_rate: float | None = None, cache_hit_window: int = 50) -> None
+    __init__(self, *, total_timeout_per_item: float | None = None, batch_timeout: float | None = None, abort_on_error_categories: frozenset[str] = <factory>, abort_mode: AbortMode = <AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens: int | None = None, max_total_cost: float | None = None, cost_function: Callable[[AttemptUsage], float] | None = None, max_provider_calls: int | None = None, min_cache_hit_rate: float | None = None, cache_hit_window: int = 50) -> None
     property budget_configured -> bool
     def validate(self) -> None
 class ItemDeadlineExceeded(TimeoutError, LLMMinderError)
@@ -489,7 +490,7 @@ class ProcessorConfig
     field dry_run: bool (kw_only) = False
     field max_provider_concurrency: int | None (kw_only) = None
     field startup_ramp: StartupRampConfig | None (kw_only) = None
-    field guardrails: GuardrailConfig (kw_only) = <factory: GuardrailConfig(total_timeout_per_item=None, batch_timeout=None, abort_on_error_categories=frozenset(), abort_mode=<AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens=None, max_total_cost=None, cost_function=None, min_cache_hit_rate=None, cache_hit_window=50)>
+    field guardrails: GuardrailConfig (kw_only) = <factory: GuardrailConfig(total_timeout_per_item=None, batch_timeout=None, abort_on_error_categories=frozenset(), abort_mode=<AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens=None, max_total_cost=None, cost_function=None, max_provider_calls=None, min_cache_hit_rate=None, cache_hit_window=50)>
     field attempt_timeout: float | None (kw_only) = None
     field concurrency: int | None (kw_only) = None
     field max_result_queue_size: int (kw_only) = 0

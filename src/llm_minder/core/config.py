@@ -244,6 +244,14 @@ class GuardrailConfig:
     without ``max_total_cost`` only tracks cost. Budgets apply to processor
     runs; ``call()``, ``call_result()`` and ``LLMCallPool`` reject them.
 
+    ``max_provider_calls`` is a hard cap on physical provider attempts for one
+    processor run: first tries, retries and rate-limit retries all count, and
+    replayed results don't. It is checked before each call starts, so it can't
+    be overshot, even with many workers. Once the cap is used up, the next attempt
+    that needs a call is refused, and the run stops as ``budget_exceeded`` the
+    same way a token or cost cap does. A run whose items all finish within the cap
+    completes normally. Processor runs only, like budgets.
+
     ``min_cache_hit_rate`` (provisional) stops the run when a cache group's hit
     rate falls below it. Each provider attempt that returns a result is counted
     under the ``cache_group`` in its metadata; the rate is cached over input
@@ -262,6 +270,7 @@ class GuardrailConfig:
     max_total_tokens: int | None = None
     max_total_cost: float | None = None
     cost_function: Callable[[AttemptUsage], float] | None = None
+    max_provider_calls: int | None = None
     min_cache_hit_rate: float | None = None
     cache_hit_window: int = 50
 
@@ -306,6 +315,15 @@ class GuardrailConfig:
                 raise ValueError(
                     f"max_total_cost must be finite and > 0 or None (got {self.max_total_cost!r})"
                 )
+        if self.max_provider_calls is not None and (
+            isinstance(self.max_provider_calls, bool)
+            or not isinstance(self.max_provider_calls, int)
+            or self.max_provider_calls <= 0
+        ):
+            raise ValueError(
+                "max_provider_calls must be a positive int or None "
+                f"(got {self.max_provider_calls!r})"
+            )
         if self.cost_function is not None and not callable(self.cost_function):
             raise ValueError("cost_function must be callable or None")
         if self.max_total_cost is not None and self.cost_function is None:
