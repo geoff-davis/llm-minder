@@ -18,6 +18,7 @@ from typing import Any
 
 import pytest
 
+import llm_minder.artifacts as artifacts_module
 from llm_minder import (
     ArtifactError,
     ArtifactFormatError,
@@ -929,6 +930,27 @@ async def test_iter_results_after_close_raises_closed(
     await store.close()
     with pytest.raises(ArtifactIOError, match="closed"):
         [r async for r in store.iter_results()]
+
+
+async def test_running_iterator_raises_closed_at_next_page(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, store_type: Any, suffix: str
+) -> None:
+    # #353: the check is per page, so use one-record pages on both stores.
+    path = tmp_path / f"iter-mid-close{suffix}"
+    prompts = [(f"id{i}", f"p{i}") for i in range(3)]
+    await process_prompts(
+        _CountingStrategy(), prompts, artifact_store=store_type(path, identity=_identity())
+    )
+    if store_type is JsonlArtifactStore:
+        monkeypatch.setattr(artifacts_module, "_JSONL_ITER_PAGE_SIZE", 1)
+        store = store_type(path, identity=_identity())
+    else:
+        store = store_type(path, identity=_identity(), read_batch_size=1)
+    iterator = store.iter_results()
+    await anext(iterator)
+    await store.close()
+    with pytest.raises(ArtifactIOError, match="closed"):
+        await anext(iterator)
 
 
 async def test_iter_results_successes_only_filters_failures(
