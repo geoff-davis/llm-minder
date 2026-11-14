@@ -326,7 +326,7 @@ def server(monkeypatch: pytest.MonkeyPatch):
         transport = httpx.MockTransport(holder["server"].handle)
         return AsyncOpenAI(**kwargs, http_client=httpx.AsyncClient(transport=transport))
 
-    monkeypatch.setattr(models, "AsyncOpenAI", factory)
+    monkeypatch.setattr(models._sdk, "AsyncOpenAI", factory)
     return make
 
 

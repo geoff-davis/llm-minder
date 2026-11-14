@@ -3,7 +3,7 @@
 OpenAI SDK releases before 3.x use ``httpx``; 3.x uses ``httpx2`` and no longer
 pulls in ``httpx`` at all. Tests that build SDK requests, responses, exceptions
 or mock transports must use the library the SDK itself uses, derived the same
-way ``llm_minder.models._build_openai_http_client`` derives its limits class.
+way ``llm_minder.models._sdk._build_openai_http_client`` derives its limits class.
 """
 
 from __future__ import annotations
