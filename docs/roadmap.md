@@ -18,5 +18,5 @@
 | v1.0.0 | First stable release, identical to rc2, and the start of the [API stability promise](stability.md). See the [migration guide](migration/v1.0.md). |
 | v1.0.1 | Bug fixes from a review of 1.0: abort events, deadline-expired checkpoint inputs, guardrail category validation, Responses tool schemas, and store crash recovery. |
 
-Deferred executor, storage, and API simplification work is tracked in
-[#176](https://github.com/geoff-davis/llm-minder/issues/176).
+Work planned after 1.0.1 (v1.1 and v1.2) is tracked in
+[#330](https://github.com/geoff-davis/llm-minder/issues/330).

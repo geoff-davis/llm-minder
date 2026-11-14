@@ -79,23 +79,22 @@ bounded result handoff, transactional writes, and checkpoint replay.
 - [Troubleshooting and FAQ](troubleshooting.md) — operational symptoms and
   fixes
 - [API Reference](api/core.md) — public classes and functions
-- [API Stability (draft)](stability.md) — what 1.0 keeps stable
-- [v0.28 migration guide](migration/v0.28.md) — deprecations ahead of 1.0
-- [v0.27 migration guide](migration/v0.27.md) — changed defaults and deprecations
+- [API Stability](stability.md) — the compatibility promise and what it covers
+- [1.0 migration guide](migration/v1.0.md) — upgrading from 0.x
 
 ## Project status
 
-The project is beta software. APIs are typed and covered by deterministic
-tests, but release notes and migration guides should be reviewed before an
-upgrade. Contributions and focused production feedback are welcome.
+llm-minder is stable. Since 1.0.0, the public API is covered by the compatibility
+promise on the [API stability](stability.md) page: minor and patch releases don't
+break code that uses the stable API, and anything slated for removal warns for at
+least one minor release before a major release removes it. Provisional names, listed on the same
+page, may still change in a minor release. Run your tests with
+`-W error::DeprecationWarning` to catch deprecations early
+([Testing](testing.md#4-catching-deprecations-early) covers a google-genai warning
+to filter on Python 3.14). Contributions and production feedback are welcome.
 
-v0.32 is the last release before 1.0, and the last to support Python 3.10; 1.0
-requires Python 3.11 or newer. v0.27 and v0.28 deprecate several names that 1.0 removes, so
-run your tests with `-W error::DeprecationWarning` before upgrading ([Testing](testing.md#4-preparing-for-10)
-covers a google-genai warning to filter on Python 3.14). See
-[API stability](stability.md) for what 1.0 keeps stable, and the
-[v0.27](migration/v0.27.md) and [v0.28](migration/v0.28.md) migration guides for the
-deprecations.
+Upgrading from 0.x? Read the [1.0 migration guide](migration/v1.0.md); it starts
+from v0.32, the last 0.x release and the last to support Python 3.10.
 
 ## License
 

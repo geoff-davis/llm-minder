@@ -745,8 +745,8 @@ assert result.total_items == result.succeeded + result.failed
 3. **More classifiers** — Anthropic native, HuggingFace. (DeepSeek reuses
    `OpenAIErrorClassifier`.)
 4. **Persistent queue** — Redis/DB-backed.
-5. **Prometheus metrics** — built-in metrics export (we have
-   `MetricsObserver`; this is about a Prometheus-format exporter on top).
+5. **Prometheus metrics (done)** — `MetricsObserver.export_prometheus()` returns
+   the Prometheus text format. Still open: an HTTP endpoint or push integration.
 6. **Dynamic worker scaling** — adjust workers based on load.
 7. **1.0 removals (done on `main` for 1.0.0rc1).** Everything v0.27 deprecated is removed: the 2-tuple
    `execute()` shim, omitted `cached_token_rate`, `LLMGateway`,
