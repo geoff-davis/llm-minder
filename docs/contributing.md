@@ -138,7 +138,7 @@ llm-minder/
 │   ├── factory.py          # llm("provider:model")
 │   ├── llm_strategies.py   # LLMCallStrategy + built-in strategies
 │   ├── callable_strategy.py # CallableStrategy for existing async clients
-│   ├── models.py           # Provider model classes
+│   ├── models/             # Provider model classes (one private module per provider)
 │   ├── artifacts.py        # JsonlArtifactStore, ArtifactIdentity, ResumePolicy
 │   ├── sqlite_artifacts.py # SqliteArtifactStore
 │   ├── serialization.py    # Result JSON/JSONL serialization

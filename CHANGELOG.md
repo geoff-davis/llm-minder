@@ -37,10 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resolution, input fingerprinting, record building, replay restore, stored-result
   decoding and JSONL line validation, so their error mapping can't drift apart
   ([#174]). Locking, writer ownership and durability stay separate.
+- `llm_minder.models` is now a package with one private module per provider
+  ([#322]). Imports from `llm_minder.models` and `llm_minder` are unchanged, and
+  the module still logs as `llm_minder.models`. Two things a test suite may notice:
+  the optional SDK handles moved to `llm_minder.models._sdk`, so patch
+  `llm_minder.models._sdk.AsyncOpenAI` (or `.genai`) instead of
+  `llm_minder.models.AsyncOpenAI` (the old target now raises `AttributeError`
+  rather than patching a copy nothing reads); and the classes' `__module__` names
+  the private submodule, for example `llm_minder.models._openai`.
 
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
 [#272]: https://github.com/geoff-davis/llm-minder/issues/272
+[#322]: https://github.com/geoff-davis/llm-minder/issues/322
 
 ## [1.0.1] - 2026-11-13
 

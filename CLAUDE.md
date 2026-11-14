@@ -565,9 +565,11 @@ src/llm_minder/
 ├── token_estimation.py   # TokenEstimate, CharacterTokenEstimator
 ├── parsing.py            # JSON/code-fence response-parser helpers
 ├── llm_strategies.py     # LLMCallStrategy + built-in strategies
-├── models.py             # GeminiModel, GeminiCachedModel,
-│                         # OpenAICompatibleModel, OpenAIModel,
-│                         # OpenRouterModel, DeepSeekModel
+├── models/               # GeminiModel, GeminiCachedModel,
+│   │                     # OpenAICompatibleModel, OpenAIModel,
+│   │                     # OpenRouterModel, DeepSeekModel (re-exported
+│   │                     # from private per-provider modules)
+│   └── _sdk.py           # optional SDK handles; patch AsyncOpenAI/genai here
 ├── token_extractor.py    # TokenExtractor (failure-path token recovery)
 ├── provider_output.py    # Grounding/GroundingSource/ToolCall + typed
 │                         # metadata views mixin (issue #52 Phase 2)
