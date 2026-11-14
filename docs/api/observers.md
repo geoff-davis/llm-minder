@@ -127,7 +127,8 @@ value becomes its own time series, so keep both sets small and under your contro
 
 The exporter escapes double quotes in label values but not backslashes or
 newlines, which the exposition format also requires. A label value containing
-either produces output a Prometheus scraper rejects, so keep them out of
+either can produce output a Prometheus scraper rejects, or silently change the
+label value (a literal `\n` is read back as a newline), so keep them out of
 exception class names and recovery reasons.
 
 There are no histograms or summaries, and the timing metrics cover different
