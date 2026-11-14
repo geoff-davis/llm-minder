@@ -11,9 +11,11 @@ from typing import Any
 import pytest
 
 from llm_minder import (
+    ArtifactError,
     ArtifactFormatError,
     ArtifactIdentity,
     ArtifactIOError,
+    ArtifactSerializationError,
     JsonlArtifactStore,
     LLMWorkItem,
     ProcessorConfig,
@@ -1709,3 +1711,28 @@ async def test_art3_sqlite_bad_record_projection_commits_with_good_neighbors(tmp
     assert len(batches) == 1
     assert sorted(batches[0]) == [("a", True), ("bad", False), ("c", True), ("d", True)]
     assert len((await SqliteArtifactStore.read_results(store.path)).results) == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("store_type", [JsonlArtifactStore, SqliteArtifactStore])
+async def test_append_without_resolved_identity_raises_artifact_error(tmp_path, store_type):
+    # Reopening an existing artifact without an identity and appending an item
+    # this store never prepared reports the missing identity on both stores. The
+    # JSONL store used to wrap it as a "Cost calculator failed" serialization error.
+    from llm_minder._internal.artifact_codec import fingerprint_work_item
+
+    path = tmp_path / ("a.jsonl" if store_type is JsonlArtifactStore else "a.sqlite")
+    item = LLMWorkItem(item_id="x", strategy=_CountingStrategy(), prompt="p")
+    await process_prompts(
+        _CountingStrategy(), ["old"], artifact_store=store_type(path, identity=_identity())
+    )
+    store = store_type(path)
+    prepared = fingerprint_work_item(
+        item, context_in_identity=True, encoder=None, context_fingerprinter=None
+    )
+    try:
+        with pytest.raises(ArtifactError, match="Artifact identity is not resolved yet") as info:
+            await store.append(item, prepared, WorkItemResult(item_id="x", success=True))
+        assert not isinstance(info.value, ArtifactSerializationError)
+    finally:
+        await store.close()
