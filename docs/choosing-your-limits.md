@@ -183,7 +183,10 @@ min(initial_wait × exponential_base^(n − 1), max_wait)
 
 so 1s, 2s, 4s, and so on, capped at 60s. With `jitter=True` each wait is scaled
 to a random 50–100% of that value, which spreads simultaneous retries apart
-("equal jitter"). Validation failures (`validation_error`,
+("equal jitter"; `jitter="equal"` is the same). `jitter="full"` scales it to a
+random 0–100% instead. That spreads retries further, which helps against a
+flaky gateway that many items hit at once, but some retries go out almost
+immediately. `jitter=False` waits the exact value. Validation failures (`validation_error`,
 `structured_output_validation_error`) retry immediately, with no wait.
 
 Rate limits work differently. They don't use this backoff: one rate-limited
