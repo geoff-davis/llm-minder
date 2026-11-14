@@ -1,6 +1,7 @@
-"""Overflow-safe bounded exponential delays."""
+"""Overflow-safe bounded exponential delays and retry jitter."""
 
 import math
+import random
 
 
 def capped_backoff(initial: float, base: float, exponent: int, cap: float) -> float:
@@ -18,3 +19,16 @@ def capped_backoff(initial: float, base: float, exponent: int, cap: float) -> fl
         return min(initial * base**exponent, cap)
     except OverflowError:
         return min(math.exp(math.log(initial) + exponent * math.log(base)), cap)
+
+
+def apply_jitter(wait: float, mode: object) -> float:
+    """Scale ``wait`` by ``RetryConfig.jitter``.
+
+    ``"full"`` picks a random 0-100% of the wait. ``"equal"`` and any other truthy
+    value pick 50-100%. A falsy value returns the wait unchanged.
+    """
+    if mode == "full":
+        return wait * random.random()
+    if mode:
+        return wait * (0.5 + random.random() * 0.5)
+    return wait

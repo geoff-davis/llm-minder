@@ -7,7 +7,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from .._internal.input_validation import suggest_keyword_errors
 
@@ -43,13 +43,19 @@ class RetryConfig:
     ``max_rate_limit_retries`` (a backstop against an endpoint that throttles
     forever). This keeps model-escalation strategies (which key behavior off the
     attempt number) from escalating just because the endpoint was busy.
+
+    ``jitter`` randomizes each backoff wait so items that failed together don't
+    retry together. ``True`` or ``"equal"`` (the default) waits a random 50-100%
+    of the computed backoff. ``"full"`` waits a random 0-100%, which spreads
+    retries further at the cost of some retrying almost at once. ``False``
+    waits exactly the computed backoff.
     """
 
     max_attempts: int = 3
     initial_wait: float = 1.0
     max_wait: float = 60.0
     exponential_base: float = 2.0
-    jitter: bool = True
+    jitter: bool | Literal["equal", "full"] = True
     # Max times a single item may be retried after a rate-limit/cooldown without
     # consuming its max_attempts budget. 0 = rate limits immediately count as
     # failures. Exceeding it fails the item with a clear "exceeded N rate-limit
@@ -66,6 +72,10 @@ class RetryConfig:
             _validate_number(getattr(self, name), name=name, integer=True)
         for name in ("initial_wait", "max_wait", "exponential_base"):
             _validate_number(getattr(self, name), name=name)
+        if isinstance(self.jitter, str) and self.jitter not in ("equal", "full"):
+            raise ValueError(
+                f"jitter must be True, False, 'equal' or 'full' (got {self.jitter!r})."
+            )
         if self.max_attempts < 1:
             raise ValueError(
                 f"max_attempts must be >= 1 (got {self.max_attempts}). "

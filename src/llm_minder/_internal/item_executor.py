@@ -61,7 +61,7 @@ from .admission import (
     QuotaReservation,
     ScopeAdmissionState,
 )
-from .backoff import capped_backoff
+from .backoff import apply_jitter, capped_backoff
 from .budget import BudgetTracker
 from .cache_groups import CacheHitTracker
 from .capacity import CapacityLimiter
@@ -1251,11 +1251,7 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                         attempt - 1,
                         self.config.retry.max_wait,
                     )
-                    if self.config.retry.jitter:
-                        import random
-
-                        # Jitter to 50-100% of the computed wait to spread retries.
-                        wait_time = wait_time * (0.5 + random.random() * 0.5)
+                    wait_time = apply_jitter(wait_time, self.config.retry.jitter)
 
                 if (
                     deadline is not None

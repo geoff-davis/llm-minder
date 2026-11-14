@@ -544,9 +544,9 @@ class RetryConfig
     field initial_wait: float (kw_only) = 1.0
     field max_wait: float (kw_only) = 60.0
     field exponential_base: float (kw_only) = 2.0
-    field jitter: bool (kw_only) = True
+    field jitter: bool | Literal['equal', 'full'] (kw_only) = True
     field max_rate_limit_retries: int (kw_only) = 20
-    __init__(self, *, max_attempts: int = 3, initial_wait: float = 1.0, max_wait: float = 60.0, exponential_base: float = 2.0, jitter: bool = True, max_rate_limit_retries: int = 20) -> None
+    __init__(self, *, max_attempts: int = 3, initial_wait: float = 1.0, max_wait: float = 60.0, exponential_base: float = 2.0, jitter: bool | Literal['equal', 'full'] = True, max_rate_limit_retries: int = 20) -> None
     def validate(self) -> None
 class RetryState
     field data: dict[str, Any] = <factory: {}>
