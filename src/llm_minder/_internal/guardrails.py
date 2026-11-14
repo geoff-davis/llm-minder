@@ -43,12 +43,27 @@ class AbortCause:
 class AbortController:
     """Concurrency-safe, idempotent first-cause controller for one batch run."""
 
-    def __init__(self, mode: AbortMode) -> None:
+    def __init__(
+        self,
+        mode: AbortMode,
+        *,
+        max_provider_calls: int | None = None,
+        trip_hook: Callable[[AbortCause], bool] | None = None,
+        announce: Callable[[AbortCause], Awaitable[None]] | None = None,
+    ) -> None:
         self.mode = AbortMode(mode)
         self.event = asyncio.Event()
         self._lock = asyncio.Lock()
         self.cause: AbortCause | None = None
         self._active_provider_calls = 0
+        # The provider-call cap (GuardrailConfig.max_provider_calls). ``trip_hook``
+        # lets the owner close admission in the same synchronous step as the trip;
+        # ``announce`` emits the abort event later, outside the lock.
+        self.max_provider_calls = max_provider_calls
+        self.provider_calls_started = 0
+        self._trip_hook = trip_hook
+        self._announce = announce
+        self._unannounced_call_cap: AbortCause | None = None
 
     @property
     def aborted(self) -> bool:
@@ -74,11 +89,41 @@ class AbortController:
         return True
 
     async def begin_provider_call(self, item_id: str | None) -> None:
-        """Atomically register a provider attempt before a possible abort."""
+        """Atomically register a provider attempt before a possible abort.
+
+        With ``max_provider_calls`` set, an attempt beyond the cap is refused here
+        and stops the run, so the count can never pass the cap.
+        """
         async with self._lock:
             if self.cause is not None:
                 raise self.exception_for(item_id)
+            cap = self.max_provider_calls
+            if cap is not None and self.provider_calls_started >= cap:
+                cause = AbortCause(
+                    kind="budget_exceeded",
+                    reason=f"Provider call cap reached: {cap:,} of {cap:,} calls started",
+                    error_category="batch_budget_exceeded",
+                    triggering_item_id=item_id,
+                )
+                won = (
+                    self._trip_hook(cause) if self._trip_hook is not None else self.trip_now(cause)
+                )
+                if won:
+                    self._unannounced_call_cap = cause
+                raise self.exception_for(item_id)
+            self.provider_calls_started += 1
             self._active_provider_calls += 1
+
+    def refund_unstarted_provider_call(self) -> None:
+        """Undo the count for a registered attempt that never reached the provider."""
+        self.provider_calls_started = max(0, self.provider_calls_started - 1)
+
+    async def announce_call_cap(self) -> None:
+        """Emit the abort event for a call-cap stop, once, after the refusal."""
+        cause = self._unannounced_call_cap
+        self._unannounced_call_cap = None
+        if cause is not None and self._announce is not None:
+            await self._announce(cause)
 
     async def end_provider_call(self) -> None:
         # No lock: a synchronous decrement cannot interleave with another
@@ -177,6 +222,7 @@ async def await_with_guardrails(
     except BaseException:
         close_unstarted()
         if provider_registered and abort_controller is not None:
+            abort_controller.refund_unstarted_provider_call()
             await abort_controller.end_provider_call()
         raise
 
@@ -192,6 +238,7 @@ async def await_with_guardrails(
     except BaseException:
         close_unstarted()
         if provider_registered and abort_controller is not None:
+            abort_controller.refund_unstarted_provider_call()
             await abort_controller.end_provider_call()
         raise
 

@@ -202,6 +202,8 @@ so files written by earlier releases still load and resume.
 - **Budget API.** `AttemptUsage` and the `GuardrailConfig` fields `max_total_tokens`,
   `max_total_cost` and `cost_function` are new in 0.27 and stay provisional in 1.0,
   so their shape can still change in a minor release once they have seen real use.
+  `GuardrailConfig.max_provider_calls` and the `provider_calls_started` statistic,
+  new in 1.1, are provisional on the same terms.
 - **Cache-group statistics.** `CacheGroupTracker`, `CacheFloorBreach`, the
   `GuardrailConfig` fields `min_cache_hit_rate` and `cache_hit_window`, the
   `cache_group` and `cache_miss_reason` metadata keys, the

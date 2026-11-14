@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `google-genai` 3.x is supported: CI now tests its latest release alongside the
   1.x and 2.x lines and the 1.49.0 floor. The requirement is unchanged
   (`google-genai>=1.49.0`), so 3.x could already be installed; it was untested.
+- `GuardrailConfig(max_provider_calls=N)` is a hard cap on physical provider
+  attempts in a processor run, retries and rate-limit retries included. It is
+  checked before each call starts, so concurrent workers can't overshoot it. The
+  attempt that would exceed it is refused and the run stops as `budget_exceeded`,
+  like the token and cost caps. `get_stats()` reports `provider_calls_started`
+  ([#272]).
 
 ### Fixed
 
@@ -34,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
+[#272]: https://github.com/geoff-davis/llm-minder/issues/272
 
 ## [1.0.1] - 2026-11-13
 

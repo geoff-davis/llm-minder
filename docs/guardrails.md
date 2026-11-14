@@ -244,6 +244,37 @@ batch-abort results: written best-effort and never replayed. A `BatchResult`
 serialized with `termination.kind == "budget_exceeded"` can't be read by v0.26
 or earlier.
 
+## Provider call cap
+
+`max_total_tokens` and `max_total_cost` are soft caps, because usage is only known
+after a call finishes. When a run must not make more than a set number of calls,
+for example a paid run approved for "at most 500 calls", use `max_provider_calls`:
+
+```python
+config = ProcessorConfig(guardrails=GuardrailConfig(max_provider_calls=500))
+```
+
+- Every physical provider attempt counts: first tries, retries, and rate-limit
+  retries. Replayed results don't.
+- The count is checked and taken before each call starts, in one step, so
+  concurrent workers can't overshoot it. An attempt that is admitted but stopped
+  before reaching the provider, for example by its item deadline, gives its call back.
+- A run whose items all finish within the cap completes normally. Once the cap is
+  used up, the next attempt that needs a call is refused, and the run stops exactly
+  like a token or cost budget: `termination.kind == "budget_exceeded"`, a reason of
+  `Provider call cap reached: 500 of 500 calls started`, and `batch_budget_exceeded`
+  for the refused item and for unstarted items. `abort_mode` decides what happens
+  to calls already running.
+- `await processor.get_stats()` reports `provider_calls_started`.
+- Like budgets, the cap applies to processor runs only; `call()`, `call_result()`
+  and `LLMCallPool` reject it. It can be combined with `max_total_tokens` and
+  `max_total_cost`; whichever trips first stops the run.
+
+The cap counts calls the framework makes. An SDK that retries HTTP requests
+internally can bill more than one request per call. The built-in OpenAI-compatible
+models pass `max_retries=0` to the SDK by default. If you build the client yourself,
+or use Gemini's own retry options, turn those retries off for a strict cap.
+
 ## Cache hit-rate floor
 
 A prompt cache that stops hitting can multiply a run's input cost without any call
