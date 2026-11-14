@@ -153,7 +153,8 @@ budget and `attempt_timeout` for one provider attempt.
 
 Each `WorkItemResult.admission_wait_seconds` reports cumulative provider-capacity
 wait across attempts. `get_stats()` exposes total/max item wait, and
-`MetricsObserver` exposes attempt-level count, sum, max, and average wait.
+`MetricsObserver` exposes attempt-level count, sum, max, and average wait, and can
+[export them for Prometheus](api/observers.md#prometheus-export).
 `WorkItemResult.timing` further separates execution, built-in provider-call,
 cooldown, retry-backoff, and startup-ramp time for every physical try.
 Processor stats retain the latest 10,000 attempt samples and report admission
