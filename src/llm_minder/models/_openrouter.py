@@ -1,16 +1,13 @@
 """OpenRouterModel."""
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..strategies.errors import (
     ProviderResponseError,
 )
 from ._openai_compatible import OpenAICompatibleModel
 from ._shared import MetadataExtractor
-
-if TYPE_CHECKING:
-    pass
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")

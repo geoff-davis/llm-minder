@@ -7,7 +7,7 @@ import io
 import json
 import logging
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import Any, NoReturn
 
 from pydantic import BaseModel
 
@@ -17,9 +17,6 @@ from ..strategies.errors import (
     EmptyResponseReason,
     TruncatedResponseError,
 )
-
-if TYPE_CHECKING:
-    pass
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")

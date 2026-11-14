@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from .._internal.responses_translation import (
     merge_request_configs,
@@ -13,6 +13,10 @@ from .._internal.responses_translation import (
 from ..base import LLMResponse
 from ._openai_compatible import OpenAICompatibleModel
 from ._responses import _ResponsesSurface
+
+# Bound for annotations only, so typing.get_type_hints() resolves them. Code reads
+# _sdk.<name> at call time; tests/test_models_sdk_wiring.py enforces that.
+from ._sdk import AsyncOpenAI
 from ._shared import (
     MetadataExtractor,
     _has_system_message,
@@ -20,9 +24,6 @@ from ._shared import (
     _reason_text,
     _run_extractors,
 )
-
-if TYPE_CHECKING:
-    from openai import AsyncOpenAI
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")

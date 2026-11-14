@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
@@ -14,10 +14,11 @@ from ..strategies.errors import (
 )
 from ._openai_compatible import OpenAICompatibleModel
 from ._responses import _ResponsesSurface
-from ._shared import MetadataExtractor
 
-if TYPE_CHECKING:
-    from openai import AsyncOpenAI
+# Bound for annotations only, so typing.get_type_hints() resolves them. Code reads
+# _sdk.<name> at call time; tests/test_models_sdk_wiring.py enforces that.
+from ._sdk import AsyncOpenAI
+from ._shared import MetadataExtractor
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")

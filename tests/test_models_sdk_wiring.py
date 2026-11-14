@@ -1,15 +1,19 @@
 """The optional SDK handles are patched in one place: ``llm_minder.models._sdk`` (#322).
 
 Before the split, tests patched ``llm_minder.models.AsyncOpenAI`` and friends. With
-``models`` a package, a re-export of those names (or a provider module doing
-``from ._sdk import AsyncOpenAI``) would be a second binding: a patch would change one
-copy while the code read the other, and the tests patching it would pass or fail for the
-wrong reason. These tests fail if that wiring breaks.
+``models`` a package, any other binding of those names is a second copy: a patch would
+change one copy while the code read the other, and the tests patching it would pass or
+fail for the wrong reason. Provider modules do bind the names their constructor
+annotations use, so ``typing.get_type_hints()`` resolves them, but code must read them as
+``_sdk.<name>``. These tests fail if that wiring breaks.
 """
 
+import ast
 import importlib
+import inspect
 import pkgutil
 from types import SimpleNamespace
+from typing import get_type_hints
 from unittest.mock import patch
 
 import pytest
@@ -63,8 +67,18 @@ def test_package_does_not_rebind_sdk_handles():
 
 @pytest.mark.parametrize("module", list(_submodules()), ids=lambda m: m.__name__)
 def test_provider_modules_read_sdk_handles_through_sdk(module):
+    # Annotations are strings, so any Name node for an SDK handle outside the import is
+    # code reading the module's own binding, which a patch on _sdk would not reach.
+    tree = ast.parse(inspect.getsource(module))
+    reads = [
+        f"{node.id} at line {node.lineno}"
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Name) and node.id in SDK_NAMES
+    ]
+    assert not reads, f"{module.__name__} reads {reads}; use _sdk.<name>"
     for name in SDK_NAMES:
-        assert not hasattr(module, name), f"{module.__name__} binds {name}; read _sdk.{name}"
+        bound = getattr(module, name, _sdk)
+        assert bound is _sdk or bound is getattr(_sdk, name), (module.__name__, name)
 
 
 @pytest.mark.parametrize("model_cls", OPENAI_FAMILY, ids=lambda c: c.__name__)
@@ -120,3 +134,22 @@ def test_factory_reads_the_patched_async_openai():
     with patch.object(_sdk, "AsyncOpenAI", factory):
         llm("openai:m", api_key="k")
     assert len(factory.calls) == 1
+
+
+@pytest.mark.parametrize("model_cls", OPENAI_FAMILY, ids=lambda c: c.__name__)
+def test_openai_constructor_annotations_resolve(model_cls):
+    # get_type_hints evaluates string annotations in the defining module, so the SDK
+    # names must be reachable there (as _sdk.<name>), not only under TYPE_CHECKING.
+    openai = pytest.importorskip("openai")
+    hints = get_type_hints(model_cls.__init__)
+    assert hints["client"] is openai.AsyncOpenAI
+
+
+def test_gemini_constructor_annotations_resolve():
+    genai = pytest.importorskip("google.genai")
+    from google.genai.types import Content
+
+    assert get_type_hints(GeminiModel.__init__)["client"] is genai.Client
+    hints = get_type_hints(GeminiCachedModel.__init__)
+    assert hints["client"] is genai.Client
+    assert hints["cached_content"] == list[Content]

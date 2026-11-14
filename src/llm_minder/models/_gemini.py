@@ -6,10 +6,14 @@ import hashlib
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..base import LLMResponse
 from . import _sdk
+
+# Bound for annotations only, so typing.get_type_hints() resolves them. Code reads
+# _sdk.<name> at call time; tests/test_models_sdk_wiring.py enforces that.
+from ._sdk import Content, genai
 from ._shared import (
     _EMPTY_TEXT_FAILURES,
     MetadataExtractor,
@@ -26,10 +30,6 @@ from ._shared import (
     _run_extractors,
     _with_cache_group,
 )
-
-if TYPE_CHECKING:
-    from google import genai
-    from google.genai.types import Content
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")

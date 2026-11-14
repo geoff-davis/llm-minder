@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from .._internal.responses_translation import (
     merge_request_configs,
@@ -25,9 +25,6 @@ from ._shared import (
     _usage_dict,
     _with_cache_group,
 )
-
-if TYPE_CHECKING:
-    pass
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")

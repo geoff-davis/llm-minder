@@ -2,10 +2,14 @@
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 from ..base import LLMResponse
 from . import _sdk
+
+# Bound for annotations only, so typing.get_type_hints() resolves them. Code reads
+# _sdk.<name> at call time; tests/test_models_sdk_wiring.py enforces that.
+from ._sdk import AsyncOpenAI
 from ._shared import (
     _EMPTY_TEXT_FAILURES,
     MetadataExtractor,
@@ -23,9 +27,6 @@ from ._shared import (
     _system_text,
     _with_cache_group,
 )
-
-if TYPE_CHECKING:
-    from openai import AsyncOpenAI
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")
