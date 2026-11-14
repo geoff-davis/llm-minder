@@ -457,36 +457,21 @@ grounding, and the benchmark.
 - [Deadlines, Budgets and Fail-Fast Guardrails](https://geoff-davis.github.io/llm-minder/guardrails/)
 - [Bounded Work and Backpressure](https://geoff-davis.github.io/llm-minder/bounded-work/)
 - [API Reference](https://geoff-davis.github.io/llm-minder/api/core/)
-- [API Stability (draft for 1.0)](https://geoff-davis.github.io/llm-minder/stability/)
+- [API Stability](https://geoff-davis.github.io/llm-minder/stability/)
 
 ## Upgrading
 
-From v0.32, read the
-[1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/). The
-package is renamed to `llm-minder`, Python 3.11 is required, everything 0.27 and 0.28
-deprecated is removed, truncated responses get their own error category, and a
-cut-off or blocked empty reply now fails instead of succeeding. Coming from an older
-release, upgrade to v0.32 first with the guides below.
+Within 1.x, minor and patch releases don't break code that uses the stable API; the
+[API stability page](https://geoff-davis.github.io/llm-minder/stability/) says what
+that covers. Run your tests with `-W error::DeprecationWarning` to catch anything
+slated for removal.
 
-From v0.27, read the
-[v0.28 migration guide](https://geoff-davis.github.io/llm-minder/migration/v0.28/):
-v0.28 only adds deprecation warnings, for positional arguments to the configuration
-classes and the no-op `enable_detailed_logging`.
-
-From v0.26, read the
-[v0.27 migration guide](https://geoff-davis.github.io/llm-minder/migration/v0.27/)
-first. In short: `OpenAIModel` now uses the Responses API, built-in models no longer
-send a default temperature, application errors are no longer mistaken for rate
-limits, and several names are deprecated ahead of 1.0. Run your tests with
-`-W error::DeprecationWarning` to find them (on Python 3.14 with google-genai
-installed, also pass `-W "ignore::DeprecationWarning:google.genai.types"`). The
-[API stability page](https://geoff-davis.github.io/llm-minder/stability/)
-lists what 1.0 keeps stable.
-
-v0.32 is the last release that supports Python 3.10; 1.0 requires Python 3.11
-or newer. Guides for earlier versions are in the
-[migration section](https://geoff-davis.github.io/llm-minder/migration/v0.28/)
-of the documentation.
+From 0.x, read the
+[1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/). It
+starts from v0.32, the last 0.x release and the last to support Python 3.10. Coming
+from an older release, upgrade to v0.32 first, reading each release's migration guide
+in turn; they're listed under Migration Guides in the
+[documentation](https://geoff-davis.github.io/llm-minder/).
 
 ## Contributing
 

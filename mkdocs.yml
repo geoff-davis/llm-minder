@@ -96,7 +96,7 @@ nav:
     - Advanced Patterns: examples/advanced.md
     - Benchmark Walkthrough: examples/benchmark-walkthrough.md
   - Release Roadmap: roadmap.md
-  - API Stability (draft): stability.md
+  - API Stability: stability.md
   - Migration Guides:
     - 1.0 Migration: migration/v1.0.md
     - v0.28 Migration: migration/v0.28.md

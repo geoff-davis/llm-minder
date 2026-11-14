@@ -117,6 +117,21 @@ def test_release_version_and_tag_workflow_agree() -> None:
     assert '"v${PKG_VERSION}" != "${GITHUB_REF_NAME}"' in workflow
 
 
+def test_status_wording_matches_the_stable_classifier() -> None:
+    # #343: the landing pages kept calling the project beta after 1.0 shipped.
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    if "Development Status :: 5 - Production/Stable" not in pyproject:
+        return
+    pages = {
+        "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
+        "docs/index.md": (ROOT / "docs" / "index.md").read_text(encoding="utf-8"),
+        "mkdocs.yml": (ROOT / "mkdocs.yml").read_text(encoding="utf-8"),
+    }
+    stale = re.compile(r"\bbeta\b|pre-1\.0|ahead of 1\.0|API Stability \(draft", re.IGNORECASE)
+    found = {name: stale.findall(text) for name, text in pages.items() if stale.search(text)}
+    assert not found
+
+
 def test_source_does_not_claim_features_shipped_in_v019() -> None:
     stale = []
     for path in (ROOT / "src").rglob("*.py"):
