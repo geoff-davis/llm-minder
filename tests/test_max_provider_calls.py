@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any
 
 import pytest
@@ -13,16 +15,23 @@ from llm_minder import (
     GuardrailConfig,
     JsonlArtifactStore,
     LLMCallPool,
+    LLMWorkItem,
+    ParallelBatchProcessor,
     ProcessorConfig,
     ResumePolicy,
     RetryConfig,
     SqliteArtifactStore,
+    TokenEstimate,
     call_result,
     process_prompts,
 )
-from llm_minder._internal.guardrails import AbortController
+from llm_minder._internal.admission import QuotaReservation
+from llm_minder._internal.guardrails import AbortController, await_with_guardrails
 from llm_minder.observers import BaseObserver, ProcessingEvent
 from llm_minder.testing import FakeRateLimitError, FakeStrategy
+
+from .test_token_quota_integration import _config as _quota_config
+from .test_token_quota_integration import _SequenceStrategy
 
 _FAST_RETRY = RetryConfig(max_attempts=5, initial_wait=0.001, max_wait=0.001, jitter=False)
 
@@ -111,9 +120,6 @@ async def test_stop_is_announced_once():
     strategy = FakeStrategy("ok", latency=0.01)
     config = ProcessorConfig(max_workers=4, retry=_FAST_RETRY)
     config.guardrails = GuardrailConfig(max_provider_calls=2)
-    from llm_minder import ParallelBatchProcessor
-    from llm_minder.base import LLMWorkItem
-
     async with ParallelBatchProcessor[None, str, None](
         config=config, observers=[recorder]
     ) as processor:
@@ -174,3 +180,126 @@ async def test_unstarted_call_is_refunded():
     with pytest.raises(BatchBudgetExceeded):
         await controller.begin_provider_call("b")
     assert controller.cause is not None and controller.cause.triggering_item_id == "b"
+
+
+# --- Real helper paths (from the #339 review) ---------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["deadline", "callback", "cancel"])
+async def test_await_with_guardrails_refunds_a_call_that_never_starts(failure):
+    controller = AbortController(AbortMode.DRAIN_ACTIVE, max_provider_calls=1)
+    ran: list[bool] = []
+
+    async def body() -> str:
+        ran.append(True)
+        return "ok"
+
+    def start() -> None:
+        if failure == "callback":
+            raise RuntimeError("start failure")
+        if failure == "cancel":
+            raise asyncio.CancelledError("start cancel")
+
+    deadline = time.perf_counter() - 1 if failure == "deadline" else None
+    with pytest.raises(BaseException):  # noqa: B017 - each case raises a different type
+        await await_with_guardrails(
+            body(),
+            item_deadline=deadline,
+            item_id="x",
+            abort_controller=controller,
+            active_provider=True,
+            on_start=start,
+        )
+    assert not ran
+    assert controller.provider_calls_started == controller._active_provider_calls == 0
+    # The refunded call is still available.
+    result = await await_with_guardrails(
+        body(), item_deadline=None, item_id="y", abort_controller=controller, active_provider=True
+    )
+    assert result == "ok"
+    assert controller.provider_calls_started == 1
+    assert controller._active_provider_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_cancel_while_waiting_to_register_uses_no_call():
+    controller = AbortController(AbortMode.CANCEL_ACTIVE, max_provider_calls=1)
+    await controller._lock.acquire()
+
+    async def body() -> None:
+        raise AssertionError("must not run")
+
+    task = asyncio.create_task(
+        await_with_guardrails(
+            body(),
+            item_deadline=None,
+            item_id="x",
+            abort_controller=controller,
+            active_provider=True,
+        )
+    )
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    controller._lock.release()
+    assert controller.provider_calls_started == controller._active_provider_calls == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("budget", ["tokens", "cost"])
+@pytest.mark.parametrize("first", ["usage", "calls"])
+async def test_first_cause_wins_and_a_refused_attempt_releases_quota(monkeypatch, budget, first):
+    refunds: list[Any] = []
+    original = QuotaReservation.finalize_before_start
+
+    def record(self: QuotaReservation) -> Any:
+        result = original(self)
+        if result is not None:
+            refunds.append(result)
+        return result
+
+    monkeypatch.setattr(QuotaReservation, "finalize_before_start", record)
+    events: list[ProcessingEvent] = []
+
+    class Observer(BaseObserver):
+        async def on_event(self, event: ProcessingEvent, data: dict[str, Any]) -> None:
+            if event is ProcessingEvent.BATCH_ABORTED:
+                await asyncio.sleep(0)
+            if event in (ProcessingEvent.BATCH_ABORTED, ProcessingEvent.BATCH_COMPLETED):
+                events.append(event)
+
+    class Strategy(_SequenceStrategy):
+        @property
+        def max_concurrency(self) -> int:
+            return 1
+
+    usage = {"input_tokens": 4, "output_tokens": 1, "total_tokens": 5}
+    strategy = Strategy([usage], estimate=TokenEstimate(10))
+    kwargs: dict[str, Any] = {"max_provider_calls": 5 if first == "usage" else 1}
+    if budget == "tokens":
+        kwargs["max_total_tokens"] = 1 if first == "usage" else 100
+    else:
+        kwargs.update(max_total_cost=1 if first == "usage" else 100, cost_function=lambda _: 2)
+    config = _quota_config(
+        max_workers=1, max_requests_per_minute=1000, guardrails=GuardrailConfig(**kwargs)
+    )
+    async with ParallelBatchProcessor(config=config, observers=[Observer()]) as processor:
+        for i in range(3):
+            await processor.add_work(LLMWorkItem(str(i), strategy, "x"))
+        batch = await processor.process_all()
+        stats = await processor.get_stats()
+        assert all(entry[2]._active == 0 for entry in processor._capacity_limiter._entries.values())
+        assert processor._abort_controller is not None
+        assert processor._abort_controller._active_provider_calls == 0
+
+    assert strategy.calls == stats["provider_calls_started"] == 1
+    assert batch.termination.kind == "budget_exceeded"
+    assert batch.termination.reason is not None
+    assert ("Provider call cap" in batch.termination.reason) == (first == "calls")
+    if first == "calls":
+        assert len(refunds) == 1
+        assert refunds[0].disposition == "refunded_before_start"
+        assert refunds[0].delta_tokens == -10
+    assert events == [ProcessingEvent.BATCH_ABORTED, ProcessingEvent.BATCH_COMPLETED]
