@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   like the token and cost caps. `get_stats()` reports `provider_calls_started`
   ([#272]).
 
+### Changed
+
+- `JsonlArtifactStore.iter_results()` after `close()` raises
+  `ArtifactIOError("Artifact store is closed: ...")`, like the store's other
+  methods and like `SqliteArtifactStore.iter_results()`. It used to keep yielding
+  the stored results. To read a closed artifact, use
+  `JsonlArtifactStore.read_results(path)` ([#349]).
+
 ### Fixed
 
 - `JsonlArtifactStore.append()` on a store with no resolved identity raises
@@ -49,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
 [#272]: https://github.com/geoff-davis/llm-minder/issues/272
+[#349]: https://github.com/geoff-davis/llm-minder/issues/349
 [#322]: https://github.com/geoff-davis/llm-minder/issues/322
 
 ## [1.0.1] - 2026-11-13

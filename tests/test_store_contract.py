@@ -923,14 +923,8 @@ async def test_operations_after_close_raise_closed(
 
 
 async def test_iter_results_after_close_raises_closed(
-    request: pytest.FixtureRequest, tmp_path: Path, store_type: Any, suffix: str
+    tmp_path: Path, store_type: Any, suffix: str
 ) -> None:
-    if store_type is JsonlArtifactStore:
-        request.applymarker(
-            pytest.mark.xfail(
-                strict=True, reason="JSONL still yields stored results after close (#349)"
-            )
-        )
     store, _item, _key = await _store_with_one_item(store_type, tmp_path / f"iter-closed{suffix}")
     await store.close()
     with pytest.raises(ArtifactIOError, match="closed"):

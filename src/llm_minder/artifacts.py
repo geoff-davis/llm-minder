@@ -1059,6 +1059,10 @@ class JsonlArtifactStore:
         async def capture_snapshot() -> int:
             async with self._lock:
                 self._raise_detached_io_error()
+                # Closed means closed, as for every other operation and for
+                # SqliteArtifactStore; read_results(path) reads a closed artifact.
+                if self._closed:
+                    raise ArtifactIOError(f"Artifact store is closed: {self.path}")
                 return await asyncio.to_thread(_artifact_snapshot_size, self.path)
 
         snapshot_size = await self._run_lock_owner(capture_snapshot())
