@@ -15,7 +15,6 @@ import os
 from collections.abc import Callable
 from typing import Any, TypeVar, overload
 
-from . import models as _models
 from .base import LLMResponse
 from .llm_strategies import (
     DeepSeekStrategy,
@@ -30,6 +29,7 @@ from .models import (
     OpenAICompatibleModel,
     OpenAIModel,
     OpenRouterModel,
+    _sdk,
 )
 
 TOutput = TypeVar("TOutput")
@@ -60,7 +60,7 @@ def _validate_model_kwargs(provider: str, kwargs: dict[str, Any]) -> None:
     # base-class keyword (DeepSeekModel has no prompt_cache_key), and the union
     # over the MRO would let it through to fail inside the constructor.
     constructors = [model_cls.__init__ if provider == "gemini" else model_cls.from_api_key]
-    if provider != "gemini" and _models.AsyncOpenAI is not None:
+    if provider != "gemini" and _sdk.AsyncOpenAI is not None:
         from openai import AsyncOpenAI
 
         constructors.append(AsyncOpenAI.__init__)
@@ -82,7 +82,7 @@ def _validate_model_kwargs(provider: str, kwargs: dict[str, Any]) -> None:
 
 
 def _build_gemini(model_id: str, model_kwargs: dict[str, Any]) -> GeminiModel:
-    if _models.genai is None:
+    if _sdk.genai is None:
         raise ImportError(
             'google-genai is required for llm("gemini:..."). '
             "Install with: pip install 'llm-minder[gemini]'"
@@ -95,12 +95,12 @@ def _build_gemini(model_id: str, model_kwargs: dict[str, Any]) -> GeminiModel:
                 'No API key for llm("gemini:..."): pass api_key= or set the '
                 "GOOGLE_API_KEY (or GEMINI_API_KEY) environment variable."
             )
-    client = _models.genai.Client(api_key=api_key)
+    client = _sdk.genai.Client(api_key=api_key)
     try:
         model = GeminiModel(model_id, client, **model_kwargs)
     except BaseException:
         # The model never took the client; close both of its transports.
-        _models._close_unused_client(client.aio, "aclose")
+        _sdk._close_unused_client(client.aio, "aclose")
         with contextlib.suppress(Exception):
             client.close()
         raise

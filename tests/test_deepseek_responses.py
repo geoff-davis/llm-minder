@@ -248,7 +248,7 @@ def test_responses_capability_fails_closed_without_schema_fallback() -> None:
 
 
 def test_from_api_key_forwards_responses_configuration_to_model() -> None:
-    with patch("llm_minder.models.AsyncOpenAI"):
+    with patch("llm_minder.models._sdk.AsyncOpenAI"):
         model = DeepSeekModel.from_api_key(
             "deepseek-v4-flash",
             api_key="sk-test",

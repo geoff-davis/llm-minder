@@ -116,12 +116,12 @@ class TestErrorMessages:
             llm("openai:")
 
     def test_missing_openai_dependency_names_extra(self, monkeypatch):
-        monkeypatch.setattr(models_module, "AsyncOpenAI", None)
+        monkeypatch.setattr(models_module._sdk, "AsyncOpenAI", None)
         with pytest.raises(ImportError, match=r"llm-minder\[openai\]"):
             llm("openai:gpt-4o-mini", api_key="sk-test")
 
     def test_missing_gemini_dependency_names_extra(self, monkeypatch):
-        monkeypatch.setattr(models_module, "genai", None)
+        monkeypatch.setattr(models_module._sdk, "genai", None)
         with pytest.raises(ImportError, match=r"llm-minder\[gemini\]"):
             llm("gemini:gemini-2.5-flash", api_key="test-key")
 
@@ -195,7 +195,7 @@ async def test_prov9_factory_gemini_owned_client_reopens_and_shares(monkeypatch)
         clients.append(client)
         return client
 
-    monkeypatch.setattr(models_module.genai, "Client", construct)
+    monkeypatch.setattr(models_module._sdk.genai, "Client", construct)
     strategy = llm("gemini:test", api_key="test")
     peer = GeminiStrategy(strategy.model)
     await strategy.prepare()
@@ -230,14 +230,14 @@ def test_prov9_factory_lists_valid_kwargs(provider):
 def _record_openai_clients(monkeypatch):
     """Record every AsyncOpenAI client the models build."""
     built = []
-    real = models_module.AsyncOpenAI
+    real = models_module._sdk.AsyncOpenAI
 
     def construct(**kwargs):
         client = real(**kwargs)
         built.append(client)
         return client
 
-    monkeypatch.setattr(models_module, "AsyncOpenAI", construct)
+    monkeypatch.setattr(models_module._sdk, "AsyncOpenAI", construct)
     return built
 
 
@@ -299,13 +299,13 @@ async def test_failed_model_construction_closes_the_client_inside_a_loop(monkeyp
 
 def test_failed_client_construction_closes_the_sized_http_client(monkeypatch):
     http_clients = []
-    real = models_module._build_openai_http_client
+    real = models_module._sdk._build_openai_http_client
 
     def build(max_connections):
         http_clients.append(real(max_connections))
         return http_clients[-1]
 
-    monkeypatch.setattr(models_module, "_build_openai_http_client", build)
+    monkeypatch.setattr(models_module._sdk, "_build_openai_http_client", build)
     with pytest.raises(TypeError, match="not_an_sdk_option"):
         OpenAIModel.from_api_key("m", api_key="sk-test", max_connections=2, not_an_sdk_option=1)
     assert len(http_clients) == 1
@@ -315,7 +315,7 @@ def test_failed_client_construction_closes_the_sized_http_client(monkeypatch):
 def test_missing_key_builds_no_sized_http_client(monkeypatch):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     monkeypatch.setattr(
-        models_module,
+        models_module._sdk,
         "_build_openai_http_client",
         lambda n: pytest.fail("built an http client before resolving the key"),
     )
@@ -343,7 +343,7 @@ def test_factory_gemini_construction_failure_closes_the_client(monkeypatch):
         clients.append(client)
         return client
 
-    monkeypatch.setattr(models_module.genai, "Client", construct)
+    monkeypatch.setattr(models_module._sdk.genai, "Client", construct)
     with pytest.raises(ValueError, match="cache_group"):
         llm("gemini:test", api_key="test", cache_group="")
     clients[0].aio.aclose.assert_awaited_once()

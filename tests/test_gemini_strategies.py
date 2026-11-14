@@ -250,7 +250,7 @@ class TestGeminiModel:
 
     def test_import_error_when_genai_not_available(self):
         """Test that ImportError is raised when google-genai is not available."""
-        with patch("llm_minder.models.genai", None):
+        with patch("llm_minder.models._sdk.genai", None):
             with pytest.raises(ImportError) as exc_info:
                 GeminiModel("gemini-test", MagicMock())
             assert "google-genai is required" in str(exc_info.value)
@@ -868,7 +868,7 @@ class TestGeminiCachedModel:
 
     def test_import_error_when_genai_not_available(self):
         """Test that ImportError is raised when google-genai is not available."""
-        with patch("llm_minder.models.genai", None):
+        with patch("llm_minder.models._sdk.genai", None):
             with pytest.raises(ImportError) as exc_info:
                 GeminiCachedModel(
                     model="gemini-test",

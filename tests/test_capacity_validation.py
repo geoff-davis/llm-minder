@@ -36,8 +36,8 @@ class _CapacityStrategy(LLMCallStrategy[str]):
 
 def test_owned_openai_model_records_configured_capacity() -> None:
     with (
-        patch("llm_minder.models.AsyncOpenAI"),
-        patch("llm_minder.models._build_openai_http_client") as build_client,
+        patch("llm_minder.models._sdk.AsyncOpenAI"),
+        patch("llm_minder.models._sdk._build_openai_http_client") as build_client,
     ):
         model = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-test", max_connections=32)
 
