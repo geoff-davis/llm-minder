@@ -307,6 +307,187 @@ def _package_version() -> str:
         return "0.0.0+dev"
 
 
+# --- Helpers shared with SqliteArtifactStore ----------------------------------
+# Locking, writer ownership and durability stay in each store; these cover only
+# the steps whose behaviour and error messages are identical in both.
+
+
+class _StoreSettings(Protocol):
+    """The configuration attributes both artifact stores expose."""
+
+    context_in_identity: bool
+    encoder: ValueEncoder | None
+    context_fingerprinter: ContextFingerprinter | None
+    include_output: bool
+    include_metadata: bool
+    include_prompt: bool
+    include_context: bool
+    cost_calculator: CostCalculator | None
+    output_decoder: ValueDecoder | None
+    context_decoder: ValueDecoder | None
+    identity: ArtifactIdentity | None
+    identity_fingerprint: str | None
+    _identity_value: dict[str, JSONValue] | None
+    _identity_is_explicit: bool
+
+
+def _resolve_store_identity(store: _StoreSettings, strategy: Any) -> None:
+    """Resolve explicit identity or enforce one inferred identity per run."""
+    (
+        store.identity,
+        store._identity_value,
+        store.identity_fingerprint,
+    ) = _resolve_artifact_identity(
+        strategy,
+        identity_is_explicit=store._identity_is_explicit,
+        pinned_identity=store.identity,
+        pinned_identity_value=store._identity_value,
+        pinned_identity_fingerprint=store.identity_fingerprint,
+    )
+
+
+def _coerce_prepared_item(value: Any) -> PreparedArtifactItem:
+    if not isinstance(value, PreparedArtifactItem):
+        raise ArtifactSerializationError("Artifact item was not prepared by this store")
+    return value
+
+
+def _fingerprint_store_item(
+    store: _StoreSettings, work_item: LLMWorkItem[Any, Any, Any]
+) -> PreparedArtifactItem:
+    """Fingerprint input before provider work, mapping failures to artifact errors."""
+    try:
+        return fingerprint_work_item(
+            work_item,
+            context_in_identity=store.context_in_identity,
+            encoder=store.encoder,
+            context_fingerprinter=store.context_fingerprinter,
+        )
+    except ResultSerializationError as exc:
+        raise ArtifactSerializationError(str(exc)) from exc
+    except Exception as exc:
+        raise ArtifactSerializationError(
+            f"Context fingerprinter failed for item {work_item.item_id!r}: {exc}"
+        ) from exc
+
+
+def _build_store_record(
+    store: _StoreSettings,
+    work_item: LLMWorkItem[Any, Any, Any],
+    prepared: PreparedArtifactItem,
+    result: WorkItemResult[Any, Any],
+    *,
+    identity: ArtifactIdentity,
+    identity_value: dict[str, JSONValue],
+    identity_fingerprint: str,
+    serialization_error: Exception | None,
+) -> dict[str, Any]:
+    """Build one item record, mapping failures to artifact serialization errors."""
+    error_type = (
+        _RecordSerializationError if serialization_error is None else ArtifactSerializationError
+    )
+    try:
+        return build_item_record(
+            artifact_schema_version=ARTIFACT_SCHEMA_VERSION,
+            work_item=work_item,
+            prepared_item=prepared,
+            result=result,
+            identity_value=identity_value,
+            identity_fingerprint=identity_fingerprint,
+            identity=identity,
+            include_output=store.include_output,
+            include_metadata=store.include_metadata,
+            include_prompt=store.include_prompt,
+            include_context=store.include_context,
+            encoder=store.encoder,
+            cost_calculator=store.cost_calculator,
+            serialization_error=serialization_error,
+        )
+    except (ResultSerializationError, TypeError, ValueError) as exc:
+        raise error_type(
+            f"Could not serialize artifact result for item {work_item.item_id!r}: {exc}"
+        ) from exc
+    except Exception as exc:
+        raise error_type(f"Cost calculator failed for item {work_item.item_id!r}: {exc}") from exc
+
+
+def _restore_store_record(
+    store: _StoreSettings,
+    record: Mapping[str, Any],
+    work_item: LLMWorkItem[Any, Any, Any],
+    *,
+    location: str = "",
+) -> WorkItemResult[Any, Any]:
+    """Restore a replayed record; ``location`` is inserted before "for item"."""
+    try:
+        return restore_replayed_result(
+            record,
+            work_item,
+            output_decoder=store.output_decoder,
+            context_decoder=store.context_decoder,
+        )
+    except (KeyError, ResultSerializationError) as exc:
+        raise ArtifactFormatError(
+            f"Malformed stored result{location} for item {work_item.item_id!r}: {exc}"
+        ) from exc
+
+
+def _decode_stored_record(
+    record: Mapping[str, Any],
+    *,
+    sequence: Any,
+    output_decoder: ValueDecoder | None,
+    context_decoder: ValueDecoder | None,
+) -> WorkItemResult[Any, Any]:
+    """Decode a stored record for inspection, mapping failures to a format error."""
+    try:
+        return decode_stored_result(
+            record,
+            output_decoder=output_decoder,
+            context_decoder=context_decoder,
+        )
+    except (KeyError, ResultSerializationError) as exc:
+        raise ArtifactFormatError(
+            f"Malformed stored result at sequence {sequence!r} "
+            f"for item {record.get('item_id')!r}: {exc}"
+        ) from exc
+
+
+def _jsonl_display_sequence(record: Mapping[str, Any]) -> Any:
+    """JSONL errors report the 1-based record number (the manifest is line 1)."""
+    sequence = record.get("record_sequence")
+    if isinstance(sequence, int) and not isinstance(sequence, bool):
+        sequence += 1
+    return sequence
+
+
+def _validate_jsonl_record(
+    value: Any, *, line_number: int, manifest_seen: bool
+) -> dict[str, Any] | None:
+    """Validate one parsed JSONL line: return the item record, or None for the manifest."""
+    if not isinstance(value, dict):
+        raise ArtifactFormatError(f"Artifact line {line_number} must be a JSON object")
+    schema = value.get("artifact_schema_version")
+    if isinstance(schema, bool) or schema != ARTIFACT_SCHEMA_VERSION:
+        if isinstance(schema, int) and schema > ARTIFACT_SCHEMA_VERSION:
+            raise ArtifactFormatError(
+                f"Unsupported future artifact schema version {schema} at line {line_number}"
+            )
+        raise ArtifactFormatError(
+            f"Unsupported artifact schema version {schema!r} at line {line_number}"
+        )
+    record_type = value.get("record_type")
+    if not manifest_seen:
+        if record_type != "manifest":
+            raise ArtifactFormatError("The first complete artifact record must be a manifest")
+        return None
+    if record_type != "item":
+        raise ArtifactFormatError(
+            f"Unsupported artifact record_type {record_type!r} at line {line_number}"
+        )
+    return value
+
+
 @dataclass(frozen=True)
 class _ArtifactRead:
     records: list[dict[str, Any]]
@@ -371,28 +552,11 @@ def _read_artifact_records(path: Path, *, allow_create: bool) -> _ArtifactRead:
             raise ArtifactFormatError(
                 f"Malformed artifact JSON at non-final line {line_number}: {exc}"
             ) from exc
-        if not isinstance(value, dict):
-            raise ArtifactFormatError(f"Artifact line {line_number} must be a JSON object")
-        schema = value.get("artifact_schema_version")
-        if isinstance(schema, bool) or schema != ARTIFACT_SCHEMA_VERSION:
-            if isinstance(schema, int) and schema > ARTIFACT_SCHEMA_VERSION:
-                raise ArtifactFormatError(
-                    f"Unsupported future artifact schema version {schema} at line {line_number}"
-                )
-            raise ArtifactFormatError(
-                f"Unsupported artifact schema version {schema!r} at line {line_number}"
-            )
-        record_type = value.get("record_type")
-        if not manifest_seen:
-            if record_type != "manifest":
-                raise ArtifactFormatError("The first complete artifact record must be a manifest")
+        record = _validate_jsonl_record(value, line_number=line_number, manifest_seen=manifest_seen)
+        if record is None:
             manifest_seen = True
             continue
-        if record_type != "item":
-            raise ArtifactFormatError(
-                f"Unsupported artifact record_type {record_type!r} at line {line_number}"
-            )
-        records.append(value)
+        records.append(record)
     if not manifest_seen and (not allow_create or raw or not dropped):
         raise ArtifactFormatError("Artifact has no complete manifest record")
     return _ArtifactRead(records, not manifest_seen, len(raw), dropped)
@@ -486,34 +650,13 @@ def _read_artifact_page(
                         raise ArtifactFormatError(
                             f"Malformed artifact JSON at non-final line {line_number}: {exc}"
                         ) from exc
-                    if not isinstance(value, dict):
-                        raise ArtifactFormatError(
-                            f"Artifact line {line_number} must be a JSON object"
-                        )
-                    schema = value.get("artifact_schema_version")
-                    if isinstance(schema, bool) or schema != ARTIFACT_SCHEMA_VERSION:
-                        if isinstance(schema, int) and schema > ARTIFACT_SCHEMA_VERSION:
-                            raise ArtifactFormatError(
-                                "Unsupported future artifact schema version "
-                                f"{schema} at line {line_number}"
-                            )
-                        raise ArtifactFormatError(
-                            f"Unsupported artifact schema version {schema!r} at line {line_number}"
-                        )
-                    record_type = value.get("record_type")
-                    if not manifest_seen:
-                        if record_type != "manifest":
-                            raise ArtifactFormatError(
-                                "The first complete artifact record must be a manifest"
-                            )
+                    record = _validate_jsonl_record(
+                        value, line_number=line_number, manifest_seen=manifest_seen
+                    )
+                    if record is None:
                         manifest_seen = True
                         continue
-                    if record_type != "item":
-                        raise ArtifactFormatError(
-                            "Unsupported artifact record_type "
-                            f"{record_type!r} at line {line_number}"
-                        )
-                    records.append(value)
+                    records.append(record)
                 except ArtifactFormatError:
                     if records:
                         return (
@@ -618,17 +761,7 @@ class JsonlArtifactStore:
 
     def _resolve_identity_from(self, strategy: Any) -> None:
         """Resolve explicit identity or enforce one inferred identity per run."""
-        (
-            self.identity,
-            self._identity_value,
-            self.identity_fingerprint,
-        ) = _resolve_artifact_identity(
-            strategy,
-            identity_is_explicit=self._identity_is_explicit,
-            pinned_identity=self.identity,
-            pinned_identity_value=self._identity_value,
-            pinned_identity_fingerprint=self.identity_fingerprint,
-        )
+        _resolve_store_identity(self, strategy)
 
     def _require_resolved_fingerprint(self) -> str:
         if self.identity_fingerprint is None:
@@ -641,19 +774,7 @@ class JsonlArtifactStore:
         return self.identity_fingerprint
 
     def _fingerprint_item(self, work_item: LLMWorkItem[Any, Any, Any]) -> _ItemFingerprint:
-        try:
-            return fingerprint_work_item(
-                work_item,
-                context_in_identity=self.context_in_identity,
-                encoder=self.encoder,
-                context_fingerprinter=self.context_fingerprinter,
-            )
-        except ResultSerializationError as exc:
-            raise ArtifactSerializationError(str(exc)) from exc
-        except Exception as exc:
-            raise ArtifactSerializationError(
-                f"Context fingerprinter failed for item {work_item.item_id!r}: {exc}"
-            ) from exc
+        return _fingerprint_store_item(self, work_item)
 
     async def lookup(
         self,
@@ -691,18 +812,7 @@ class JsonlArtifactStore:
             or not self._compatible(record, work_item, fingerprint)
         ):
             return None
-        try:
-            result = restore_replayed_result(
-                record,
-                work_item,
-                output_decoder=self.output_decoder,
-                context_decoder=self.context_decoder,
-            )
-        except (KeyError, ResultSerializationError) as exc:
-            raise ArtifactFormatError(
-                f"Malformed stored result for item {work_item.item_id!r}: {exc}"
-            ) from exc
-        return result
+        return _restore_store_record(self, record, work_item)
 
     def _replay_key(
         self,
@@ -776,46 +886,25 @@ class JsonlArtifactStore:
     ) -> None:
         fingerprint = self._coerce_fingerprint(prepared_item)
         await self._prepare()
-        error_type = (
-            _RecordSerializationError if serialization_error is None else ArtifactSerializationError
+        identity_fingerprint = self._require_resolved_fingerprint()
+        identity = self.identity
+        identity_value = self._identity_value
+        assert identity is not None and identity_value is not None
+        record = _build_store_record(
+            self,
+            work_item,
+            fingerprint,
+            result,
+            identity=identity,
+            identity_value=identity_value,
+            identity_fingerprint=identity_fingerprint,
+            serialization_error=serialization_error,
         )
-        try:
-            identity_fingerprint = self._require_resolved_fingerprint()
-            identity = self.identity
-            identity_value = self._identity_value
-            assert identity is not None and identity_value is not None
-            record = build_item_record(
-                artifact_schema_version=ARTIFACT_SCHEMA_VERSION,
-                work_item=work_item,
-                prepared_item=fingerprint,
-                result=result,
-                identity_value=identity_value,
-                identity_fingerprint=identity_fingerprint,
-                identity=identity,
-                include_output=self.include_output,
-                include_metadata=self.include_metadata,
-                include_prompt=self.include_prompt,
-                include_context=self.include_context,
-                encoder=self.encoder,
-                cost_calculator=self.cost_calculator,
-                serialization_error=serialization_error,
-            )
-        except (ResultSerializationError, TypeError, ValueError) as exc:
-            raise error_type(
-                f"Could not serialize artifact result for item {work_item.item_id!r}: {exc}"
-            ) from exc
-        except Exception as exc:
-            raise error_type(
-                f"Cost calculator failed for item {work_item.item_id!r}: {exc}"
-            ) from exc
-
         await self._append_record(record)
 
     @staticmethod
     def _coerce_fingerprint(value: Any) -> _ItemFingerprint:
-        if not isinstance(value, _ItemFingerprint):
-            raise ArtifactSerializationError("Artifact item was not prepared by this store")
-        return value
+        return _coerce_prepared_item(value)
 
     def _finish_detached_io(self, task: asyncio.Task[Any]) -> None:
         """Retain a cancelled caller's I/O failure for the next store operation."""
@@ -990,21 +1079,12 @@ class JsonlArtifactStore:
             for record in page:
                 if successes_only and not record.get("success"):
                     continue
-                try:
-                    yield decode_stored_result(
-                        record,
-                        output_decoder=self.output_decoder,
-                        context_decoder=self.context_decoder,
-                    )
-                except (KeyError, ResultSerializationError) as exc:
-                    sequence = record.get("record_sequence")
-                    if isinstance(sequence, int) and not isinstance(sequence, bool):
-                        sequence += 1
-                    item_id = record.get("item_id")
-                    raise ArtifactFormatError(
-                        f"Malformed stored result at sequence {sequence!r} "
-                        f"for item {item_id!r}: {exc}"
-                    ) from exc
+                yield _decode_stored_record(
+                    record,
+                    sequence=_jsonl_display_sequence(record),
+                    output_decoder=self.output_decoder,
+                    context_decoder=self.context_decoder,
+                )
 
     async def close(self) -> None:
         await self._run_lock_owner(self._close_locked())
@@ -1047,22 +1127,14 @@ class JsonlArtifactStore:
         for record in records:
             if successes_only and not record.get("success"):
                 continue
-            try:
-                results.append(
-                    decode_stored_result(
-                        record,
-                        output_decoder=output_decoder,
-                        context_decoder=context_decoder,
-                    )
+            results.append(
+                _decode_stored_record(
+                    record,
+                    sequence=_jsonl_display_sequence(record),
+                    output_decoder=output_decoder,
+                    context_decoder=context_decoder,
                 )
-            except (KeyError, ResultSerializationError) as exc:
-                sequence = record.get("record_sequence")
-                if isinstance(sequence, int) and not isinstance(sequence, bool):
-                    sequence += 1
-                item_id = record.get("item_id")
-                raise ArtifactFormatError(
-                    f"Malformed stored result at sequence {sequence!r} for item {item_id!r}: {exc}"
-                ) from exc
+            )
         return BatchResult(results=results, termination=BatchTermination())
 
 

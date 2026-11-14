@@ -17,7 +17,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.x and 2.x lines and the 1.49.0 floor. The requirement is unchanged
   (`google-genai>=1.49.0`), so 3.x could already be installed; it was untested.
 
+### Fixed
+
+- `JsonlArtifactStore.append()` on a store with no resolved identity raises
+  `ArtifactError("Artifact identity is not resolved yet ...")`, as
+  `SqliteArtifactStore` does. It used to raise an `ArtifactSerializationError`
+  that blamed the cost calculator. Runs through a processor never hit this, since
+  `prepare_item()` resolves the identity first.
+
+### Development
+
+- The JSONL and SQLite artifact stores share private helpers for identity
+  resolution, input fingerprinting, record building, replay restore, stored-result
+  decoding and JSONL line validation, so their error mapping can't drift apart
+  ([#174]). Locking, writer ownership and durability stay separate.
+
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
+[#174]: https://github.com/geoff-davis/llm-minder/issues/174
 
 ## [1.0.1] - 2026-11-13
 

@@ -907,7 +907,8 @@ async def test_effective_audit_fields_and_exact_key_precede_publication(store_fa
     store = store_factory(include_prompt=True, include_context=True)
     records = []
     keys = []
-    module = importlib.import_module(type(store).__module__)
+    # Both stores build item records through the shared helper in artifacts.py.
+    module = importlib.import_module("llm_minder.artifacts")
     build = module.build_item_record
 
     def capture(**kwargs):

@@ -12,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import dataclass
 from enum import Enum
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
@@ -21,14 +20,10 @@ from ._internal.artifact_codec import (
     CostCalculator,
     PreparedArtifactItem,
     _encode_canonical_utf8,
-    build_item_record,
     build_manifest_record,
     canonical_json,
-    decode_stored_result,
     fingerprint_identity,
-    fingerprint_work_item,
     is_non_replayable_record,
-    restore_replayed_result,
 )
 from .artifacts import (
     ARTIFACT_SCHEMA_VERSION,
@@ -38,8 +33,13 @@ from .artifacts import (
     ArtifactIOError,
     ArtifactSerializationError,
     ResumePolicy,
-    _RecordSerializationError,
-    _resolve_artifact_identity,
+    _build_store_record,
+    _coerce_prepared_item,
+    _decode_stored_record,
+    _fingerprint_store_item,
+    _package_version,
+    _resolve_store_identity,
+    _restore_store_record,
 )
 from .base import BatchResult, BatchTermination, LLMWorkItem, WorkItemResult
 from .serialization import (
@@ -80,13 +80,6 @@ class _CloseRequest:
 
 
 _WriterRequest = _AppendRequest | _FlushRequest | _CloseRequest
-
-
-def _package_version() -> str:
-    try:
-        return version("llm-minder")
-    except PackageNotFoundError:
-        return "0.0.0+dev"
 
 
 def _validate_positive_integer(name: str, value: Any) -> int:
@@ -264,19 +257,7 @@ class SqliteArtifactStore:
             registration.add_done_callback(self._consume_task_exception)
             self._identity_tasks[fingerprint] = registration
         await self._await_owned_future(registration)
-        try:
-            return fingerprint_work_item(
-                work_item,
-                context_in_identity=self.context_in_identity,
-                encoder=self.encoder,
-                context_fingerprinter=self.context_fingerprinter,
-            )
-        except ResultSerializationError as exc:
-            raise ArtifactSerializationError(str(exc)) from exc
-        except Exception as exc:
-            raise ArtifactSerializationError(
-                f"Context fingerprinter failed for item {work_item.item_id!r}: {exc}"
-            ) from exc
+        return _fingerprint_store_item(self, work_item)
 
     async def _register_identity(self) -> None:
         try:
@@ -296,17 +277,7 @@ class SqliteArtifactStore:
             raise ArtifactFormatError(f"Invalid artifact identity record: {exc}") from exc
 
     def _resolve_identity_from(self, strategy: Any) -> None:
-        (
-            self.identity,
-            self._identity_value,
-            self.identity_fingerprint,
-        ) = _resolve_artifact_identity(
-            strategy,
-            identity_is_explicit=self._identity_is_explicit,
-            pinned_identity=self.identity,
-            pinned_identity_value=self._identity_value,
-            pinned_identity_fingerprint=self.identity_fingerprint,
-        )
+        _resolve_store_identity(self, strategy)
 
     def _require_resolved_identity(
         self,
@@ -325,9 +296,7 @@ class SqliteArtifactStore:
 
     @staticmethod
     def _coerce_prepared(value: Any) -> PreparedArtifactItem:
-        if not isinstance(value, PreparedArtifactItem):
-            raise ArtifactSerializationError("Artifact item was not prepared by this store")
-        return value
+        return _coerce_prepared_item(value)
 
     async def lookup(
         self,
@@ -351,18 +320,9 @@ class SqliteArtifactStore:
         )
         if row is None or is_non_replayable_record(row):
             return None
-        try:
-            return restore_replayed_result(
-                row,
-                work_item,
-                output_decoder=self.output_decoder,
-                context_decoder=self.context_decoder,
-            )
-        except (KeyError, ResultSerializationError) as exc:
-            raise ArtifactFormatError(
-                f"Malformed stored result at sequence {row.get('record_sequence')!r} "
-                f"for item {work_item.item_id!r}: {exc}"
-            ) from exc
+        return _restore_store_record(
+            self, row, work_item, location=f" at sequence {row.get('record_sequence')!r}"
+        )
 
     async def append(
         self,
@@ -394,34 +354,16 @@ class SqliteArtifactStore:
         prepared = self._coerce_prepared(prepared_item)
         await self._prepare()
         identity, identity_value, identity_fingerprint = self._require_resolved_identity()
-        error_type = (
-            _RecordSerializationError if serialization_error is None else ArtifactSerializationError
+        record = _build_store_record(
+            self,
+            work_item,
+            prepared,
+            result,
+            identity=identity,
+            identity_value=identity_value,
+            identity_fingerprint=identity_fingerprint,
+            serialization_error=serialization_error,
         )
-        try:
-            record = build_item_record(
-                artifact_schema_version=ARTIFACT_SCHEMA_VERSION,
-                work_item=work_item,
-                prepared_item=prepared,
-                result=result,
-                identity_value=identity_value,
-                identity_fingerprint=identity_fingerprint,
-                identity=identity,
-                include_output=self.include_output,
-                include_metadata=self.include_metadata,
-                include_prompt=self.include_prompt,
-                include_context=self.include_context,
-                encoder=self.encoder,
-                cost_calculator=self.cost_calculator,
-                serialization_error=serialization_error,
-            )
-        except (ResultSerializationError, TypeError, ValueError) as exc:
-            raise error_type(
-                f"Could not serialize artifact result for item {work_item.item_id!r}: {exc}"
-            ) from exc
-        except Exception as exc:
-            raise error_type(
-                f"Cost calculator failed for item {work_item.item_id!r}: {exc}"
-            ) from exc
 
         if self._closing or self._closed:
             raise ArtifactIOError(f"Artifact store is closed: {self.path}")
@@ -461,17 +403,12 @@ class SqliteArtifactStore:
                 return
             for row in rows:
                 after = int(row["record_sequence"])
-                try:
-                    yield decode_stored_result(
-                        row,
-                        output_decoder=self.output_decoder,
-                        context_decoder=self.context_decoder,
-                    )
-                except (KeyError, ResultSerializationError) as exc:
-                    raise ArtifactFormatError(
-                        f"Malformed stored result at sequence {after!r} "
-                        f"for item {row.get('item_id')!r}: {exc}"
-                    ) from exc
+                yield _decode_stored_record(
+                    row,
+                    sequence=after,
+                    output_decoder=self.output_decoder,
+                    context_decoder=self.context_decoder,
+                )
 
     async def close(self) -> None:
         """Drain writes, checkpoint/truncate WAL, and terminate the executor."""
@@ -583,19 +520,14 @@ class SqliteArtifactStore:
                     break
                 for row in rows:
                     after = int(row["record_sequence"])
-                    try:
-                        results.append(
-                            decode_stored_result(
-                                row,
-                                output_decoder=output_decoder,
-                                context_decoder=context_decoder,
-                            )
+                    results.append(
+                        _decode_stored_record(
+                            row,
+                            sequence=after,
+                            output_decoder=output_decoder,
+                            context_decoder=context_decoder,
                         )
-                    except (KeyError, ResultSerializationError) as exc:
-                        raise ArtifactFormatError(
-                            f"Malformed stored result at sequence {after!r} "
-                            f"for item {row.get('item_id')!r}: {exc}"
-                        ) from exc
+                    )
         except ArtifactError as exc:
             operation_error = exc
         except sqlite3.OperationalError as exc:
