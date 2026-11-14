@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for src/llm_minder/sqlite_artifacts.py: 85.71%</title>
+    <title>Coverage for src/llm_minder/sqlite_artifacts.py: 86.15%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_54cfdca1.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>src<span class="sep">/</span>llm_minder<span class="sep">/</span>sqlite_artifacts.py</b>:
-            <span class="pc_cov">85.71%</span>
+            <span class="pc_cov">86.15%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -56,10 +56,10 @@
         </aside>
         <h2>
             <span class="text">708 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">626<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">82<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">628<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">80<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">17<span class="text"> excluded</span></button>
-            <button type="button" class="par run show_par button_toggle_par" value="par" data-shortcut="p" title="Toggle lines partially run">38<span class="text"> partial</span></button>
+            <button type="button" class="par run show_par button_toggle_par" value="par" data-shortcut="p" title="Toggle lines partially run">36<span class="text"> partial</span></button>
         </h2>
         <p class="text">
             <a id="prevFileLink" class="nav" href="z_4fe35cc5af82c481_single_py.html">&#xab; prev</a> &nbsp; &nbsp;
@@ -67,7 +67,7 @@
             <a id="nextFileLink" class="nav" href="z_bdc5a950338e3fdf___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-14 19:36 +0000
+            created at 2026-11-14 20:41 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -483,8 +483,8 @@
     <p class="run run2"><span class="n"><a id="t399" href="#t399">399</a></span><span class="t">                <span class="nam">high_water</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t400" href="#t400">400</a></span><span class="t">                <span class="nam">successes_only</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t401" href="#t401">401</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="par run show_par"><span class="n"><a id="t402" href="#t402">402</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="nam">rows</span><span class="op">:</span>&nbsp;</span><span class="r"><span class="annotate short">402&#x202F;&#x219B;&#x202F;403</span><span class="annotate long">line 402 didn't jump to line 403 because the condition on line 402 was never true</span></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t403" href="#t403">403</a></span><span class="t">                <span class="key">return</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t402" href="#t402">402</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="nam">rows</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t403" href="#t403">403</a></span><span class="t">                <span class="key">return</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t404" href="#t404">404</a></span><span class="t">            <span class="key">for</span> <span class="nam">row</span> <span class="key">in</span> <span class="nam">rows</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t405" href="#t405">405</a></span><span class="t">                <span class="nam">after</span> <span class="op">=</span> <span class="nam">int</span><span class="op">(</span><span class="nam">row</span><span class="op">[</span><span class="str">&quot;record_sequence&quot;</span><span class="op">]</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t406" href="#t406">406</a></span><span class="t">                <span class="key">yield</span> <span class="nam">_decode_stored_record</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
@@ -600,8 +600,8 @@
     <p class="run run2"><span class="n"><a id="t516" href="#t516">516</a></span><span class="t">                    <span class="nam">successes_only</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t517" href="#t517">517</a></span><span class="t">                    <span class="nam">read_batch_size</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t518" href="#t518">518</a></span><span class="t">                <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="par run show_par"><span class="n"><a id="t519" href="#t519">519</a></span><span class="t">                <span class="key">if</span> <span class="key">not</span> <span class="nam">rows</span><span class="op">:</span>&nbsp;</span><span class="r"><span class="annotate short">519&#x202F;&#x219B;&#x202F;520</span><span class="annotate long">line 519 didn't jump to line 520 because the condition on line 519 was never true</span></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t520" href="#t520">520</a></span><span class="t">                    <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t519" href="#t519">519</a></span><span class="t">                <span class="key">if</span> <span class="key">not</span> <span class="nam">rows</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t520" href="#t520">520</a></span><span class="t">                    <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t521" href="#t521">521</a></span><span class="t">                <span class="key">for</span> <span class="nam">row</span> <span class="key">in</span> <span class="nam">rows</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t522" href="#t522">522</a></span><span class="t">                    <span class="nam">after</span> <span class="op">=</span> <span class="nam">int</span><span class="op">(</span><span class="nam">row</span><span class="op">[</span><span class="str">&quot;record_sequence&quot;</span><span class="op">]</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t523" href="#t523">523</a></span><span class="t">                    <span class="nam">results</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
@@ -1484,7 +1484,7 @@
             <a class="nav" href="z_bdc5a950338e3fdf___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-14 19:36 +0000
+            created at 2026-11-14 20:41 +0000
         </p>
     </div>
 </footer>
