@@ -855,16 +855,33 @@ async def test_newest_unsupported_record_is_not_hidden_by_an_older_one(
     tmp_path: Path, store_type: Any, suffix: str, policy: ResumePolicy
 ) -> None:
     path = tmp_path / f"newest-unsupported{suffix}"
-    for prompt in ("older", "newer"):
+
+    class _Fixed(_CountingStrategy):
+        def __init__(self, output: str) -> None:
+            super().__init__()
+            self.output = output
+
+        async def execute(self, *args: Any, **kwargs: Any) -> Any:
+            _, usage, metadata = await super().execute(*args, **kwargs)
+            return self.output, usage, metadata
+
+    # Same item and prompt twice, so the older record is a compatible fallback.
+    for output in ("older", "newer"):
         await process_prompts(
-            _CountingStrategy(),
-            [("id", prompt)],
+            _Fixed(output),
+            [("id", "p")],
             artifact_store=store_type(path, identity=_identity()),
         )
-    _corrupt_newest_schema_version(store_type, path, 2)
-
+    item = LLMWorkItem(item_id="id", strategy=_CountingStrategy(), prompt="p")
     store = store_type(path, identity=_identity())
-    item = LLMWorkItem(item_id="id", strategy=_CountingStrategy(), prompt="newer")
+    try:
+        replayed = await store.lookup(item, await store.prepare_item(item), policy)
+        assert replayed is not None and replayed.output == "newer"
+    finally:
+        await store.close()
+
+    _corrupt_newest_schema_version(store_type, path, 2)
+    store = store_type(path, identity=_identity())
     try:
         # JSONL validates the whole file in prepare_item; SQLite reads the row in lookup.
         with pytest.raises(ArtifactFormatError, match="future artifact schema version 2"):
