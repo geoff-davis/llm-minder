@@ -111,17 +111,41 @@ counters; dashboards should use them as listed.
 | `llm_minder_estimated_input_tokens` | gauge | Total estimated input tokens |
 | `llm_minder_estimated_output_tokens` | gauge | Total estimated output tokens |
 | `llm_minder_quota_scope_count` | gauge | Number of run-local quota scopes observed |
-| `llm_minder_errors_total{error_type}` | counter | Failed items by exception class name |
+| `llm_minder_errors_total{error_type}` | counter | Failed items, live or replayed, by exception class name |
 | `llm_minder_structured_output_recoveries_by_reason{reason}` | counter | Structured-output recoveries by reason |
 
-The two labelled counters appear only once they have a value. Their label values
-are exception class names (`error_type`) and the library's own recovery reasons
-(`reason`), so cardinality stays small unless your strategies raise many distinct
-exception classes. Double quotes in a label value are escaped.
+The two labelled counters appear only once they have a value. Every distinct label
+value becomes its own time series, so keep both sets small and under your control:
 
-There are no histograms or summaries. Processing time and admission wait are
-exported as averages, sums and maxima; the p50/p95/p99 percentiles are in
-`await processor.get_stats()` and the `BATCH_COMPLETED` event payload instead.
+- `error_type` is the exception class name of each failed item, so it grows with
+  the number of distinct exception classes your strategies raise.
+- `reason` is the item's `structured_output_recovery_reason`. The built-in parsing
+  helpers set only `trailing_markdown_fence`, but a custom strategy (including a
+  `CallableStrategy`) can return any string in its metadata, and that string is
+  used as the label value as it is. Return a short, fixed set of reasons, never
+  text taken from the response or the input.
+
+The exporter escapes double quotes in label values but not backslashes or
+newlines, which the exposition format also requires. A label value containing
+either produces output a Prometheus scraper rejects, so keep them out of
+exception class names and recovery reasons.
+
+There are no histograms or summaries, and the timing metrics cover different
+populations:
+
+- `avg_processing_time` and `processing_times_count` are the mean and count of the
+  `duration` of successful, live (not replayed) items, each measured over the whole
+  item including its retries. There is no processing-time sum or maximum.
+- Provider-capacity admission wait (`admission_wait_count`, `_seconds_sum`,
+  `_seconds_max`, `avg_admission_wait_seconds`) and RPM/TPM quota wait
+  (`quota_admitted_attempts`, `quota_wait_seconds_sum`, `_max`,
+  `avg_quota_wait_seconds`) are counted per attempt.
+- Percentiles are only in `await processor.get_stats()` and the `BATCH_COMPLETED`
+  payload: `admission_wait_p50/p95/p99_seconds`, `quota_wait_p50/p95/p99_seconds`
+  and `execution_p50/p95/p99_seconds`. They are computed over the latest 10,000
+  individual attempts, failed attempts and retries included, so
+  `execution_p50_seconds` is not the median of the items behind
+  `avg_processing_time`.
 
 Metric names changed in 1.0 from `async_batch_llm_*` to `llm_minder_*`; dashboards
 and alerts built on 0.x output need the new names.
