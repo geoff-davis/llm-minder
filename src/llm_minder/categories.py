@@ -53,7 +53,8 @@ class ErrorCategory(_StrValueEnum):
     SERVER_ERROR = "server_error"
     """A retryable 5xx response from the provider."""
     SERVER_OVERLOAD = "server_overload"
-    """The provider reported it is overloaded (Gemini 503). Retried."""
+    """The provider reported it is overloaded (Gemini 503, Anthropic 529). Retried; an
+    Anthropic 529 also starts the coordinated cooldown, like a rate limit."""
     SERVER_TIMEOUT = "server_timeout"
     """The provider timed out upstream (Gemini 504). Retried."""
     UPSTREAM_ERROR = "upstream_error"

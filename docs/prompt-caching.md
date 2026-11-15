@@ -32,6 +32,8 @@ Providers also need a minimum prefix length before they cache anything; for Open
 is 1,024 tokens on GPT-5.6 and later and depends on request settings for earlier models
 ([OpenAI's prompt caching guide][openai-caching]). Provider specifics:
 [OpenAI](OPENAI_INTEGRATION.md#getting-cache-hits),
+[Anthropic](ANTHROPIC_INTEGRATION.md#prompt-caching) (`cache_control=` turns on
+automatic caching),
 [OpenRouter](OPENROUTER_INTEGRATION.md#prompt-caching) (including Anthropic's opt-in
 `cache_control` markers), and [Gemini](GEMINI_INTEGRATION.md) (`GeminiCachedModel`
 for explicit context caching).
@@ -48,6 +50,7 @@ provider reports writes) and a group label in its metadata (`cache_group`).
 | `OpenRouterModel` | yes, when the upstream reports them | `prompt_cache_key`, else a system-instruction hash | yes |
 | `DeepSeekModel` | yes, from DeepSeek's cache-hit field | system-instruction hash (DeepSeek takes no key) | yes |
 | `GeminiModel` | yes | system-instruction hash | yes |
+| `AnthropicModel` | yes, reads and writes | system-instruction hash | yes |
 | `GeminiCachedModel` | yes | a stable hash of the cached content | yes |
 | `PydanticAIStrategy` | yes | none (calls count as ungrouped) | no |
 | Custom strategy or `CallableStrategy` | if your usage reports them | your `metadata["cache_group"]` | n/a |

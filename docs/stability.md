@@ -71,6 +71,7 @@ explicitly instead. On Python 3.14 an installed `google-genai` also emits its ow
   | `openai` | `openai`, `openrouter`, `deepseek` | 1.66.2 | 1.x, 2.x, 3.x |
   | `google-genai` | `gemini` | 1.49.0 | 1.x, 2.x, 3.x |
   | `pydantic-ai` | `pydantic-ai` | 1.32.0 | 1.x, 2.x |
+  | `anthropic` | `anthropic` | 1.0.0 | 1.x, 2.x |
 
 - **Fixes:** security and bug fixes go into the latest release.
 
@@ -114,6 +115,7 @@ removed in 1.0; see [Removed in 1.0](#removed-in-10).
 | `pydantic_json_parser`, `strip_code_fences` | Stable |
 | `provider_call`, `attach_token_usage` | Provisional (new in 0.32, for custom `execute()` overrides) |
 | `Grounding`, `GroundingSource`, `ToolCall` | Stable (typed provider-output views) |
+| `AnthropicModel`, `AnthropicStrategy`, `AnthropicErrorClassifier` | Provisional (new in 1.2, the native Anthropic provider) |
 
 The typed provider-output views `.grounding`, `.reasoning` and `.tool_calls` on
 `LLMResponse` and `WorkItemResult` are stable, and so are the `grounding`, `reasoning`

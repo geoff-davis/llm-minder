@@ -2,7 +2,7 @@
 
 Learn how to create custom strategies for any LLM provider.
 
-Two shortcuts come first. OpenAI, Gemini, OpenRouter, and DeepSeek have built-in
+Two shortcuts come first. OpenAI, Anthropic, Gemini, OpenRouter, and DeepSeek have built-in
 strategies (`llm("openai:gpt-6-luna")`, or `OpenAIStrategy(OpenAIModel(...))`), so you
 don't need a custom one for them. To wrap an async client you already have, a single
 function passed to [`CallableStrategy`](../callable-integration.md) is usually enough.

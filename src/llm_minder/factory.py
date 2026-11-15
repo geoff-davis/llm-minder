@@ -17,6 +17,7 @@ from typing import Any, TypeVar, overload
 
 from .base import LLMResponse
 from .llm_strategies import (
+    AnthropicStrategy,
     DeepSeekStrategy,
     GeminiStrategy,
     ModelStrategy,
@@ -24,6 +25,7 @@ from .llm_strategies import (
     OpenRouterStrategy,
 )
 from .models import (
+    AnthropicModel,
     DeepSeekModel,
     GeminiModel,
     OpenAICompatibleModel,
@@ -40,6 +42,7 @@ _PROVIDER_EXTRAS = {
     "openai": "openai",
     "openrouter": "openrouter",
     "deepseek": "deepseek",
+    "anthropic": "anthropic",
     "openai-compatible": "openai",
 }
 
@@ -54,13 +57,19 @@ def _validate_model_kwargs(provider: str, kwargs: dict[str, Any]) -> None:
         "openai": OpenAIModel,
         "openrouter": OpenRouterModel,
         "deepseek": DeepSeekModel,
+        "anthropic": AnthropicModel,
         "openai-compatible": OpenAICompatibleModel,
     }[provider]
     # Only the provider's own from_api_key: a subclass override may drop a
     # base-class keyword (DeepSeekModel has no prompt_cache_key), and the union
     # over the MRO would let it through to fail inside the constructor.
     constructors = [model_cls.__init__ if provider == "gemini" else model_cls.from_api_key]
-    if provider != "gemini" and _sdk.AsyncOpenAI is not None:
+    if provider == "anthropic":
+        if _sdk.AsyncAnthropic is not None:
+            from anthropic import AsyncAnthropic
+
+            constructors.append(AsyncAnthropic.__init__)
+    elif provider != "gemini" and _sdk.AsyncOpenAI is not None:
         from openai import AsyncOpenAI
 
         constructors.append(AsyncOpenAI.__init__)
@@ -147,6 +156,7 @@ def llm(
         >>> strategy = llm("gemini:gemini-3.5-flash")       # reads GOOGLE_API_KEY
         >>> strategy = llm("deepseek:deepseek-v4-flash", thinking=False, max_connections=150)
         >>> strategy = llm("openrouter:anthropic/claude-haiku-4-5")
+        >>> strategy = llm("anthropic:claude-opus-5-5")      # reads ANTHROPIC_API_KEY
         >>> strategy = llm(
         ...     "openai-compatible:meta-llama/Llama-3.1-8B-Instruct",
         ...     base_url="http://localhost:8000/v1",
@@ -155,7 +165,7 @@ def llm(
 
     Args:
         spec: ``"provider:model"`` — one of ``gemini:``, ``openai:``,
-            ``openrouter:``, ``deepseek:``, ``openai-compatible:``. The last
+            ``openrouter:``, ``deepseek:``, ``anthropic:``, ``openai-compatible:``. The last
             targets any other OpenAI-compatible server (vLLM, Together,
             proxies) over Chat Completions and requires ``base_url=``; its
             ``api_key`` falls back to ``OPENAI_API_KEY``. Everything after the first colon
@@ -170,13 +180,15 @@ def llm(
         **model_kwargs: Forwarded to the model constructor — e.g. ``api_key``,
             ``system_instruction``, ``max_connections`` / ``json_mode`` /
             ``extra_headers`` (OpenAI-compatible providers), ``thinking``
-            (DeepSeek), ``safety_settings`` (Gemini).
+            (DeepSeek), ``safety_settings`` (Gemini), ``max_tokens`` /
+            ``cache_control`` (Anthropic).
 
     Returns:
         The same strategy objects the explicit two-object form builds:
         :class:`GeminiStrategy`, :class:`OpenAIStrategy`,
-        :class:`OpenRouterStrategy`, or :class:`DeepSeekStrategy`. For the
-        OpenAI-compatible providers the model is created via
+        :class:`OpenRouterStrategy`, :class:`DeepSeekStrategy`, or
+        :class:`AnthropicStrategy`. For the OpenAI-compatible providers and
+        Anthropic the model is created via
         ``from_api_key`` and owns its client, so connections are released by
         the framework's normal strategy cleanup.
 
@@ -230,6 +242,10 @@ def llm(
             )
         strategy = OpenAIStrategy(
             OpenAICompatibleModel.from_api_key(model_id, **model_kwargs), **strategy_kwargs
+        )
+    elif provider == "anthropic":
+        strategy = AnthropicStrategy(
+            AnthropicModel.from_api_key(model_id, **model_kwargs), **strategy_kwargs
         )
     else:  # deepseek — the registry above is exhaustive
         strategy = DeepSeekStrategy(

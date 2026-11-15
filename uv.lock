@@ -1615,10 +1615,14 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "anthropic" },
     { name = "google-genai" },
     { name = "openai" },
     { name = "pydantic-ai" },
     { name = "tqdm" },
+]
+anthropic = [
+    { name = "anthropic" },
 ]
 deepseek = [
     { name = "openai" },
@@ -1641,6 +1645,7 @@ pydantic-ai = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "anthropic" },
     { name = "google-genai" },
     { name = "mypy" },
     { name = "openai" },
@@ -1665,6 +1670,8 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anthropic", marker = "extra == 'all'", specifier = ">=1.0.0" },
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=1.0.0" },
     { name = "google-genai", marker = "extra == 'all'", specifier = ">=1.49.0" },
     { name = "google-genai", marker = "extra == 'gemini'", specifier = ">=1.49.0" },
     { name = "openai", marker = "extra == 'all'", specifier = ">=1.66.2" },
@@ -1678,10 +1685,11 @@ requires-dist = [
     { name = "tqdm", marker = "extra == 'progress'", specifier = ">=4.66" },
     { name = "typing-extensions", specifier = ">=4.4.0" },
 ]
-provides-extras = ["pydantic-ai", "gemini", "openai", "openrouter", "deepseek", "progress", "all"]
+provides-extras = ["pydantic-ai", "gemini", "openai", "openrouter", "deepseek", "anthropic", "progress", "all"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anthropic", specifier = ">=1.0.0" },
     { name = "google-genai", specifier = ">=1.49.0" },
     { name = "mypy", specifier = ">=1.0.0" },
     { name = "openai", specifier = ">=1.66.2" },

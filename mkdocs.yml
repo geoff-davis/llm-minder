@@ -99,6 +99,7 @@ nav:
     - OpenAI-Compatible High Throughput: openai-high-throughput.md
     - Gemini: GEMINI_INTEGRATION.md
     - OpenAI: OPENAI_INTEGRATION.md
+    - Anthropic: ANTHROPIC_INTEGRATION.md
     - OpenRouter: OPENROUTER_INTEGRATION.md
   - Examples:
     - Basic Usage: examples/basic.md

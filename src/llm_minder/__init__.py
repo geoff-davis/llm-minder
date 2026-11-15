@@ -5,8 +5,9 @@ efficiently using a strategy pattern for provider-agnostic LLM integration.
 
 Key features:
 - Strategy pattern for any LLM provider (OpenAI, Anthropic, Google, LangChain, custom)
-- Built-in strategies: PydanticAIStrategy, GeminiStrategy, OpenAIStrategy, OpenRouterStrategy
-- Built-in models: GeminiModel, GeminiCachedModel, OpenAIModel, OpenRouterModel
+- Built-in strategies: PydanticAIStrategy, GeminiStrategy, OpenAIStrategy, OpenRouterStrategy,
+  AnthropicStrategy
+- Built-in models: GeminiModel, GeminiCachedModel, OpenAIModel, OpenRouterModel, AnthropicModel
 - Provider-agnostic error classification
 - Pluggable rate limit strategies
 - Middleware pipeline for extensibility
@@ -89,6 +90,7 @@ from .categories import ErrorCategory, TimeoutCategory
 
 # Classifiers
 from .classifiers import (
+    AnthropicErrorClassifier,
     GeminiErrorClassifier,
     OpenAIErrorClassifier,
     OpenRouterErrorClassifier,
@@ -123,6 +125,7 @@ from .limits import (
 
 # LLM call strategies
 from .llm_strategies import (
+    AnthropicStrategy,
     DeepSeekStrategy,
     GeminiStrategy,
     LLMCallStrategy,
@@ -137,6 +140,7 @@ from .middleware import BaseMiddleware, Middleware
 
 # Concrete models
 from .models import (
+    AnthropicModel,
     DeepSeekModel,
     GeminiCachedModel,
     GeminiModel,
@@ -291,6 +295,7 @@ __all__ = [
     # String-based strategy factory
     "llm",
     # LLM Strategies
+    "AnthropicStrategy",
     "DeepSeekStrategy",
     "GeminiStrategy",
     "LLMCallStrategy",
@@ -299,6 +304,7 @@ __all__ = [
     "OpenRouterStrategy",
     "PydanticAIStrategy",
     # Models
+    "AnthropicModel",
     "DeepSeekModel",
     "GeminiModel",
     "GeminiCachedModel",
@@ -352,6 +358,7 @@ __all__ = [
     "MetricsObserver",
     "ProcessingEvent",
     # Classifiers
+    "AnthropicErrorClassifier",
     "GeminiErrorClassifier",
     "OpenAIErrorClassifier",
     "OpenRouterErrorClassifier",

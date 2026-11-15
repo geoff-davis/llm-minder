@@ -8,7 +8,7 @@ Deadlines and spend caps stop a run cleanly, and token counts include the
 attempts that failed.
 
 It works with any async client: wrap your own, or use the built-in OpenAI,
-Gemini, OpenRouter, DeepSeek, or PydanticAI support. It's for anyone running LLM
+Anthropic, Gemini, OpenRouter, DeepSeek, or PydanticAI support. It's for anyone running LLM
 calls in bulk from one Python process: dataset labeling, extraction pipelines,
 model evaluations, nightly jobs, and services that share one quota. For
 latency-tolerant jobs, a provider's native batch API may be cheaper.

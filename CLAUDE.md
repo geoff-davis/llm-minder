@@ -27,7 +27,7 @@ by the release-prep flow, so it may briefly lag `main` between releases).
 - Concurrency-safe shared state across tasks on one event loop (`asyncio.Lock`-based)
 - Provider-agnostic core: bring your own strategy/model/classifier, or wrap an
   existing async client with `CallableStrategy`
-- Built-in Gemini, OpenAI, OpenRouter, DeepSeek, and PydanticAI support
+- Built-in Gemini, OpenAI, OpenRouter, DeepSeek, Anthropic, and PydanticAI support
 - Middleware and observer patterns for extensibility
 - `FakeStrategy` and `MockAgent` for testing without API calls
 
@@ -114,6 +114,7 @@ passing, post-processors, middleware, observers, error handling).
 | OpenRouter | `OpenRouterModel`                   | `OpenRouterStrategy` | `OpenRouterErrorClassifier` | `[openrouter]`    |
 | DeepSeek   | `DeepSeekModel`                     | `DeepSeekStrategy`   | `OpenAIErrorClassifier`     | `[deepseek]`      |
 | PydanticAI | (any model wrapped)                 | `PydanticAIStrategy` | `PydanticAIErrorClassifier` | `[pydantic-ai]`   |
+| Anthropic  | `AnthropicModel`                    | `AnthropicStrategy`  | `AnthropicErrorClassifier`  | `[anthropic]`     |
 
 `OpenAIModel` uses the Responses API by default (v0.27, `store=False`);
 `api_surface="chat_completions"` opts out. `DeepSeekModel` defaults to Chat
@@ -427,8 +428,8 @@ the project's release-prep flow.
     `test-macos`;
   - `quality` (ruff lint and format, mypy, ty, `make package-check`; markdownlint
     runs only in the prek hook and `make ci`, not in CI);
-  - `sdk-compat`, an eleven-leg matrix running each SDK's floor and the latest release
-    of every supported major (openai, google-genai, pydantic-ai);
+  - `sdk-compat`, a fourteen-leg matrix running each SDK's floor and the latest release
+    of every supported major (openai, google-genai, pydantic-ai, anthropic);
   - `scale-smoke`, `docs-build`, and `security` (pip-audit on the locked runtime
     deps, npm audit).
 - `docs.yml` — MkDocs build & GitHub Pages deploy on push to `main`.
@@ -623,6 +624,7 @@ src/llm_minder/
 - `docs/getting-started.md` — installation + first batch.
 - `docs/GEMINI_INTEGRATION.md` — Gemini deep dive (caching lifecycle).
 - `docs/OPENAI_INTEGRATION.md` — OpenAI deep dive (v0.9.0).
+- `docs/ANTHROPIC_INTEGRATION.md` — native Anthropic deep dive (provisional, #314).
 - `docs/OPENROUTER_INTEGRATION.md` — OpenRouter deep dive, including the
   per-upstream caching matrix and the Anthropic `cache_control` opt-in
   pattern.
@@ -732,9 +734,9 @@ assert result.total_items == result.succeeded + result.failed
    requests. See #2.
 3. **In-memory queue.** Queued work is lost on crash; results already
    checkpointed to a JSONL/SQLite artifact store replay on resume. See #4.
-4. **Provider classifiers are partial.** Gemini, OpenAI, OpenRouter are
-   covered; DeepSeek reuses `OpenAIErrorClassifier` (it's OpenAI-compatible);
-   Anthropic native and HuggingFace pending. See #3.
+4. **Provider classifiers are partial.** Gemini, OpenAI, OpenRouter and
+   Anthropic are covered; DeepSeek reuses `OpenAIErrorClassifier` (it's
+   OpenAI-compatible); HuggingFace pending. See #3.
 
 ---
 
@@ -742,8 +744,8 @@ assert result.total_items == result.succeeded + result.failed
 
 1. **Distributed locks** — multi-process scenarios.
 2. **Batch API support** — true batch APIs for ~50% cost savings.
-3. **More classifiers** — Anthropic native, HuggingFace. (DeepSeek reuses
-   `OpenAIErrorClassifier`.)
+3. **More classifiers** — HuggingFace. (DeepSeek reuses
+   `OpenAIErrorClassifier`; Anthropic is native since #314.)
 4. **Persistent queue** — Redis/DB-backed.
 5. **Prometheus metrics (done)** — `MetricsObserver.export_prometheus()` returns
    the Prometheus text format. Still open: an HTTP endpoint or push integration.

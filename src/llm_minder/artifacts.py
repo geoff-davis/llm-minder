@@ -97,6 +97,7 @@ _PROVIDER_BY_MODEL_CLASS = {
     "OpenAIModel": "openai",
     "OpenRouterModel": "openrouter",
     "DeepSeekModel": "deepseek",
+    "AnthropicModel": "anthropic",
 }
 
 _UNVERSIONED = "unversioned"

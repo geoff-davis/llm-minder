@@ -387,6 +387,10 @@ by `structured_output_recovery_reasons`.
 
 ::: llm_minder.DeepSeekStrategy
 
+## AnthropicStrategy
+
+::: llm_minder.AnthropicStrategy
+
 ## Models
 
 ### GeminiModel
@@ -412,6 +416,10 @@ by `structured_output_recovery_reasons`.
 ### DeepSeekModel
 
 ::: llm_minder.DeepSeekModel
+
+### AnthropicModel
+
+::: llm_minder.AnthropicModel
 
 ## Protocols
 
@@ -510,7 +518,11 @@ remain `ValueError` subclasses. Structured-output schema rejection is non-retrya
 `structured_output_validation_error`.
 
 Gemini provider timeouts use `timeout`, including bare `TimeoutError()`.
-Default, OpenAI and OpenRouter provider timeouts use `api_timeout`.
+Default, OpenAI, OpenRouter and Anthropic provider timeouts use `api_timeout`.
+`AnthropicErrorClassifier` gives an Anthropic 529 (overloaded) the retryable
+`server_overload` category with `is_rate_limit=True`, so it starts the coordinated
+cooldown like a 429, and a 429 for an enforced spend limit the non-retryable
+`insufficient_balance` category.
 Gemini daily quota exhaustion uses non-retryable `quota_exhausted` only when
 every reported quota violation has an explicit per-day quota ID; ambiguous and
 mixed daily/minute violations remain rate limits. Gemini RPC retry-delay hints

@@ -3,6 +3,7 @@
 import pytest
 
 from llm_minder import (
+    AnthropicStrategy,
     DeepSeekStrategy,
     GeminiStrategy,
     LLMWorkItem,
@@ -13,6 +14,7 @@ from llm_minder import (
     process_prompts,
 )
 from llm_minder.base import RetryState, TokenUsage
+from llm_minder.classifiers.anthropic import AnthropicErrorClassifier
 from llm_minder.classifiers.gemini import GeminiErrorClassifier
 from llm_minder.classifiers.openai import OpenAIErrorClassifier
 from llm_minder.classifiers.openrouter import OpenRouterErrorClassifier
@@ -39,6 +41,7 @@ class _GeminiRecommendingStrategy(_NoPreferenceStrategy):
         (DeepSeekStrategy(object()), OpenAIErrorClassifier),
         (OpenRouterStrategy(object()), OpenRouterErrorClassifier),
         (GeminiStrategy(object()), GeminiErrorClassifier),
+        (AnthropicStrategy(object()), AnthropicErrorClassifier),
         (_NoPreferenceStrategy(), type(None)),
     ],
 )

@@ -100,12 +100,13 @@ class TestKwargForwarding:
 class TestErrorMessages:
     def test_unknown_prefix_lists_valid_prefixes(self):
         with pytest.raises(ValueError) as exc_info:
-            llm("anthropic:claude-sonnet-4-5")
+            llm("mistral:mistral-large")
         message = str(exc_info.value)
-        assert "anthropic" in message
-        for prefix in ("gemini", "openai", "openrouter", "deepseek"):
+        assert "mistral" in message
+        for prefix in ("gemini", "openai", "openrouter", "deepseek", "anthropic"):
             assert f"'{prefix}:'" in message
         assert "llm-minder[openai]" in message
+        assert "llm-minder[anthropic]" in message
 
     def test_missing_colon(self):
         with pytest.raises(ValueError, match="provider:model"):
@@ -166,6 +167,7 @@ class TestErrorClassifierSelection:
             ("openai:gpt-4o-mini", "OpenAIErrorClassifier"),
             ("openrouter:anthropic/claude-haiku-4-5", "OpenRouterErrorClassifier"),
             ("deepseek:deepseek-v4-flash", "OpenAIErrorClassifier"),
+            ("anthropic:claude-opus-5-5", "AnthropicErrorClassifier"),
         ],
     )
     def test_recommended_classifier(self, spec, classifier_name):
@@ -217,7 +219,7 @@ def test_prov9_factory_missing_openai_key_is_value_error(monkeypatch):
         llm("openai:test")
 
 
-@pytest.mark.parametrize("provider", ["openai", "openrouter", "deepseek", "gemini"])
+@pytest.mark.parametrize("provider", ["openai", "openrouter", "deepseek", "gemini", "anthropic"])
 def test_prov9_factory_lists_valid_kwargs(provider):
     with pytest.raises(
         TypeError, match="Valid kwargs:.*api_key.*system_instruction|Valid kwargs:.*api_key"

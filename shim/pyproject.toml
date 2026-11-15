@@ -30,6 +30,7 @@ gemini = ["llm-minder[gemini]>=1.0.0,<2"]
 openai = ["llm-minder[openai]>=1.0.0,<2"]
 openrouter = ["llm-minder[openrouter]>=1.0.0,<2"]
 deepseek = ["llm-minder[deepseek]>=1.0.0,<2"]
+anthropic = ["llm-minder[anthropic]>=1.0.0,<2"]
 progress = ["llm-minder[progress]>=1.0.0,<2"]
 all = ["llm-minder[all]>=1.0.0,<2"]
 

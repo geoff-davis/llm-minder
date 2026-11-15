@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A native Anthropic provider: `AnthropicModel`, `AnthropicStrategy`,
+  `AnthropicErrorClassifier`, `llm("anthropic:<model>")` and the `[anthropic]` extra
+  (`anthropic>=1.0.0`; CI tests the floor and the 1.x and 2.x lines). It calls the
+  Messages API without streaming and accepts any async client with `messages.create`,
+  including the Vertex, Bedrock and Foundry clients. `input_tokens` includes cache
+  reads and writes, which are also reported as `cached_input_tokens` and
+  `cache_write_input_tokens`; `cache_control=` turns on automatic prompt caching. A
+  textless `max_tokens` stop raises `TruncatedResponseError`, a refusal raises
+  `EmptyResponseError` with reason `content_filter`, and thinking and `tool_use`
+  blocks fill the `reasoning` and `tool_calls` views. The classifier treats a 529
+  overload as a rate limit (category `server_overload`), so every worker waits out
+  one shared cooldown, and parses `retry-after` into the suggested wait. All new
+  names are provisional. See [the Anthropic guide](docs/ANTHROPIC_INTEGRATION.md)
+  ([#314]).
+
+[#314]: https://github.com/geoff-davis/llm-minder/issues/314
+
 ## [1.1.0] - 2026-11-15
 
 ### Added

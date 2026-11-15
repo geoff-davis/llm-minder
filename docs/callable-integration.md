@@ -134,7 +134,8 @@ claim complete accounting.
 `cached_input_tokens` (read from a prompt cache) and `cache_write_input_tokens`
 (written to one) are both counted inside `input_tokens`. Anthropic's native
 usage reports them separately and leaves them out of its `input_tokens`, so add
-them back:
+them back (the built-in [`AnthropicModel`](ANTHROPIC_INTEGRATION.md) does this for
+you):
 
 ```python
 usage = response.usage

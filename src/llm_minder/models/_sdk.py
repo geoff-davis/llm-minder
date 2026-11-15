@@ -1,7 +1,8 @@
 """Optional provider SDK handles and client helpers.
 
 Provider modules read these as ``_sdk.<name>`` at call time, so tests patch them
-here, in one place (``llm_minder.models._sdk.AsyncOpenAI`` and so on)."""
+here, in one place (``llm_minder.models._sdk.AsyncOpenAI``,
+``llm_minder.models._sdk.AsyncAnthropic`` and so on)."""
 
 import asyncio
 import inspect
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 # Conditional imports for optional dependencies
 if TYPE_CHECKING:
+    from anthropic import AsyncAnthropic
     from google import genai
     from google.genai.types import Content
     from openai import AsyncOpenAI
@@ -24,6 +26,10 @@ else:
         from openai import AsyncOpenAI
     except ImportError:
         AsyncOpenAI = None  # type: ignore[assignment,misc]
+    try:
+        from anthropic import AsyncAnthropic
+    except ImportError:
+        AsyncAnthropic = None  # type: ignore[assignment,misc]
 
 # Every models submodule logs as llm_minder.models, the logger name before the split.
 logger = logging.getLogger("llm_minder.models")
@@ -38,6 +44,24 @@ def _build_openai_http_client(max_connections: int) -> Any:
     transport generations without taking a direct dependency on either one.
     """
     from openai import DEFAULT_CONNECTION_LIMITS, DefaultAsyncHttpxClient
+
+    limits_type = type(DEFAULT_CONNECTION_LIMITS)
+    return DefaultAsyncHttpxClient(
+        limits=limits_type(
+            max_connections=max_connections,
+            max_keepalive_connections=max_connections,
+        )
+    )
+
+
+def _build_anthropic_http_client(max_connections: int) -> Any:
+    """Build a sized client using the transport bundled with the Anthropic SDK.
+
+    ``anthropic`` 1.x and later run on ``httpx2``, not ``httpx``; the SDK
+    rejects plain ``httpx`` objects. Deriving the limits class from the SDK's
+    own default keeps llm-minder free of a direct dependency on either.
+    """
+    from anthropic import DEFAULT_CONNECTION_LIMITS, DefaultAsyncHttpxClient
 
     limits_type = type(DEFAULT_CONNECTION_LIMITS)
     return DefaultAsyncHttpxClient(
