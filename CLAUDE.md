@@ -12,8 +12,8 @@ here.
 **strategy pattern** — provider-agnostic at the framework level, with
 first-class support for several providers built in.
 
-**Current version:** v1.0.1, a bug-fix release; v1.0.0 was the first stable release,
-covered by the API stability promise (`docs/stability.md`). v0.32.0 was the last release for
+**Current version:** v1.1.0, an additive minor release under the 1.0 stability promise
+(`docs/stability.md`); v1.0.0 was the first stable release. v0.32.0 was the last release for
 Python 3.10 and the last as `async-batch-llm` (see `CHANGELOG.md`; `pyproject.toml` is bumped
 by the release-prep flow, so it may briefly lag `main` between releases).
 
@@ -776,6 +776,11 @@ assert result.total_items == result.succeeded + result.failed
 ## Version history
 
 Most recent first. See `CHANGELOG.md` for full per-release detail.
+
+- **v1.1.0** — `describe_limits()` and `gate_waits()` (#319), the hard
+  `GuardrailConfig.max_provider_calls` cap (#272), `RetryConfig(jitter=)` (#300), google-genai 3.x
+  support, a `models/` package (#322), Prometheus label escaping (#362), cooldown timing that
+  counts only real cooldowns (#365), and a documentation review (safe-limits guide #345).
 
 - **v1.0.1** — fixes from a review of 1.0: lost `BATCH_ABORTED` events, deadline-expired
   items whose input can't be checkpointed, bare-string `abort_on_error_categories`

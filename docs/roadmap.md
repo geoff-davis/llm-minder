@@ -17,6 +17,7 @@
 | v1.0.0rc2 | Second release candidate: fixes from a full review of rc1 (cancellation, capacity, classifier categories, checkpoint identity, Responses overrides, upgrade hints). See the [migration guide](migration/v1.0.md). |
 | v1.0.0 | First stable release, identical to rc2, and the start of the [API stability promise](stability.md). See the [migration guide](migration/v1.0.md). |
 | v1.0.1 | Bug fixes from a review of 1.0: abort events, deadline-expired checkpoint inputs, guardrail category validation, Responses tool schemas, and store crash recovery. |
+| v1.1.0 | Additive: `describe_limits()`/`gate_waits()`, a hard provider-call cap, retry jitter, google-genai 3.x, Prometheus label escaping, and a guide to finding unknown rate limits. |
 
-Work planned after 1.0.1 (v1.1 and v1.2) is tracked in
+Work planned after 1.1 (v1.2) is tracked in
 [#330](https://github.com/geoff-davis/llm-minder/issues/330).

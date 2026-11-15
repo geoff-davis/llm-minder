@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-15
+
 ### Added
 
 - `RetryConfig(jitter="full")` waits a random 0–100% of each computed backoff,
@@ -68,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- The README, the docs home and the site description no longer call the project
+  beta; a test keeps the landing pages in step with the package classifier ([#343]).
 - `MetricsObserver.export_prometheus()` is documented: every exported metric
   with its type, how to publish the text through the node-exporter textfile
   collector or an HTTP endpoint, and what it doesn't export ([#344]).
@@ -97,6 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Development
 
+- One contract suite (`tests/test_store_contract.py`) runs the same artifact-store
+  tests against both JSONL and SQLite ([#326]).
 - The JSONL and SQLite artifact stores share private helpers for identity
   resolution, input fingerprinting, record building, replay restore, stored-result
   decoding and JSONL line validation, so their error mapping can't drift apart
@@ -132,6 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#345]: https://github.com/geoff-davis/llm-minder/issues/345
 [#362]: https://github.com/geoff-davis/llm-minder/issues/362
 [#365]: https://github.com/geoff-davis/llm-minder/issues/365
+[#343]: https://github.com/geoff-davis/llm-minder/issues/343
+[#326]: https://github.com/geoff-davis/llm-minder/issues/326
 
 ## [1.0.1] - 2026-11-13
 
@@ -3139,7 +3147,8 @@ See **[Migration Guide](docs/archive/MIGRATION_V0_1.md)** for complete upgrade i
 [#122]: https://github.com/geoff-davis/async-batch-llm/issues/122
 [#125]: https://github.com/geoff-davis/async-batch-llm/issues/125
 
-[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/geoff-davis/llm-minder/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/geoff-davis/llm-minder/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc2...v1.0.0
 [1.0.0rc2]: https://github.com/geoff-davis/llm-minder/compare/v1.0.0rc1...v1.0.0rc2
