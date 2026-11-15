@@ -629,16 +629,15 @@ src/llm_minder/
   single-call-pool, strategies, observers).
 - `docs/stability.md` — the 1.0 compatibility promise: stable, provisional, and
   deprecated names. `tests/test_stability_page.py` requires every `__all__` name.
-- `docs/migration/v0.27.md` — current migration guide (older ones alongside).
+- `docs/migration/` — every migration guide; `index.md` says which to read from a
+  given release, and `v1.0.md` is the latest.
 - `docs/choosing-your-limits.md`, `docs/production-checklist.md`,
   `docs/guardrails.md`, `docs/results-and-artifacts.md`, `docs/large-runs.md` —
   operational guides.
 - `SECURITY.md` — vulnerability reporting.
-- `docs/MIGRATION_V0_10.md` — historical migration guide
-  (v0.8.x → v0.10.0; covers OpenAI/OpenRouter additions and the metadata
-  3-tuple contract change).
-- `docs/migration/v0.4.md` — earlier migration notes.
-- `docs/archive/` — historical migration guides and design plans.
+- `docs/evidence/` — evidence published with past releases (v0.20 release notes,
+  v0.22 scale evidence, SQLite maintenance evidence).
+- `docs/archive/` — pre-release (v0.0–v0.3) migration guides and old design plans.
 - `CHANGELOG.md` — release-by-release changes.
 - `CONTRIBUTING.md` — contributor docs, including the release process
   (`/release-prep` → merge → `/release-tag`; publishing is tag-triggered).
@@ -686,7 +685,7 @@ src/llm_minder/
   `benchmark_results/summary.json` + `throughput.json`. `download_gsm8k.py`
   fetches the data (writes `examples/data/gsm8k_test.jsonl.gz`, gitignored).
   Needs `[deepseek,gemini,openai]` extras. `generate_benchmark_charts.py`
-  (needs `[docs]`/matplotlib) turns the JSON into the `docs/benchmarks.md`
+  (needs the `docs` dependency group, for matplotlib) turns the JSON into the `docs/benchmarks.md`
   figures. Docs: `docs/benchmarks.md` (results) + `docs/examples/benchmark-walkthrough.md`.
 
 ---

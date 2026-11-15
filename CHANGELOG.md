@@ -54,6 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MetricsObserver.export_prometheus()` is documented: every exported metric
   with its type, how to publish the text through the node-exporter textfile
   collector or an HTTP endpoint, and what it doesn't export ([#344]).
+- Every migration guide now lives under `migration/`, with an index page that says
+  which guides to read from a given release, and release evidence pages live under
+  `evidence/` ([#321]). The old URLs redirect.
 
 ### Development
 
@@ -87,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#344]: https://github.com/geoff-davis/llm-minder/issues/344
 [#175]: https://github.com/geoff-davis/llm-minder/issues/175
 [#337]: https://github.com/geoff-davis/llm-minder/issues/337
+[#321]: https://github.com/geoff-davis/llm-minder/issues/321
 
 ## [1.0.1] - 2026-11-13
 

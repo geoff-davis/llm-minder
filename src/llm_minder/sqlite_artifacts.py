@@ -105,7 +105,7 @@ async def _await_without_cancelling(future: asyncio.Future[Any]) -> Any:
     A historical Python 3.14 smoke run motivated this defensive wakeup timer;
     a CPython callback-registration defect has not been independently reproduced.
     Keep the normal completion callback and its low-frequency backup until the
-    uncertainty is resolved (see docs/sqlite-maintenance-evidence.md). Cancelling
+    uncertainty is resolved (see docs/evidence/sqlite-maintenance-evidence.md). Cancelling
     the bridge future leaves the owned work untouched.
     """
     if future.done():

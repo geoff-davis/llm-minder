@@ -378,7 +378,7 @@ run proves no loss or duplication without retaining IDs.
 
 ### Dated results policy
 
-The reviewed [v0.22 scale evidence](v0.22-scale-evidence.md) records the
+The reviewed [v0.22 scale evidence](evidence/v0.22-scale-evidence.md) records the
 completed 2026-08-17 full 100k profile and the exact 1m `healthy` scenario,
 including revision, environment, report hashes, quota reconciliation totals,
 and explicitly unrun 1m scenarios.
