@@ -200,8 +200,9 @@ number. With no rate limit, the cooldown row can still show a fraction of a
 second: that's the time spent checking for a cooldown under load, not a cooldown.
 
 Then count requests per minute. If the provider pushed back, count the minute
-before the first rate limit. If it never did, the busiest minute of the run is a
-rate it accepted, which is a safe lower bound on the limit:
+before the first rate limit. If it never did, the busiest minute is the highest
+throughput you observed. Provided those requests succeeded, it's a rate the
+provider accepted, so the limit is at least that high:
 
 ```python
 import statistics
@@ -266,8 +267,12 @@ from step 1 of the decision tree.
 The margin is a starting point, not a guarantee: the count is approximate, other
 applications may share the quota, and providers change limits. Watch
 `get_stats()["rate_limit_count"]` in the first real runs and lower the limits if
-cooldowns appear. If the probe never hit a limit, the busiest minute is a rate the
-provider accepted; pinning below it is safe but may leave throughput unused.
+cooldowns appear. If the probe never hit a limit and its requests succeeded,
+pinning below the busiest minute keeps you under a rate the provider accepted,
+but may leave throughput unused. A provider SDK that retries 429s internally can
+hide throttling from the probe. The built-in OpenAI-compatible models already
+pass `max_retries=0` when they build the client; for a client you build yourself,
+turn SDK retries off for the probe.
 
 Pin the per-minute limits rather than the concurrency at which the probe tripped.
 The provider counts requests and tokens per minute, not connections, so when
@@ -298,6 +303,13 @@ tokens. The ramp and capacity rows are the same wait, and the cooldown row is
 the cost of checking for a cooldown, not a cooldown. So the run never reached the
 limit. For this key and model the limit is above about 10,000 requests per minute,
 and finding it would take a wider probe.
+
+A wider probe the same day (`concurrency=512`, ramp 32/32/15) peaked at 18,179
+requests in a minute, still without a rate limit, before a 900-second batch
+timeout ended it. At that width the probing process became the bottleneck: the
+median call rose to 0.99 seconds and only about 300 requests were in flight on
+average. One process can show that a limit is at least this high, not where it
+is.
 
 A rate the provider accepted is still a usable setting:
 
