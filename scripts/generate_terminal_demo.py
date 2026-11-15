@@ -4,8 +4,9 @@ Maintainer command:
 
     uv run --with pillow python scripts/generate_terminal_demo.py
 
-The rendered transcript mirrors the credential-free callable application
-example. Pillow is a generation-time tool, not a package dependency.
+The rendered transcript is the standard output of the credential-free
+``examples/example_cooldown_resume.py``; rerun it and update ``OUTPUT_LINES``
+if its output changes. Pillow is a generation-time tool, not a package dependency.
 """
 
 from __future__ import annotations
@@ -17,43 +18,19 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "assets" / "v0.20-quickstart.gif"
 
-FRAMES = [
-    [
-        "$ uv run python examples/example_callable_application.py",
-        "batch  0/5 items",
-    ],
-    [
-        "$ uv run python examples/example_callable_application.py",
-        "batch  1/5 items",
-        "retry doc-1: billed response failed validation",
-    ],
-    [
-        "$ uv run python examples/example_callable_application.py",
-        "batch  3/5 items",
-        "retry doc-1: recovered with item-local feedback",
-        "retry doc-3: billed response failed validation",
-    ],
-    [
-        "$ uv run python examples/example_callable_application.py",
-        "batch  5/5 items",
-        "",
-        "Items:     5 total — 5 succeeded, 0 failed",
-        "Stopped:   completed",
-        "Retries:   2 extra attempt(s) across 2 item(s)",
-        "Tokens:    in 26 (cached 0) · out 14",
-    ],
-    [
-        "$ uv run python examples/example_callable_application.py",
-        "batch  5/5 items",
-        "",
-        "Items:     5 total — 5 succeeded, 0 failed",
-        "Stopped:   completed",
-        "Retries:   2 extra attempt(s) across 2 item(s)",
-        "Tokens:    in 26 (cached 0) · out 14",
-        "completion order: ['doc-2', 'doc-4', 'doc-1', 'doc-3', 'doc-0']",
-        "resume client calls: 0",
-    ],
+# Each frame shows the first N lines of the example's real output.
+OUTPUT_LINES = [
+    "$ uv run python examples/example_cooldown_resume.py",
+    "run 1: 20 items, 5 workers, JSONL checkpoint",
+    "429 from the provider: all 5 workers pause 1.0s",
+    "cooldown over: workers ramp back up, the item retries",
+    "process killed (simulated crash): 12 of 20 items checkpointed",
+    "",
+    "run 2: same command, ResumePolicy.REUSE_SUCCESSES",
+    "replayed 12 from the checkpoint, called the client 8 times",
+    "Items:     20 total — 20 succeeded, 0 failed",
 ]
+FRAMES = [OUTPUT_LINES[:n] for n in [2, 3, 4, 5, 7, 8, 9]]
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -79,10 +56,14 @@ def _render(lines: list[str]) -> Image.Image:
     y = 76
     for index, line in enumerate(lines):
         color = "#7ee787" if index == 0 else "#d6deeb"
-        if line.startswith("retry"):
+        if line.startswith(("429", "cooldown")):
             color = "#f2cc60"
-        if line.startswith("resume"):
+        elif line.startswith("process killed"):
+            color = "#ff7b72"
+        elif line.startswith("replayed"):
             color = "#79c0ff"
+        elif line.startswith("Items:"):
+            color = "#7ee787"
         draw.text((34, y), line, font=body_font, fill=color)
         y += 40
     return image
@@ -95,7 +76,7 @@ def main() -> None:
         OUTPUT,
         save_all=True,
         append_images=images[1:],
-        duration=[700, 750, 850, 1_200, 2_500],
+        duration=[900, 1_400, 1_200, 1_600, 1_000, 1_400, 3_500],
         loop=0,
         optimize=True,
     )
