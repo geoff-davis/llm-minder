@@ -125,11 +125,8 @@ value becomes its own time series, so keep both sets small and under your contro
   used as the label value as it is. Return a short, fixed set of reasons, never
   text taken from the response or the input.
 
-The exporter escapes double quotes in label values but not backslashes or
-newlines, which the exposition format also requires. A label value containing
-either can produce output a Prometheus scraper rejects, or silently change the
-label value (a literal `\n` is read back as a newline), so keep them out of
-exception class names and recovery reasons.
+Label values are escaped as the exposition format requires (backslash, double
+quote and line feed), so any string reads back unchanged.
 
 There are no histograms or summaries, and the timing metrics cover different
 populations:
