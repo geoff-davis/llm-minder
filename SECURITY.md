@@ -2,8 +2,10 @@
 
 ## Supported versions
 
-Security fixes go into the latest release. Before 1.0, only the most recent minor
-version is supported; upgrade to receive fixes.
+Security fixes go into the latest 1.x release, as a new patch version. Older 1.x
+minor versions and 0.x releases (published as `async-batch-llm`) don't receive
+fixes; upgrade to the latest 1.x release, which keeps the stable API compatible
+(see [API stability](docs/stability.md)).
 
 ## Reporting a vulnerability
 

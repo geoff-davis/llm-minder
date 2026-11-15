@@ -158,7 +158,7 @@ concurrency collapses wall time.
 
 ![Wall time per orchestration, per provider](assets/benchmark-wall-time.png)
 
-| Provider | Workers | Sequential (s) | `gather` (s) | llm-minder (s) | Speedup (seq→abl) |
+| Provider | Workers | Sequential (s) | `gather` (s) | llm-minder (s) | Speedup (seq→llm-minder) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | deepseek-flash | 250 | 65.0 | 5.0 | 4.2 | 15.6× |
 | gemini-3.1 | 250 | 39.1 | 2.6 | 2.1 | 19.1× |
@@ -170,7 +170,7 @@ regardless of orchestration, which is why `gather` and llm-minder are
 neck-and-neck here. Gemini 2.5 is the exception: the framework respects its
 5-worker cap (and retried a few transient 503s with backoff), while the bare
 `gather` ignores the cap, fires all 30 at once, and got away with it on this
-small batch — so the `abl` leg trails. That's the throttle ceiling plus the
+small batch — so the llm-minder leg trails. That's the throttle ceiling plus the
 framework playing it safe, not orchestration overhead. The pool's real advantage
 shows up at scale, below.
 

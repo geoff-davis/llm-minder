@@ -37,6 +37,7 @@ plugins:
   - redirects:
       redirect_maps:
         api/single-gateway.md: api/single-call-pool.md
+        API.md: api/core.md
         # Moved in #321: migration guides under migration/, release evidence under evidence/.
         MIGRATION_V0_10.md: migration/v0.10.md
         MIGRATION_V0_19.md: migration/v0.20.md
@@ -66,11 +67,12 @@ markdown_extensions:
   - admonition
   - pymdownx.details
 
+exclude_docs: |
+  archive/
+
 not_in_nav: |
-  API.md
   evidence/release-notes-v0.20.md
   terminal-demo.md
-  archive/*
 
 nav:
   - Home: index.md

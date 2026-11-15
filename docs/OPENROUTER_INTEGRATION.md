@@ -148,8 +148,8 @@ billable = result.effective_input_tokens(
 
 ### Per-item provider metadata for mixed-provider batches
 
-As of v0.10.0, `OpenRouterStrategy` (and the other built-in strategies)
-forwards `LLMResponse.metadata` straight through to
+`OpenRouterStrategy` (and the other built-in strategies) forwards
+`LLMResponse.metadata` straight through to
 `WorkItemResult.metadata`. For OpenRouter that includes the upstream
 provider name (`"Anthropic"`, `"OpenAI"`, `"DeepSeek"`, etc.), the
 actually-routed model, and `finish_reason`. No custom parser needed.

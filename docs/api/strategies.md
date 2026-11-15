@@ -439,7 +439,7 @@ A callable that takes the raw provider response and returns extra keys for
 
 ### DeepSeek strict JSON Schema output
 
-DeepSeek's Responses API can enforce a JSON Schema before ABL parses the
+DeepSeek's Responses API can enforce a JSON Schema before llm-minder parses the
 result. Pass a Pydantic model class to get that model back directly:
 
 ```python
@@ -476,7 +476,7 @@ and canonical SHA-256). The same API/schema fields participate in inferred
 JSONL/SQLite artifact identity, preventing Chat JSON-mode or different-schema
 results from being replayed as compatible strict outputs.
 
-ABL validates the surface and schema locally and passes model IDs through to
+llm-minder validates the surface and schema locally and passes model IDs through to
 DeepSeek for validation. See the [provider Responses reference](https://api-docs.deepseek.com/api/create-response/)
 for available models. The `deepseek` extra requires OpenAI SDK 1.66.2 or newer;
 caller-supplied clients must expose callable `responses.create`. This does not
