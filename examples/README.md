@@ -23,6 +23,7 @@ These run with no API key:
 | Example | Extra | API key |
 | --- | --- | --- |
 | `example_callable_application.py` | none | none |
+| `example_cooldown_resume.py` | none | none |
 | `example_prompt_caching.py` | none | none |
 | `example_single_call.py` | `pydantic-ai` (uses `MockAgent`) | none |
 | `example_gateway.py` | `pydantic-ai` (uses `MockAgent`) | none |
@@ -60,8 +61,15 @@ python example_callable_application.py
 The [no-key Colab notebook](https://colab.research.google.com/github/geoff-davis/llm-minder/blob/main/notebooks/llm_minder_quickstart.ipynb)
 shows coalesced progress, item-local retry feedback, a terminal failure,
 `BatchResult.summary()`, and checkpoint replay. The README terminal animation
-is generated from the same credential-free application scenario; see
+is rendered from `example_cooldown_resume.py`; see
 [`docs/terminal-demo.md`](../docs/terminal-demo.md) for regeneration.
+
+### `example_cooldown_resume.py`
+
+No API key needed. A fake client returns one 429, so all five workers pause for
+the cooldown and then ramp back up. The run is cancelled partway, as if the
+process were killed; a second run with `ResumePolicy.REUSE_SUCCESSES` replays
+the checkpointed items from the JSONL file and calls the client only for the rest.
 
 ### `example_callable_application.py`
 
