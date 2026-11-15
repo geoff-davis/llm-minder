@@ -174,6 +174,12 @@ warranted by this evidence.
 
 From the repository root, using the pinned environment:
 
+> These are the commands as run at the source revision this page names. `dev` and
+> `docs` have since become dependency groups ([#337]), so on current `main` the first
+> line is `uv sync --frozen --all-groups`.
+
+[#337]: https://github.com/geoff-davis/llm-minder/issues/337
+
 ```bash
 uv sync --frozen --extra dev --extra docs
 uv run python -m benchmarks.sqlite_wait_evidence --output /tmp/sqlite-waits.json

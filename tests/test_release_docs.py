@@ -86,9 +86,9 @@ def test_comparison_and_troubleshooting_are_linked_and_navigable() -> None:
 def test_release_history_and_migration_are_coherent() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     navigation = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
-    migration = (ROOT / "docs" / "MIGRATION_V0_20.md").read_text(encoding="utf-8")
-    historical = (ROOT / "docs" / "MIGRATION_V0_19.md").read_text(encoding="utf-8")
-    migration_v022 = (ROOT / "docs" / "MIGRATION_V0_22.md").read_text(encoding="utf-8")
+    migration = (ROOT / "docs" / "migration" / "v0.20.md").read_text(encoding="utf-8")
+    migration_v022 = (ROOT / "docs" / "migration" / "v0.22.md").read_text(encoding="utf-8")
+    index = (ROOT / "docs" / "migration" / "index.md").read_text(encoding="utf-8")
 
     assert "v0.19.0 was not published" in changelog
     assert "## [0.19" not in changelog
@@ -97,10 +97,11 @@ def test_release_history_and_migration_are_coherent() -> None:
     assert "## [0.20.0] - 2026-07-20" in changelog
     assert "v0.18.x to v0.20.0" in migration
     assert "v0.19.0 was not published" in migration
-    assert "MIGRATION_V0_20.md" in historical
-    assert "v0.20 Migration: MIGRATION_V0_20.md" in navigation
-    assert "Historical v0.19 Link: MIGRATION_V0_19.md" in navigation
-    assert "v0.22 Migration: MIGRATION_V0_22.md" in navigation
+    assert "v0.19 was never published" in index
+    # The unpublished v0.19's old page now redirects to the v0.20 guide (#321).
+    assert "MIGRATION_V0_19.md: migration/v0.20.md" in navigation
+    assert "v0.20 Migration: migration/v0.20.md" in navigation
+    assert "v0.22 Migration: migration/v0.22.md" in navigation
     assert "v0.21.x to v0.22" in migration_v022
     assert "No checkpoint migration or invalidation is required" in migration_v022
 
@@ -138,3 +139,49 @@ def test_source_does_not_claim_features_shipped_in_v019() -> None:
         if "v0.19" in path.read_text(encoding="utf-8"):
             stale.append(path.relative_to(ROOT))
     assert not stale
+
+
+def _redirect_maps() -> dict[str, str]:
+    navigation = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    block = navigation.split("redirect_maps:\n", 1)[1]
+    maps: dict[str, str] = {}
+    # The map is the run of eight-space-indented lines (mkdocs.yml has no PyYAML
+    # in the dev group, so parse the block by hand).
+    for line in block.splitlines():
+        if not line.startswith("        "):
+            break
+        entry = line.strip()
+        if entry and not entry.startswith("#"):
+            old, new = (part.strip() for part in entry.split(":", 1))
+            maps[old] = new
+    return maps
+
+
+def test_moved_pages_redirect_to_existing_pages() -> None:
+    maps = _redirect_maps()
+    for old in (
+        "MIGRATION_V0_10.md",
+        "MIGRATION_V0_19.md",
+        "MIGRATION_V0_20.md",
+        "MIGRATION_V0_22.md",
+        "release-notes-v0.20.md",
+        "sqlite-maintenance-evidence.md",
+        "v0.22-scale-evidence.md",
+    ):
+        assert old in maps, old
+    for old, new in maps.items():
+        assert not (ROOT / "docs" / old).exists(), f"{old} redirects but still exists"
+        assert (ROOT / "docs" / new).is_file(), f"{old} redirects to missing {new}"
+
+
+def test_every_migration_guide_is_in_the_index_and_nav() -> None:
+    navigation = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    index = (ROOT / "docs" / "migration" / "index.md").read_text(encoding="utf-8")
+    guides = sorted(p.name for p in (ROOT / "docs" / "migration").glob("*.md"))
+    assert "index.md" in guides
+    for name in guides:
+        assert f"migration/{name}" in navigation, name
+        if name != "index.md":
+            assert f"]({name})" in index, name
+    # No migration guide is left at the top of docs/.
+    assert not list((ROOT / "docs").glob("MIGRATION*.md"))

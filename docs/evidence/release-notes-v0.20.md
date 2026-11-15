@@ -44,7 +44,7 @@ both warn and are planned for removal in the next major release. Existing
 tuple-returning strategies, `LLMGateway` imports, completion-order defaults,
 and the v1 checkpoint schema remain supported.
 
-See [Migrating from v0.18.x to v0.20.0](MIGRATION_V0_20.md) for before/after
+See [Migrating from v0.18.x to v0.20.0](../migration/v0.20.md) for before/after
 examples and checkpoint guidance.
 
 ## Why there is no v0.19 release
@@ -60,4 +60,4 @@ This release does not add generic job inputs, distributed execution, a network
 gateway, provider routing, native provider batch submission, scheduling, DAGs,
 or a cost database. Bespoke Curator, AI gateways, native batch APIs, and durable
 workflow engines are often better fits for those jobs; see
-[Choosing Between ABL and Alternatives](comparison.md).
+[Choosing Between ABL and Alternatives](../comparison.md).

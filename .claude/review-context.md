@@ -16,7 +16,7 @@ report new evidence rather than reopening the accepted scope below.
   documented in `docs/token-aware-admission.md`.
 - Session E is reviewed in PR #164. Keep the SQLite backup timer and all three
   indexes. The historical CPython wait claim lacks an independently reproduced
-  trigger. `docs/sqlite-maintenance-evidence.md` records evidence and limits.
+  trigger. `docs/evidence/sqlite-maintenance-evidence.md` records evidence and limits.
 - Public signatures, result schemas, artifact compatibility, replay eligibility,
   and cleanup contracts are unchanged. Durable historical decisions are in
   `docs/cleanup-lifecycle-contract.md`, `docs/results-and-artifacts.md`, and the

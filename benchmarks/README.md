@@ -44,5 +44,5 @@ published only after a maintainer actually runs the profile.
   (descriptive JSON, no pass/fail threshold).
 - `sqlite_wait_evidence.py`, `sqlite_wait_plugin.py`, `sqlite_index_evidence.py` —
   opt-in SQLite waiting and index experiments behind
-  [docs/sqlite-maintenance-evidence.md](../docs/sqlite-maintenance-evidence.md).
+  [docs/evidence/sqlite-maintenance-evidence.md](../docs/evidence/sqlite-maintenance-evidence.md).
   They never change production defaults.

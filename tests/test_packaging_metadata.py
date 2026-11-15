@@ -58,7 +58,7 @@ def test_shim_license_matches_the_main_license() -> None:
 # Records of past runs keep the command they ran at their own revision.
 HISTORICAL = {
     ROOT / "CHANGELOG.md",
-    ROOT / "docs" / "sqlite-maintenance-evidence.md",
+    ROOT / "docs" / "evidence" / "sqlite-maintenance-evidence.md",
 }
 
 

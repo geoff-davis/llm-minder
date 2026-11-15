@@ -469,9 +469,9 @@ slated for removal.
 From 0.x, read the
 [1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/). It
 starts from v0.32, the last 0.x release and the last to support Python 3.10. Coming
-from an older release, upgrade to v0.32 first, reading each release's migration guide
-in turn; they're listed under Migration Guides in the
-[documentation](https://geoff-davis.github.io/llm-minder/).
+from an older release, upgrade to v0.32 first; the
+[migration index](https://geoff-davis.github.io/llm-minder/migration/) says which
+guides to read from your release.
 
 ## Contributing
 
