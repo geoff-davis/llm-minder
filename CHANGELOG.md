@@ -68,6 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through a small private interface (stream ownership, completion counts, end of
   production, close) instead of setting its private attributes, and a test keeps
   `streaming.py` to that interface ([#175]). Behaviour is unchanged.
+- Package metadata uses a PEP 639 license expression (`license = "MIT"`, with
+  `license-files`), so the wheel carries `License-Expression: MIT` and the
+  `License ::` classifier is gone ([#337]). Building from source needs hatchling
+  1.27 or later. The async-batch-llm shim gets the same change in its next release.
 
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
@@ -77,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#322]: https://github.com/geoff-davis/llm-minder/issues/322
 [#344]: https://github.com/geoff-davis/llm-minder/issues/344
 [#175]: https://github.com/geoff-davis/llm-minder/issues/175
+[#337]: https://github.com/geoff-davis/llm-minder/issues/337
 
 ## [1.0.1] - 2026-11-13
 
