@@ -70,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every migration guide now lives under `migration/`, with an index page that says
   which guides to read from a given release, and release evidence pages live under
   `evidence/` ([#321]). The old URLs redirect.
+- Choosing your limits has a new section on finding limits you don't know: a
+  probing run with a startup ramp and a short cooldown, an observer that counts the
+  requests in the minute before the first rate limit, and how to turn that count
+  into per-minute limits ([#345]).
 
 ### Development
 
@@ -105,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#337]: https://github.com/geoff-davis/llm-minder/issues/337
 [#319]: https://github.com/geoff-davis/llm-minder/issues/319
 [#321]: https://github.com/geoff-davis/llm-minder/issues/321
+[#345]: https://github.com/geoff-davis/llm-minder/issues/345
 [#362]: https://github.com/geoff-davis/llm-minder/issues/362
 
 ## [1.0.1] - 2026-11-13

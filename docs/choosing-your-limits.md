@@ -62,6 +62,284 @@ print(batch.gate_waits())
 
 Both are provisional (new in 1.1).
 
+## When you don't know your limits
+
+Everything below assumes you know your provider's quota. Often you don't: a new
+Gemini project, a tier that changed, or a key shared with other applications.
+Setting concurrency very low is safe but leaves throughput unused. This section
+shows how to find the limit with one short probing run.
+
+**Look the numbers up first if you can.** It's faster than probing.
+
+- Gemini lists RPM, TPM and requests-per-day for each model and tier in
+  [AI Studio](https://aistudio.google.com/) (the project's rate-limit page) and in
+  the published [rate-limit table](https://ai.google.dev/gemini-api/docs/rate-limits).
+- OpenAI shows your organization's limits in the platform settings, and responses
+  can include them in the `x-ratelimit-limit-requests` and
+  `x-ratelimit-limit-tokens` headers.
+
+Probe when the console isn't available to you, or when the published numbers
+don't match what you see.
+
+### Step 1: configure a probing run
+
+Set `concurrency` to the ceiling you hope for, and let a startup ramp climb to it
+slowly. The load then rises gradually instead of arriving in one burst, so the
+requests in the minute before the first rate limit are close to what the provider
+allows. Shorten the cooldown so touching the limit costs seconds rather than the
+default five minutes.
+
+```python
+from llm_minder import (
+    ProcessorConfig,
+    RateLimitConfig,
+    StartupRampConfig,
+    describe_limits,
+)
+
+probe_config = ProcessorConfig(
+    concurrency=32,  # the ceiling you hope for
+    startup_ramp=StartupRampConfig(
+        initial_concurrency=2,
+        concurrency_step=2,
+        ramp_interval_seconds=15,
+    ),
+    rate_limit=RateLimitConfig(cooldown_seconds=30, max_cooldown_seconds=120),
+)
+print(describe_limits(probe_config, strategy))
+```
+
+With this ramp, `t` seconds after the strategy's first attempt is admitted, at most
+`min(32, 2 + 2 × floor(t / 15))` attempts run at once. It reaches 32 after 225
+seconds, so give the probe enough prompts to keep it busy for longer than that:
+at about two seconds per call, a few thousand short prompts. Use prompts like the
+real ones, since token counts and latency both change where the limit is
+reached. The ramp clock keeps running through cooldowns; after a cooldown, the
+slow-start ramp from `RateLimitConfig` paces the restart instead.
+
+Check the `describe_limits()` table before spending quota. It should show
+`concurrency` 32 (explicit), `startup_ramp.max_concurrency` 32 (from
+`max_workers`), no RPM or TPM limit, and a provider capacity of 32 for the
+strategy. A strategy that advertises a smaller `max_concurrency` shows that as
+its provider capacity instead, and the probe can't go wider than it. If the table
+was printed before the batch started, a header may say it is not yet in effect:
+a built-in OpenAI-compatible model's connection pool is resized to `concurrency`
+when the batch starts.
+
+**The cooldown trade-off.** A short cooldown makes each rate limit cheap, which
+is what a probe needs: traffic resumes quickly and the run keeps measuring.
+Against a provider that counts per minute, a short cooldown in production instead
+sends traffic back into a window that is still full, so it trips again. Repeated
+cooldowns grow by `backoff_multiplier` (1.5) up to `max_cooldown_seconds`. A
+retry delay the server sends (Gemini's `retryDelay`, an OpenAI-compatible
+`Retry-After`) can only lengthen a cooldown, never shorten it, and is itself
+capped at `max_cooldown_seconds`.
+
+### Step 2: run it and record the first rate limit
+
+`get_stats()` counts rate limits but doesn't say when the first one happened, or
+how many requests went out in the minute before it. A small observer records
+both: `ITEM_ADMITTED` fires for every attempt just before it calls the provider.
+
+```python
+import time
+
+from llm_minder import (
+    BaseObserver,
+    LLMWorkItem,
+    ParallelBatchProcessor,
+    ProcessingEvent,
+)
+
+
+class FirstRateLimit(BaseObserver):
+    """Record when each attempt started and when the first rate limit hit."""
+
+    def __init__(self) -> None:
+        self.attempt_starts: list[float] = []
+        self.first_rate_limit: float | None = None
+
+    async def on_event(self, event, data):
+        now = time.monotonic()
+        if event is ProcessingEvent.ITEM_ADMITTED:
+            self.attempt_starts.append(now)
+        elif event is ProcessingEvent.RATE_LIMIT_HIT and self.first_rate_limit is None:
+            self.first_rate_limit = now
+
+
+probe = FirstRateLimit()
+async with ParallelBatchProcessor(config=probe_config, observers=[probe]) as processor:
+    for i, prompt in enumerate(sample_prompts):
+        await processor.add_work(LLMWorkItem(item_id=f"probe-{i}", strategy=strategy, prompt=prompt))
+    batch = await processor.process_all()
+    stats = await processor.get_stats()
+```
+
+### Step 3: read the result
+
+Start with where attempts waited:
+
+```python
+print(batch.gate_waits())
+print("rate limits:", stats["rate_limit_count"])
+```
+
+- **A large rate-limit cooldown share** means the provider pushed back. Read on
+  to find where.
+- **A large startup-ramp share and no cooldown** means the run never reached the
+  limit. Either the limit is above your ceiling, or the probe ended before the
+  ramp finished. Repeat with a higher `concurrency` or more prompts.
+- **Items failing with `quota_exhausted`** mean a per-day quota ran out. That
+  isn't a per-minute limit and waiting won't fix it; see the caveats below.
+
+The waits of items running at the same time add up, so the totals can exceed the
+run's wall time; compare the shares, not the totals with wall time. Time an item
+spends queued for a worker isn't counted. The ramp's wait happens at the
+provider-capacity gate, so in a probe those two rows are often nearly the same
+number. With no rate limit, the cooldown row can still show a fraction of a
+second: that's the time spent checking for a cooldown under load, not a cooldown.
+
+Then count requests per minute. If the provider pushed back, count the minute
+before the first rate limit. If it never did, the busiest minute is the highest
+throughput you observed. Provided those requests succeeded, it's a rate the
+provider accepted, so the limit is at least that high:
+
+```python
+import statistics
+from bisect import bisect_left, bisect_right
+
+starts = probe.attempt_starts  # in time order
+
+
+def requests_in_minute_ending(t: float) -> int:
+    return bisect_right(starts, t) - bisect_left(starts, t - 60)
+
+
+if probe.first_rate_limit is not None:
+    # Roughly the rate at which the provider said no.
+    requests_per_minute = requests_in_minute_ending(probe.first_rate_limit)
+else:
+    # No rate limit: the limit is above this. Repeat wider to find it.
+    requests_per_minute = max(map(requests_in_minute_ending, starts), default=0)
+
+latencies = [
+    attempt.execution_seconds
+    for result in batch.results
+    for attempt in result.timing.attempts
+    if attempt.success
+]
+if latencies:
+    latency = statistics.median(latencies)
+    tokens_per_request = (batch.total_input_tokens + batch.total_output_tokens) / batch.total_items
+    tokens_per_minute = requests_per_minute * tokens_per_request
+else:
+    print("No attempt succeeded; read the failures before probing again:")
+    print(batch.summary())
+```
+
+Count the requests rather than working the rate out from the ramp's width at the
+time of the first 429. A provider that counts per minute trips on the requests
+of the whole past minute. While the ramp climbs, the rate at the moment it trips
+is higher than that minute's average, so an estimate from the width overshoots.
+
+The count is an estimate too, and it tends to come out a little high. The
+observer timestamps attempts when this process admits them and the rate limit
+when its response arrives, not when the provider decided. The count includes the
+rejected attempt itself, and any attempts admitted while its response was on the
+way. With high concurrency and slow responses, that can be many requests the
+provider never accepted. Retries made inside a provider SDK are requests the
+observer never sees. In a simulated provider with a sliding 700-request minute,
+the count came to 714 and the estimate from the width to about 890.
+
+Check which tokens your provider counts towards its TPM limit (input only, or
+input and output) and use those in `tokens_per_request`. For per-attempt
+detail, each `AttemptTiming` has `cooldown_wait_seconds`, `quota_wait_seconds`
+and `startup_ramp_wait_seconds`.
+
+### Step 4: pin per-minute limits below what you saw
+
+Set `max_requests_per_minute`, and `max_tokens_per_minute` if tokens were the
+binding limit, about 20% below the counted rate, with `quota_burst_seconds=5`
+so the first minute doesn't admit a double helping (see step 5 of the decision
+tree below). Restore a normal cooldown, and size `concurrency` with the formula
+from step 1 of the decision tree.
+
+The margin is a starting point, not a guarantee: the count is approximate, other
+applications may share the quota, and providers change limits. Watch
+`get_stats()["rate_limit_count"]` in the first real runs and lower the limits if
+cooldowns appear. If the probe never hit a limit and its requests succeeded,
+pinning below the busiest minute keeps you under a rate the provider accepted,
+but may leave throughput unused. A provider SDK that retries 429s internally can
+hide throttling from the probe. The built-in OpenAI-compatible models already
+pass `max_retries=0` when they build the client; for a client you build yourself,
+turn SDK retries off for the probe.
+
+Pin the per-minute limits rather than the concurrency at which the probe tripped.
+The provider counts requests and tokens per minute, not connections, so when
+latency changes, the width that reaches the limit changes with it, while the
+per-minute numbers stay put.
+
+### Worked example
+
+Measured on 2026-11-15 with `gemini-3.5-flash-lite` through an AI Studio API
+key. The 30,000 prompts were one sentence each ("In one short sentence, name a
+fact about the number 17."). The probe used a wider version of the step 1
+config, `concurrency=128` and `StartupRampConfig(initial_concurrency=8,
+concurrency_step=8, ramp_interval_seconds=15)`, which reaches 128 after 225
+seconds.
+
+```text
+Gate waits across 30000 item(s), 36126.04s of item time
+  provider capacity             14341.82s   39.7%  20269 attempt(s)
+  startup ramp and slow start   14302.46s   39.6%  20162 attempt(s)
+  rate-limit cooldown              16.24s    0.0%  1623 attempt(s)
+  quota (RPM/TPM)                   0.00s    0.0%  0 attempt(s)
+  retry backoff                     0.00s    0.0%  0 attempt(s)
+```
+
+All 30,000 succeeded in 283 seconds with no rate limit. The busiest minute held
+10,340 requests, the median call took 0.68 seconds, and requests averaged 50
+tokens. The ramp and capacity rows are the same wait, and the cooldown row is
+the cost of checking for a cooldown, not a cooldown. So the run never reached the
+limit. For this key and model the limit is above about 10,000 requests per minute,
+and finding it would take a wider probe.
+
+A wider probe the same day (`concurrency=512`, ramp 32/32/15) peaked at 18,179
+requests in a minute, still without a rate limit, before a 900-second batch
+timeout ended it. At that width the probing process became the bottleneck: the
+median call rose to 0.99 seconds and only about 300 requests were in flight on
+average. One process can show that a limit is at least this high, not where it
+is.
+
+A rate the provider accepted is still a usable setting:
+
+```python
+from llm_minder import ProcessorConfig, RateLimitConfig
+
+config = ProcessorConfig(
+    concurrency=90,                  # 8,000 / 60 × 0.68 ≈ 90
+    max_requests_per_minute=8_000,   # about 20% below the 10,340 accepted
+    quota_burst_seconds=5,
+    rate_limit=RateLimitConfig(cooldown_seconds=60.0),
+)
+```
+
+The probe's prompts were tiny, so it says nothing about the TPM limit. Real
+prompts of 1,000 tokens at 8,000 requests per minute come to 8 million tokens per
+minute; check that against the published table, and set `max_tokens_per_minute`
+with a token estimator if it's the tighter limit.
+
+### Caveats
+
+- **Per-day quotas are terminal.** Gemini reports an exhausted daily quota as a
+  429 too, but the classifier marks it `quota_exhausted` and doesn't retry it.
+  No per-minute setting helps; the run has to wait for the quota to reset.
+- **Limits are per model and per project.** A probe against Flash-Lite says
+  nothing about Pro, and two keys in one project share a budget. Probe each model
+  you use, and leave room for other applications on the same project.
+- **The probe spends real quota.** Keep the sample small and run it at a quiet
+  time, or it competes with production traffic and measures less than you have.
+
 ## The decision tree
 
 ```text
