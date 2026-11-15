@@ -196,8 +196,7 @@ The waits of items running at the same time add up, so the totals can exceed the
 run's wall time; compare the shares, not the totals with wall time. Time an item
 spends queued for a worker isn't counted. The ramp's wait happens at the
 provider-capacity gate, so in a probe those two rows are often nearly the same
-number. With no rate limit, the cooldown row can still show a fraction of a
-second: that's the time spent checking for a cooldown under load, not a cooldown.
+number.
 
 Then count requests per minute. If the provider pushed back, count the minute
 before the first rate limit. If it never did, the busiest minute is the highest
@@ -299,8 +298,10 @@ Gate waits across 30000 item(s), 36126.04s of item time
 
 All 30,000 succeeded in 283 seconds with no rate limit. The busiest minute held
 10,340 requests, the median call took 0.68 seconds, and requests averaged 50
-tokens. The ramp and capacity rows are the same wait, and the cooldown row is
-the cost of checking for a cooldown, not a cooldown. So the run never reached the
+tokens. The ramp and capacity rows are the same wait. The 16 seconds on the
+cooldown row were the cost of checking for a cooldown. This run predates the fix
+for issue #365; llm-minder now counts only real cooldowns. So the
+run never reached the
 limit. For this key and model the limit is above about 10,000 requests per minute,
 and finding it would take a wider probe.
 
