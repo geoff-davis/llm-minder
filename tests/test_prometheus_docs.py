@@ -53,3 +53,59 @@ async def test_every_exported_line_is_valid_exposition_format() -> None:
             or line.startswith("# TYPE ")
             or sample.match(line)
         ), line
+
+
+# Label values the exposition format needs escaped (#362): a backslash, a double
+# quote, a line feed, a trailing backslash, and a literal backslash followed by n.
+AWKWARD = ["back\\slash", 'dou"ble', "line\nfeed", "trailing\\", "literal\\n"]
+_ESCAPES = {"\\": "\\", '"': '"', "n": "\n"}
+
+
+def _unescape(text: str) -> str:
+    """Decode a label value as a Prometheus text-format parser does."""
+    out, chars = [], iter(text)
+    for char in chars:
+        if char == "\\":
+            escaped = next(chars)
+            assert escaped in _ESCAPES, f"invalid escape \\{escaped}"
+            out.append(_ESCAPES[escaped])
+        else:
+            out.append(char)
+    return "".join(out)
+
+
+async def _export_awkward() -> str:
+    metrics = MetricsObserver()
+    for value in AWKWARD:
+        await metrics.on_event(ProcessingEvent.ITEM_FAILED, {"error_type": value})
+        await metrics.on_event(
+            ProcessingEvent.ITEM_COMPLETED,
+            {
+                "duration": 1.0,
+                "structured_output_recovered": True,
+                "structured_output_recovery_reason": value,
+            },
+        )
+    return await metrics.export_prometheus()
+
+
+async def test_awkward_label_values_round_trip() -> None:
+    text = await _export_awkward()
+    sample = re.compile(r'^(llm_minder_\w+)\{(\w+)="((?:[^"\\\n]|\\.)*)"\} (\S+)$')
+    decoded: dict[str, list[str]] = {}
+    for line in text.splitlines():
+        if line.startswith("llm_minder_") and "{" in line:
+            match = sample.match(line)
+            assert match, f"malformed sample line: {line!r}"
+            decoded.setdefault(match.group(2), []).append(_unescape(match.group(3)))
+    assert decoded == {"error_type": AWKWARD, "reason": AWKWARD}
+
+
+async def test_awkward_label_values_are_escaped_exactly() -> None:
+    text = await _export_awkward()
+    assert 'llm_minder_errors_total{error_type="back\\\\slash"} 1' in text
+    assert 'llm_minder_errors_total{error_type="dou\\"ble"} 1' in text
+    assert 'llm_minder_errors_total{error_type="line\\nfeed"} 1' in text
+    assert 'llm_minder_errors_total{error_type="trailing\\\\"} 1' in text
+    assert 'llm_minder_errors_total{error_type="literal\\\\n"} 1' in text
+    assert 'llm_minder_structured_output_recoveries_by_reason{reason="literal\\\\n"} 1' in text

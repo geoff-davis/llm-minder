@@ -8,6 +8,16 @@ from ..strategies.errors import ABORT_RESULT_CATEGORIES
 from .base import BaseObserver, ProcessingEvent
 
 
+def _escape_label_value(value: str) -> str:
+    """Escape a Prometheus text-format label value.
+
+    The exposition format requires a backslash as ``\\\\``, a double quote as
+    ``\\"`` and a line feed as ``\\n``. The backslash goes first, so the
+    backslashes the other two add aren't doubled.
+    """
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
 def _initial_metrics() -> dict[str, Any]:
     return {
         "items_processed": 0,
@@ -317,8 +327,7 @@ class MetricsObserver(BaseObserver):
             lines.append("# HELP llm_minder_errors_total Total errors by type")
             lines.append("# TYPE llm_minder_errors_total counter")
             for error_type, count in error_counts.items():
-                # Sanitize error type for Prometheus label
-                safe_type = error_type.replace('"', '\\"')
+                safe_type = _escape_label_value(error_type)
                 lines.append(f'llm_minder_errors_total{{error_type="{safe_type}"}} {count}')
             lines.append("")
 
@@ -330,7 +339,7 @@ class MetricsObserver(BaseObserver):
             )
             lines.append("# TYPE llm_minder_structured_output_recoveries_by_reason counter")
             for reason, count in recovery_reasons.items():
-                safe_reason = reason.replace('"', '\\"')
+                safe_reason = _escape_label_value(reason)
                 lines.append(
                     "llm_minder_structured_output_recoveries_by_reason"
                     f'{{reason="{safe_reason}"}} {count}'
