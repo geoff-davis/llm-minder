@@ -172,6 +172,21 @@ async def process_with_post_processor():
         result = await processor.process_all()
 ```
 
+By default a post-processor runs inline on the worker that finished the item, so
+results are post-processed in completion order and a slow post-processor slows
+the worker. Three `ProcessorConfig` fields change that:
+
+- `post_processor_timeout` (default 90 seconds) bounds each call. A timeout or an
+  exception is logged and the item's result is unchanged.
+- `concurrent_post_processing=True` runs post-processors as background tasks, at
+  most `max_workers` at once, so workers move on to the next item. They no longer
+  run in completion order and may overlap, so they must not depend on order or
+  share unguarded state. `process_all()` still waits for every one to finish.
+- `progress_callback_timeout` (default 5 seconds) bounds each
+  `progress_callback` call the same way; `None` never cancels it.
+
+A synchronous post-processor runs in a thread, off the event loop.
+
 ## Metrics Collection
 
 Track metrics using observers:

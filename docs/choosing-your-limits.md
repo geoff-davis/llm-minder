@@ -544,6 +544,14 @@ budget API is provisional and may change in a minor release (see
 [API stability](stability.md#provisional-in-10)). Details:
 [token and cost budgets](guardrails.md#token-and-cost-budgets).
 
+When a run must not exceed a number of provider calls, for example a paid run
+approved for "at most 500 calls", use `GuardrailConfig.max_provider_calls`
+instead. It is a hard cap on the attempts the library makes: every attempt,
+retries included, takes a call from it before starting, so concurrent workers
+can't overshoot. Retries inside an SDK client or upstream gateway you supply
+aren't counted, so disable them for a strict ceiling on provider requests.
+Details: [provider call cap](guardrails.md#provider-call-cap).
+
 ## Worked example: 10k items against a rate-limited provider
 
 Target: 10,000 classification prompts against an OpenAI-tier endpoint

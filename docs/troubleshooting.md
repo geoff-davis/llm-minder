@@ -244,7 +244,10 @@ An external gateway may be retrying invisibly underneath ABL.
 
 1. Is the stream consumer still awaiting the next result?
 2. Are `max_result_queue_size` slots full while the sink writes slowly?
-3. Is a post-processor or custom callback doing blocking I/O?
+3. Is a post-processor or custom callback doing blocking I/O? An inline
+   post-processor holds its worker for up to `post_processor_timeout`;
+   `concurrent_post_processing=True` frees the worker
+   ([post-processing](examples/basic.md#post-processing)).
 4. Do attempt/provider timings show one long call?
 5. Do logs show cooldown or retry backoff?
 6. Is artifact storage slow or unavailable?

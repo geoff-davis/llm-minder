@@ -64,7 +64,14 @@ explicitly instead. On Python 3.14 an installed `google-genai` also emits its ow
   release of every supported major line. A new major line is supported once a CI
   leg covers it; until then it may install but is untested. A minimum can rise in a
   minor release when an older SDK can no longer be installed and used, or can't
-  support a documented feature; the changelog says so.
+  support a documented feature; the changelog says so. CI currently tests:
+
+  | SDK | Extras | Minimum | Major lines tested |
+  | --- | --- | --- | --- |
+  | `openai` | `openai`, `openrouter`, `deepseek` | 1.66.2 | 1.x, 2.x, 3.x |
+  | `google-genai` | `gemini` | 1.49.0 | 1.x, 2.x, 3.x |
+  | `pydantic-ai` | `pydantic-ai` | 1.32.0 | 1.x, 2.x |
+
 - **Fixes:** security and bug fixes go into the latest release.
 
 ## Classification of the current API

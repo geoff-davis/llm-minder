@@ -1043,7 +1043,12 @@ class JsonlArtifactStore:
     async def iter_results(
         self, *, successes_only: bool = False
     ) -> AsyncIterator[WorkItemResult[Any, Any]]:
-        """Stream a finite, bounded-memory snapshot of complete item records."""
+        """Stream a finite, bounded-memory snapshot of complete item records.
+
+        Raises ``ArtifactIOError`` if the store is closed, including when it is
+        closed during iteration (checked before each page). Use
+        ``JsonlArtifactStore.read_results(path)`` to read a closed artifact.
+        """
         if not self._prepared:
             try:
                 exists_and_nonempty = await asyncio.to_thread(

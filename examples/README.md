@@ -132,10 +132,49 @@ pool, rate-limit coordination, and retries. Each work item carries a
 JSON-encoded *chunk* of texts (embedding APIs accept many inputs per
 request). Runs whichever provider has an SDK + API key available.
 
-Other provider- and pattern-specific examples (`example_openai.py`,
-`example_openrouter.py`, `example_deepseek.py`, smart retry, model
-escalation, benchmarks, …) live alongside this file — each script's module
-docstring covers its own setup.
+### Single calls and a shared pool
+
+- `example_single_call.py`: `call()` and `call_result()`, one resilient request
+  with retries, cooldowns and token accounting but no queue or workers.
+- `example_gateway.py`: `LLMCallPool`, created once and shared by concurrent
+  request handlers, with one concurrency limit and one coordinated cooldown.
+
+### Built-in providers
+
+- `example_openai.py`: `OpenAIModel` and `OpenAIStrategy` on the Responses API.
+- `example_openrouter.py`: a cross-provider batch through `OpenRouterModel`, and
+  Anthropic prompt caching with `cache_control`.
+- `example_deepseek.py`: `DeepSeekModel`, including its native cache-hit token
+  counts.
+- `example_gemini_direct.py`: `GeminiStrategy` with a higher temperature on each
+  retry.
+
+### Retry and escalation patterns
+
+- `example_smart_model_escalation.py`: escalate to a stronger model only for
+  items that failed validation; rate limits retry on the same model.
+- `example_gemini_smart_retry.py`: on a validation error, tell the model which
+  fields were valid and ask it to fix only the rest.
+- `example_model_escalation.py`: a simpler three-model escalation chain.
+- `example_llm_strategies.py`, `example_anthropic.py`, `example_langchain.py`:
+  custom strategies for clients without built-in support.
+
+### Benchmark and tooling
+
+- `example_batch_benchmark.py`: the GSM8K benchmark behind
+  [`docs/benchmarks.md`](../docs/benchmarks.md): a model bake-off, a wall-time
+  race, and a `--throughput` comparison against hand-written `asyncio.gather`
+  pools. See the [walkthrough](../docs/examples/benchmark-walkthrough.md).
+- `download_gsm8k.py`: one-time download of the GSM8K test split the benchmark
+  reads (no key needed).
+- `generate_benchmark_charts.py`: turns the benchmark's JSON into the charts in
+  `docs/benchmarks.md` (needs the `docs` dependency group, for matplotlib).
+- `peek_outputs.py`: prints full responses from each provider for a few GSM8K
+  problems, to compare verbosity (`DEEPSEEK_API_KEY` and/or `GOOGLE_API_KEY`).
+- `benchmark_worker_overhead.py`: measures the worker loop's per-item overhead
+  against a 5 ms fake call, with no network.
+
+Each script's module docstring covers its own setup.
 
 ## Tips
 
