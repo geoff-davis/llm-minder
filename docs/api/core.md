@@ -66,6 +66,30 @@
 
 ::: llm_minder.BatchResult
 
+## describe_limits
+
+::: llm_minder.describe_limits
+
+## EffectiveLimits
+
+::: llm_minder.EffectiveLimits
+
+## LimitRow
+
+::: llm_minder.LimitRow
+
+## summarize_gate_waits
+
+::: llm_minder.summarize_gate_waits
+
+## GateWaitReport
+
+::: llm_minder.GateWaitReport
+
+## GateWait
+
+::: llm_minder.GateWait
+
 ## BatchTermination
 
 ::: llm_minder.BatchTermination

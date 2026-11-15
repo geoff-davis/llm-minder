@@ -33,6 +33,35 @@ an explicit `max_connections` — the httpx connection pool. If you set
 nothing else, the rest of this page is the explanation of what you just got
 and when to override it.
 
+## Check what you got
+
+`describe_limits()` lists every limit with its value and where the value came
+from (explicit, derived from `concurrency`, a default, or advertised by the
+strategy), plus the provider capacity and the number of attempts that can run at
+once for each strategy. The processor logs the same table at INFO when it first
+configures a strategy, and `LLMCallPool` logs it when created.
+
+```python
+from llm_minder import ProcessorConfig, describe_limits
+
+config = ProcessorConfig(concurrency=64, max_requests_per_minute=3_000)
+print(describe_limits(config, strategy))   # works for call() configs too
+# processor.describe_limits() and pool.describe_limits() fill in their own config
+```
+
+After a run, `batch.gate_waits()` adds up where attempts waited: provider
+capacity, quota (RPM and TPM together), rate-limit cooldown, the startup ramp,
+and retry backoff, largest first. For results from `call_result()` or
+`LLMCallPool`, pass them to `summarize_gate_waits()`. Time an item spends queued
+before a worker picks it up isn't recorded, so the worker pool is not a row.
+
+```python
+batch = await process_prompts(strategy, prompts, config=config)
+print(batch.gate_waits())
+```
+
+Both are provisional (new in 1.1).
+
 ## The decision tree
 
 ```text

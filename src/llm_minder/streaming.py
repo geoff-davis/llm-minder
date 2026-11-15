@@ -277,7 +277,15 @@ def _apply_concurrency_shorthand(
     if config.max_workers == 5:
         # The historical default — treat as unset so derivation applies.
         overrides["max_workers"] = None
-    return dataclasses.replace(config, **overrides)
+    derived = dataclasses.replace(config, **overrides)
+    # replace() passes resolved values back in as explicit ones; keep the
+    # original's record of what was a default (describe_limits(), #319). A
+    # record only applies while the value still matches it.
+    derived._derived_limits = {
+        **getattr(config, "_derived_limits", {}),
+        **derived._derived_limits,
+    }
+    return derived
 
 
 # process_prompts/process_stream don't accept ProcessorConfig's keywords either,

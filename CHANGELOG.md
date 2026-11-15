@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attempt that would exceed it is refused and the run stops as `budget_exceeded`,
   like the token and cost caps. `get_stats()` reports `provider_calls_started`
   ([#272]).
+- `describe_limits(config, *strategies)`, and `describe_limits()` on
+  `ParallelBatchProcessor` and `LLMCallPool`, list each throughput limit with its
+  value and where it came from (explicit, derived from `concurrency`, default, or
+  advertised by the strategy), with the provider capacity and the concurrent-attempt
+  limit for each strategy. The processor logs the table at INFO when it first
+  configures a strategy (after any connection-pool resize), and the pool when it is
+  created. `BatchResult.gate_waits()` and `summarize_gate_waits(results)` add up the
+  recorded waits per gate (provider capacity, quota, cooldown, startup ramp, retry
+  backoff). Provisional; admission is unchanged ([#319]).
 
 ### Changed
 
@@ -90,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#344]: https://github.com/geoff-davis/llm-minder/issues/344
 [#175]: https://github.com/geoff-davis/llm-minder/issues/175
 [#337]: https://github.com/geoff-davis/llm-minder/issues/337
+[#319]: https://github.com/geoff-davis/llm-minder/issues/319
 [#321]: https://github.com/geoff-davis/llm-minder/issues/321
 
 ## [1.0.1] - 2026-11-13

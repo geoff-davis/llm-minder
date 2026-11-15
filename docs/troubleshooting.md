@@ -16,9 +16,13 @@ worker pool, an explicit provider-admission limit is lower, the provider is
 throttling, or the process is close to its file-descriptor limit. A configured
 startup ramp also intentionally begins below steady-state concurrency.
 
-**How to confirm.** Read capacity warnings at processor startup. Compare
+**How to confirm.** Read capacity warnings at processor startup.
+`processor.describe_limits()` (or `describe_limits(config, strategy)`) lists
 `concurrency`, `max_workers`, `max_provider_concurrency`, the strategy's
-`max_concurrency`, and client `max_connections`. Inspect
+`max_concurrency` and the startup-ramp cap, with where each value came from and
+which one bounds concurrent attempts; the processor logs the same table at INFO.
+After the run, `batch.gate_waits()` shows which gate attempts waited on
+([Check what you got](choosing-your-limits.md#check-what-you-got)). Inspect
 `result.admission_wait_seconds`, provider timing, HTTP pool metrics, and
 `ulimit -n` on Unix.
 
