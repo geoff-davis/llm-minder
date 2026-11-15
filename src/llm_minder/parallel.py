@@ -4,6 +4,7 @@ import asyncio
 import functools
 import logging
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field, fields
 from typing import Generic, cast
 
@@ -53,6 +54,7 @@ from .base import (
     TInput,
     TOutput,
     WorkItemResult,
+    _ProcessorState,
 )
 from .core import ProcessorConfig
 from .llm_strategies import LLMCallStrategy
@@ -493,6 +495,50 @@ class ParallelBatchProcessor(
         """Start streaming workers and the batch deadline clock."""
         super().start()
         self._start_guardrail_run()
+
+    # Private interface for the streaming helpers (#175). streaming.py drives
+    # the processor through its public streaming methods plus these three and
+    # _close_after_run(), and touches no other private state;
+    # tests/test_streaming_interface.py enforces that, so a change to stream
+    # ownership or finalization happens here rather than in streaming.py.
+
+    def _own_stream(
+        self,
+        *,
+        capacity_warning_source: tuple[str, int, str],
+        cleanup_steps: Sequence[CleanupStep] = (),
+    ) -> None:
+        """Hand this processor's run to a streaming helper, before ``start()``.
+
+        The helper owns the completed results, so a strategy cleanup failure
+        is logged rather than raised over them. ``capacity_warning_source`` is
+        captured by the caller: capturing it here would add a frame to the
+        stack walk. ``cleanup_steps`` run last in the ordered close.
+        """
+        if self._state is not _ProcessorState.NEW:
+            raise RuntimeError(
+                f"Cannot hand over a processor that is {self._state.value}; "
+                "call _own_stream() before start()."
+            )
+        self._preserve_completed_result = True
+        self._capacity_warning_source = capacity_warning_source
+        self._extra_cleanup_steps.extend(cleanup_steps)
+
+    def _completion_counts(self) -> tuple[int, int]:
+        """Return ``(processed, total)`` for the bundled progress reporter."""
+        return self._stats.processed, self._stats.total
+
+    async def _end_stream_production(self, error: BaseException | None = None) -> None:
+        """Close admission once the producer stops, keeping its error primary.
+
+        The error is recorded before ``finish()`` so finalization raises it
+        instead of a success. ``finish()`` runs only while the stream is open:
+        an abort or an explicit close may already have moved it on.
+        """
+        if error is not None:
+            self._finalization_primary_exception = error
+        if self._state is _ProcessorState.STREAMING:
+            await self.finish()
 
     async def get_stats(self) -> dict:
         """
