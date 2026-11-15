@@ -59,7 +59,9 @@ limit from your own code, raise an exception with `status_code = 429`; otherwise
 pass an explicit `error_classifier`.
 
 **Fix.** Reduce concurrency or set a conservative
-`max_requests_per_minute`; request higher provider quota when appropriate.
+`max_requests_per_minute`; request higher provider quota when appropriate. If you
+don't know the quota, find it with a short probing run
+([When you don't know your limits](choosing-your-limits.md#when-you-dont-know-your-limits)).
 Honor coordinated cooldowns rather than starting more workers. Choose one
 layer to own transport retries at full strength and keep the other layer's
 policy minimal. Bound rate-limit retries so a permanently throttled endpoint
