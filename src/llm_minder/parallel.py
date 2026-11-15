@@ -57,6 +57,8 @@ from .base import (
     _ProcessorState,
 )
 from .core import ProcessorConfig
+from .limits import EffectiveLimits, _batch_may_resize
+from .limits import _resolve as _resolve_limits
 from .llm_strategies import LLMCallStrategy
 from .middleware import Middleware
 from .observers import ProcessingEvent, ProcessorObserver
@@ -238,6 +240,7 @@ class ParallelBatchProcessor(
         self._classifier_resolver = StrategyClassifierResolver(error_classifier)
         self.error_classifier: ErrorClassifier = self._classifier_resolver.compatibility_classifier
         self._strategy_configurations: dict[int, _StrategyConfiguration] = {}
+        self._logged_limits: set[str] = set()
         self._capacity_warning_source: tuple[str, int, str] | None = None
         self.rate_limit_strategy = rate_limit_strategy or ExponentialBackoffStrategy(
             initial_cooldown=config.rate_limit.cooldown_seconds,
@@ -588,6 +591,30 @@ class ParallelBatchProcessor(
                 ) from exc
         await super().add_work(work_item)
 
+    def describe_limits(self, strategy: LLMCallStrategy | None = None) -> EffectiveLimits:
+        """The limits this processor runs with, for ``strategy`` or every strategy seen so far.
+
+        Without ``strategy``, reports a block for each strategy that ``add_work()``
+        has configured (none before the first item: configuration-wide rows only).
+        Rows for a strategy the processor hasn't configured yet note that a built-in
+        model's connection pool may still be resized to ``concurrency``; once
+        configured, they are in effect. See :func:`llm_minder.describe_limits`.
+
+        Provisional (new in 1.1).
+        """
+        if strategy is not None:
+            strategies: list[LLMCallStrategy] = [strategy]
+        else:
+            strategies = [entry.strategy for entry in self._strategy_configurations.values()]
+        may_resize = _batch_may_resize(self.config)
+
+        def not_yet_configured(candidate: LLMCallStrategy) -> bool:
+            entry = self._strategy_configurations.get(id(candidate))
+            configured = entry is not None and entry.strategy is candidate and entry.configured
+            return not configured and may_resize(candidate)
+
+        return _resolve_limits(self.config, strategies, may_resize=not_yet_configured)
+
     def _check_accepting_work(self) -> None:
         super()._check_accepting_work()
         if self._abort_controller is not None and self._abort_controller.aborted:
@@ -639,6 +666,13 @@ class ParallelBatchProcessor(
                 source=work_item._capacity_warning_source,
             )
             entry.configured = True
+            # Logged after any pool resize and next to the capacity warning, so
+            # the two describe the same limits (#319). Once per distinct table:
+            # per-item strategy instances with the same limits log once.
+            described = str(self.describe_limits(work_item.strategy))
+            if described not in self._logged_limits:
+                self._logged_limits.add(described)
+                logger.info("ParallelBatchProcessor %s", described)
         admission_state = self._admission_registry.resolve(work_item.strategy)
         if not self._compatibility_scope_bound:
             self._rate_limit_coord = admission_state.cooldown

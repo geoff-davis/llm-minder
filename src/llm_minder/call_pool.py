@@ -43,6 +43,8 @@ from ._internal.input_validation import validate_strategy
 from .base import BatchTermination, LLMWorkItem, WorkItemResult
 from .cache_groups import CacheGroupTracker
 from .core import ProcessorConfig
+from .limits import EffectiveLimits
+from .limits import _resolve as _resolve_limits
 from .llm_strategies import LLMCallStrategy
 from .single import unwrap_result
 from .strategies.errors import _framework_owned_error_info
@@ -138,6 +140,8 @@ class LLMCallPool(Generic[TOutput]):
             cache_tracker=self._cache_tracker,
             abort_controller=self._abort,
         )
+        # Logged once, where the capacity warning above is evaluated (#319).
+        logger.info("LLMCallPool %s", self.describe_limits())
         self._sem = asyncio.Semaphore(gateway_workers)
         self._seq = 0
         self._closed = False
@@ -313,6 +317,14 @@ class LLMCallPool(Generic[TOutput]):
         self._host._abort_controller = self._abort
         logger.warning("LLMCallPool resumed after: %s", cleared.reason)
         return cleared
+
+    def describe_limits(self) -> EffectiveLimits:
+        """The limits this pool runs with: its configuration and its strategy's capacity.
+
+        The pool never resizes a model's connection pool, so the rows are in effect.
+        See :func:`llm_minder.describe_limits`. Provisional (new in 1.1).
+        """
+        return _resolve_limits(self._host.config, (self._strategy,), may_resize=lambda _: False)
 
     def cache_stats(self) -> dict[str, Any]:
         """Prompt-cache reads and writes per cache group since creation or the last reset.

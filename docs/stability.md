@@ -90,6 +90,7 @@ removed in 1.0; see [Removed in 1.0](#removed-in-10).
 | `ErrorCategory`, `TimeoutCategory` | Stable |
 | `AttemptUsage` | Provisional (new in 0.27, with the token and cost budget) |
 | `CacheGroupTracker`, `CacheFloorBreach` | Provisional (new in 0.30, with the cache-group statistics) |
+| `describe_limits`, `EffectiveLimits`, `LimitRow`, `summarize_gate_waits`, `GateWaitReport`, `GateWait` | Provisional (new in 1.1, with the limit report) |
 
 ### Strategies, models and classifiers
 
@@ -204,6 +205,11 @@ so files written by earlier releases still load and resume.
   so their shape can still change in a minor release once they have seen real use.
   `GuardrailConfig.max_provider_calls` and the `provider_calls_started` statistic,
   new in 1.1, are provisional on the same terms.
+- **Limit report.** `describe_limits`, `EffectiveLimits`, `LimitRow`,
+  `summarize_gate_waits`, `GateWaitReport`, `GateWait`, the
+  `describe_limits()` methods on `ParallelBatchProcessor` and `LLMCallPool`, and
+  `BatchResult.gate_waits()` are new in 1.1 and provisional: rows may be added
+  (for example learned or provider-reported limits) and source wording may change.
 - **Cache-group statistics.** `CacheGroupTracker`, `CacheFloorBreach`, the
   `GuardrailConfig` fields `min_cache_hit_rate` and `cache_hit_window`, the
   `cache_group` and `cache_miss_reason` metadata keys, the

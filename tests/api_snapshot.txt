@@ -87,6 +87,7 @@ class BatchResult(Generic)
     classmethod from_dict(data: Mapping[str, Any], *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
     classmethod from_json(value: str | bytes, *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
     classmethod from_jsonl(path: str | Path, *, output_decoder: ValueDecoder | None = None, context_decoder: ValueDecoder | None = None) -> BatchResult[Any, Any]
+    def gate_waits(self) -> GateWaitReport
     def in_input_order(self) -> BatchResult[TOutput, TContext]
     def outputs(self, *, with_ids: bool = False) -> Iterator[~TOutput] | Iterator[tuple[str, ~TOutput]]
     property successes -> list[WorkItemResult[~TOutput, ~TContext]]
@@ -183,6 +184,10 @@ class DeepSeekStrategy(ModelStrategy)
     async def request_concurrency(self, concurrency: int) -> bool
 class DefaultErrorClassifier(ErrorClassifier)
     def classify(self, exception: Exception) -> ErrorInfo
+class EffectiveLimits
+    field rows: tuple[LimitRow, ...]
+    field in_effect: bool = True
+    __init__(self, rows: tuple[LimitRow, ...], in_effect: bool = True) -> None
 class EmptyResponseError(ValueError, LLMMinderError)
     __init__(self, message: str, *, token_usage: TokenUsage | dict[str, int] | None = None, reason: EmptyResponseReason = 'unknown', provider_reason: str | None = None)
 class ErrorCategory(_StrValueEnum)
@@ -245,6 +250,17 @@ class FixedDelayStrategy(RateLimitStrategy)
     def should_apply_slow_start(self, items_since_resume: int) -> tuple[bool, float]
 class FrameworkTimeoutError(TimeoutError, LLMMinderError)
     __init__(self, message: str, *, item_id: str | None = None, elapsed: float | None = None, timeout_limit: float | None = None)
+class GateWait
+    field gate: str
+    field total_seconds: float
+    field attempts_waited: int
+    field share: float
+    __init__(self, gate: str, total_seconds: float, attempts_waited: int, share: float) -> None
+class GateWaitReport
+    field gates: tuple[GateWait, ...]
+    field items: int
+    field item_seconds: float
+    __init__(self, gates: tuple[GateWait, ...], items: int, item_seconds: float) -> None
 class GeminiCachedModel
     __init__(self, model: str, client: genai.Client, cached_content: list['Content'], *, cache_ttl_seconds: int = 3600, cache_renewal_buffer_seconds: int = 300, auto_renew: bool = True, cache_tags: dict[str, str] | None = None, safety_settings: list[dict[str, Any]] | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None)
     property cache_name -> str | None
@@ -315,6 +331,7 @@ class LLMCallPool(Generic)
     async def aclose(self) -> None
     def cache_stats(self) -> dict[str, Any]
     property cache_tracker -> CacheGroupTracker
+    def describe_limits(self) -> EffectiveLimits
     def reset_cache_stats(self) -> None
     def resume(self) -> BatchTermination | None
     async def submit(self, prompt: str, *, timeout: float | None = None) -> TOutput
@@ -359,6 +376,12 @@ class LLMWorkItem(Generic)
     field context: ~TContext | None = None
     field submission_index: int | None = None
     __init__(self, item_id: str, strategy: LLMCallStrategy[TOutput], prompt: str = '', context: ~TContext | None = None, submission_index: int | None = None) -> None
+class LimitRow
+    field name: str
+    field value: int | float | None
+    field source: str
+    field scope: str = 'all strategies'
+    __init__(self, name: str, value: int | float | None, source: str, scope: str = 'all strategies') -> None
 class ManagedLLMModel(LLMModel, Protocol)
     async def cleanup(self) -> None
     async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
@@ -452,6 +475,7 @@ class ParallelBatchProcessor(BatchProcessor, Generic)
     property aborted -> bool
     async def add_work(self, work_item: LLMWorkItem[~TInput, ~TOutput, ~TContext]) -> None
     async def cleanup(self) -> None
+    def describe_limits(self, strategy: LLMCallStrategy | None = None) -> EffectiveLimits
     async def finish(self) -> None
     async def get_stats(self) -> dict
     async def process_all(self) -> BatchResult[~TOutput, ~TContext]
@@ -656,6 +680,7 @@ class WorkItemTiming
 def attach_token_usage(exception: BaseException, tokens: TokenUsage | Mapping[str, int]) -> None
 async def call(strategy: LLMCallStrategy[TOutput], prompt: str, *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> TOutput
 async def call_result(strategy: LLMCallStrategy[TOutput], prompt: str, *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> WorkItemResult[TOutput, Any]
+def describe_limits(config: ProcessorConfig, *strategies: Any) -> EffectiveLimits
 def llm(spec: str, *, response_parser: Callable[[LLMResponse], Any] | None = None, temperature: float | None = None, generation_config: dict[str, Any] | None = None, **model_kwargs: Any) -> ModelStrategy[Any]
 async def process_prompts(strategy: LLMCallStrategy[TOutput], prompts: PromptSource, *, config: ProcessorConfig | None = None, concurrency: int | None = None, progress: bool | ProgressCallbackFunc = False, preserve_order: bool = False, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>, **processor_kwargs: Any) -> BatchResult[TOutput, Any]
 def process_stream(strategy: LLMCallStrategy[TOutput], prompts: PromptSource, *, config: ProcessorConfig | None = None, concurrency: int | None = None, progress: bool | ProgressCallbackFunc = False, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>, **processor_kwargs: Any) -> AsyncIterator[WorkItemResult[TOutput, Any]]
@@ -663,6 +688,7 @@ class provider_call
     __init__(self, state: RetryState | None) -> None
 def pydantic_json_parser(model_cls: type[TModel], *, recover_trailing_markdown: bool = False) -> Callable[[LLMResponse], TModel]
 def strip_code_fences(text: str) -> str
+def summarize_gate_waits(results: Iterable[WorkItemResult[Any, Any]]) -> GateWaitReport
 
 event BATCH_ABORTED: {kind, reason, error_category, triggering_item_id, abort_mode}
 event BATCH_COMPLETED: {processed, succeeded, failed, total, total_tokens, cached_input_tokens, total_admission_wait_seconds, max_admission_wait_seconds, total_quota_wait_seconds, max_quota_wait_seconds, quota_wait_p50/p95/p99_seconds, estimated_input_tokens, estimated_output_tokens, reserved_tokens, reported_reconciliation_tokens, refunded_tokens, underestimated_tokens, unknown_usage_attempts, known_zero_usage_attempts, token_estimation_failures, quota_scope_count, admission_wait_p50/p95/p99_seconds, execution_p50/p95/p99_seconds, structured_output_recoveries, structured_output_retries_avoided, structured_output_recovery_reasons, input_queue_high_water_mark, result_queue_high_water_mark, cache_groups, cache_groups_overflow, duration}

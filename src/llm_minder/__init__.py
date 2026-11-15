@@ -111,6 +111,16 @@ from .core.protocols import LLMModel, ManagedLLMModel
 # String-based strategy factory: llm("openai:gpt-6-luna")
 from .factory import llm
 
+# Resolved limits and gate waits (#319)
+from .limits import (
+    EffectiveLimits,
+    GateWait,
+    GateWaitReport,
+    LimitRow,
+    describe_limits,
+    summarize_gate_waits,
+)
+
 # LLM call strategies
 from .llm_strategies import (
     DeepSeekStrategy,
@@ -263,6 +273,13 @@ __all__ = [
     "RateLimitConfig",
     "RetryConfig",
     "StartupRampConfig",
+    # Resolved limits and gate waits
+    "describe_limits",
+    "summarize_gate_waits",
+    "EffectiveLimits",
+    "GateWait",
+    "GateWaitReport",
+    "LimitRow",
     # High-level convenience API
     "process_prompts",
     "process_stream",

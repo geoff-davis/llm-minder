@@ -556,6 +556,7 @@ src/llm_minder/
 ├── gateway.py            # old path: re-exports LLMCallPool (through 1.x) and
 │                         # a hint for the removed LLMGateway alias
 ├── factory.py            # llm("provider:model")
+├── limits.py             # describe_limits / summarize_gate_waits (#319)
 ├── callable_strategy.py  # CallableStrategy / CallOutcome
 ├── categories.py         # ErrorCategory, TimeoutCategory
 ├── artifacts.py          # JsonlArtifactStore, ArtifactIdentity, ResumePolicy

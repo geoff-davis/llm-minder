@@ -452,6 +452,10 @@ class ProcessorConfig:
 
     def __post_init__(self) -> None:
         """Resolve defaults and derived knobs, then validate."""
+        # Which values this method filled in, and why, for describe_limits()
+        # (#319). After this point an explicit value and a resolved one look the
+        # same; a later assignment that changes a value makes it explicit.
+        derived: dict[str, tuple[object, str]] = {}
         if self.attempt_timeout is None:
             self.attempt_timeout = 120.0
         # Derive unset knobs from the single concurrency knob (explicit values
@@ -459,10 +463,17 @@ class ProcessorConfig:
         if self.concurrency is not None:
             if self.max_workers is None:
                 self.max_workers = self.concurrency
+                derived["max_workers"] = (self.max_workers, "derived from concurrency")
             if self.max_provider_concurrency is None:
                 self.max_provider_concurrency = self.concurrency
+                derived["max_provider_concurrency"] = (
+                    self.max_provider_concurrency,
+                    "derived from concurrency",
+                )
         if self.max_workers is None:
             self.max_workers = 5
+            derived["max_workers"] = (self.max_workers, "default")
+        self._derived_limits = derived
         self.validate()
 
     def validate(self) -> None:

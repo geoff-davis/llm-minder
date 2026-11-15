@@ -45,6 +45,7 @@ from .strategies.errors import BatchAdmissionClosedError, LLMMinderError
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .limits import GateWaitReport
     from .llm_strategies import LLMCallStrategy
     from .serialization import ValueDecoder, ValueEncoder
 
@@ -862,6 +863,17 @@ class BatchResult(Generic[TOutput, TContext]):
                 lines.append(f"{count} items failed with the same error: {error}")
 
         return "\n".join(lines)
+
+    def gate_waits(self) -> "GateWaitReport":
+        """Where this batch's attempts waited, per admission gate, largest total first.
+
+        Built from the recorded attempt timings (results replayed from an artifact
+        are skipped), so it works on restored batches too. See
+        :func:`llm_minder.summarize_gate_waits`. Provisional (new in 1.1).
+        """
+        from .limits import summarize_gate_waits
+
+        return summarize_gate_waits(self.results)
 
     def in_input_order(self) -> "BatchResult[TOutput, TContext]":
         """Return a new batch whose results are sorted by submission order.
