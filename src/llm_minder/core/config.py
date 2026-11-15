@@ -356,7 +356,67 @@ class GuardrailConfig:
 
 @dataclass(kw_only=True)
 class ProcessorConfig:
-    """Complete configuration for batch processor."""
+    """Complete configuration for batch processor.
+
+    All fields are keyword-only. ``describe_limits(config, strategy)`` shows the
+    limits a configuration resolves to and where each value came from.
+
+    Attributes:
+        concurrency: One knob that sizes ``max_workers``, ``max_provider_concurrency``
+            and the connection pool of built-in OpenAI-compatible models made by
+            ``llm()`` or ``from_api_key()`` without ``max_connections``. Explicit
+            values for any of those win.
+        max_workers: Worker-pool size. Defaults to ``concurrency`` when that is set,
+            else 5.
+        max_provider_concurrency: Provider or client capacity. Attempts above it
+            wait before ``strategy.execute()`` and its ``attempt_timeout``; when the
+            strategy advertises ``max_concurrency``, the lower limit applies.
+        attempt_timeout: Seconds allowed for each ``execute()`` attempt, not for the
+            whole item (default 120). For a whole-item deadline use
+            ``GuardrailConfig.total_timeout_per_item``.
+        retry: Retry budgets and backoff (``RetryConfig``).
+        rate_limit: Cooldown after a rate limit (``RateLimitConfig``).
+        max_requests_per_minute: Proactive request quota per quota scope; ``None``
+            disables it.
+        max_tokens_per_minute: Proactive token quota per quota scope; needs a
+            ``token_estimator`` or a strategy that estimates tokens.
+        token_estimator: Estimates the tokens a request reserves against
+            ``max_tokens_per_minute``.
+        quota_burst_seconds: Bucket size for the per-minute quotas, in seconds of
+            quota; ``None`` keeps a full minute.
+        startup_ramp: Optional cold-start ramp (``StartupRampConfig``); ``None``
+            starts at full concurrency.
+        guardrails: Item and batch deadlines, token, cost and provider-call caps, and
+            fail-fast categories (``GuardrailConfig``).
+        max_queue_size: Bound on accepted input waiting for workers; 0 is unbounded.
+            With ``add_work()`` before ``process_all()``, a positive bound must cover
+            every item added, or ``add_work()`` raises ``ValueError``.
+        max_result_queue_size: Bound on finished results waiting for a streaming
+            consumer; 0 is unbounded. A positive value makes workers wait for a slow
+            consumer.
+        post_processor_timeout: How long a worker waits for a post-processor on
+            one result (default 90). On timeout the error is logged, the item's
+            result is unchanged, and the worker moves on. Cancelling the wait
+            can't stop a synchronous post-processor's thread, and
+            ``process_all()`` waits for that thread before returning.
+        concurrent_post_processing: When ``True``, post-processors run as background
+            tasks, at most ``max_workers`` at once, so a slow one doesn't hold up a
+            worker. They then no longer run in completion order and may overlap.
+            ``process_all()`` still waits for all of them. Default ``False``: inline,
+            in completion order.
+        progress_interval: Log a progress line every N items.
+        progress_callback_timeout: Seconds before a ``progress_callback`` call's
+            task is cancelled, with a warning (default 5); ``None`` disables the
+            timeout. Workers never wait for progress callbacks, but batch
+            completion does: ``process_all()`` waits for every live callback and
+            callback thread before it returns, so with ``None`` a slow async
+            callback delays completion. Cancelling can't stop a synchronous
+            callback already running in a thread.
+        progress_refresh_interval_seconds: Minimum time between redraws of the
+            bundled ``progress=True`` bar. Custom callbacks still run per item.
+        dry_run: Skip provider calls and admission, and return each strategy's
+            ``dry_run()`` output instead; for checking a configuration.
+    """
 
     # Worker-pool size. None means "not passed": resolved in __post_init__ to
     # `concurrency` when that knob is set, else the historical default of 5 —

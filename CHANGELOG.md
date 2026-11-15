@@ -88,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The README and the docs home lead with the same pitch and the `asyncio.gather`
   comparison, mention `describe_limits()`, `gate_waits()` and `max_provider_calls`,
   lead the benchmarks with the throughput result, and link every guide.
+- Documentation gaps are filled: the API reference lists every `ProcessorConfig`
+  field, including `post_processor_timeout`, `concurrent_post_processing` and
+  `progress_callback_timeout`, which the post-processing guide now explains; the
+  stability page lists the SDK major lines CI tests; `get_stats()` documents its
+  call-cap, budget and cache-group keys; and the examples README covers every
+  script.
 
 ### Development
 

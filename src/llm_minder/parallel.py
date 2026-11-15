@@ -556,6 +556,12 @@ class ParallelBatchProcessor(
             - error_counts: Dictionary of error types and their counts
             - total: Total number of items queued
             - start_time: Timestamp when processing started
+            - provider_calls_started: Provider attempts started (what
+                ``GuardrailConfig.max_provider_calls`` limits)
+            - cache_groups, cache_groups_overflow: Per-cache-group hit rates
+            - budget_tokens_used, budget_cost_used, budget_cost_complete,
+                budget_unknown_usage_attempts: Budget accounting, present
+                only when a token or cost budget is set
         """
         async with self._stats_lock:
             stats = self._stats.copy()
