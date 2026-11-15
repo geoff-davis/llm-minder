@@ -4,6 +4,28 @@
 class AbortMode(str, Enum)
     DRAIN_ACTIVE = 'drain_active'
     CANCEL_ACTIVE = 'cancel_active'
+class AnthropicErrorClassifier(ErrorClassifier)
+    def classify(self, exception: Exception) -> ErrorInfo
+class AnthropicModel
+    __init__(self, model: str, client: AsyncAnthropic, *, max_tokens: int = 16000, system_instruction: str | None = None, cache_control: dict[str, Any] | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None)
+    async def cleanup(self) -> None
+    classmethod from_api_key(model: str, api_key: str | None = None, *, base_url: str | None = None, max_connections: int | None = None, max_tokens: int = 16000, system_instruction: str | None = None, cache_control: dict[str, Any] | None = None, extra_headers: dict[str, str] | None = None, extra_body: dict[str, Any] | None = None, metadata_extractors: list[Callable[[Any], dict[str, Any] | None]] | None = None, cache_group: str | None = None, **client_kwargs: Any) -> ~TA
+    async def generate(self, prompt: str | list[Any], *, temperature: float | None = None, system_instruction: str | None = None, config: dict[str, Any] | None = None) -> LLMResponse
+    async def prepare(self) -> None
+    async def request_concurrency(self, concurrency: int) -> bool
+class AnthropicStrategy(ModelStrategy)
+    def attempt_generation_config(self, attempt: int, state: RetryState | None) -> dict[str, Any] | None
+    async def cleanup(self) -> None
+    property concurrency_scope -> object
+    async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
+    def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
+    async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    property max_concurrency -> int | None
+    async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
+    async def prepare(self) -> None
+    property quota_scope -> object
+    def recommended_error_classifier(self) -> ErrorClassifier
+    async def request_concurrency(self, concurrency: int) -> bool
 class ArtifactError(RuntimeError, LLMMinderError)
 class ArtifactFormatError(ArtifactError)
 class ArtifactIOError(ArtifactError)

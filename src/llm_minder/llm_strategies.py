@@ -691,6 +691,26 @@ class DeepSeekStrategy(ModelStrategy[TOutput]):
         return OpenAIErrorClassifier()
 
 
+class AnthropicStrategy(ModelStrategy[TOutput]):
+    """
+    Strategy for calling a native Anthropic model and parsing the response.
+
+    A thin :class:`ModelStrategy` over :class:`AnthropicModel`, named for the
+    provider; :class:`AnthropicErrorClassifier` is selected automatically.
+
+    Provisional (new in 1.2, #314).
+
+    Example:
+        >>> model = AnthropicModel.from_api_key("claude-opus-5-5")
+        >>> strategy = AnthropicStrategy(model)
+    """
+
+    def recommended_error_classifier(self) -> "ErrorClassifier":
+        from .classifiers.anthropic import AnthropicErrorClassifier
+
+        return AnthropicErrorClassifier()
+
+
 class PydanticAIStrategy(LLMCallStrategy[TOutput]):
     """
     Strategy for using PydanticAI agents.

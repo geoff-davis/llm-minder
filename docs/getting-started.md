@@ -22,6 +22,7 @@ adds one provider SDK at the minimum version CI tests:
 | `openrouter` | `OpenRouterModel`, `llm("openrouter:…")` | `openai>=1.66.2` |
 | `deepseek` | `DeepSeekModel`, `llm("deepseek:…")` | `openai>=1.66.2` |
 | `gemini` | `GeminiModel`, `GeminiCachedModel`, `llm("gemini:…")` | `google-genai>=1.49.0` |
+| `anthropic` | `AnthropicModel`, `llm("anthropic:…")` | `anthropic>=1.0.0` |
 | `pydantic-ai` | `PydanticAIStrategy` | `pydantic-ai>=1.32.0` |
 | `progress` | tqdm bars for `progress=True` | `tqdm>=4.66` |
 | `all` | All of the above | All of the above |
@@ -52,8 +53,8 @@ async def main():
 asyncio.run(main())
 ```
 
-The factory also supports `gemini:`, `openrouter:`, and `deepseek:` model
-specifications, and `openai-compatible:` for any other OpenAI-compatible server
+The factory also supports `anthropic:`, `gemini:`, `openrouter:`, and `deepseek:`
+model specifications, and `openai-compatible:` for any other OpenAI-compatible server
 (pass `base_url=`); `openai-compatible:` uses the `openai` extra. It reads each
 provider's normal environment variable.
 

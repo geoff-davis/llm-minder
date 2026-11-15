@@ -21,6 +21,7 @@ import pytest
 import llm_minder.models as models_pkg
 from llm_minder import llm
 from llm_minder.models import (
+    AnthropicModel,
     DeepSeekModel,
     GeminiCachedModel,
     GeminiModel,
@@ -30,7 +31,15 @@ from llm_minder.models import (
     _sdk,
 )
 
-SDK_NAMES = ("AsyncOpenAI", "genai", "Content", "_build_openai_http_client", "_close_unused_client")
+SDK_NAMES = (
+    "AsyncOpenAI",
+    "AsyncAnthropic",
+    "genai",
+    "Content",
+    "_build_openai_http_client",
+    "_build_anthropic_http_client",
+    "_close_unused_client",
+)
 OPENAI_FAMILY = (OpenAICompatibleModel, OpenAIModel, OpenRouterModel, DeepSeekModel)
 
 
@@ -153,3 +162,49 @@ def test_gemini_constructor_annotations_resolve():
     hints = get_type_hints(GeminiCachedModel.__init__)
     assert hints["client"] is genai.Client
     assert hints["cached_content"] == list[Content]
+
+
+def test_patched_async_anthropic_is_the_one_from_api_key_calls():
+    factory = _RecordingFactory()
+    with patch.object(_sdk, "AsyncAnthropic", factory):
+        model = AnthropicModel.from_api_key("m", api_key="k")
+    assert len(factory.calls) == 1
+    assert model._client.kwargs["api_key"] == "k"
+    assert model._client.kwargs["max_retries"] == 0
+
+
+def test_patched_anthropic_http_client_builder_is_the_one_from_api_key_calls():
+    builder = _RecordingFactory()
+    factory = _RecordingFactory()
+    with (
+        patch.object(_sdk, "_build_anthropic_http_client", builder),
+        patch.object(_sdk, "AsyncAnthropic", factory),
+    ):
+        AnthropicModel.from_api_key("m", api_key="k", max_connections=3)
+    assert builder.calls == [((3,), {})]
+    assert factory.calls[0][1]["http_client"].args == (3,)
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: AnthropicModel("m", client=object()),
+        lambda: AnthropicModel.from_api_key("m", api_key="k"),
+    ],
+    ids=["constructor", "from_api_key"],
+)
+def test_missing_anthropic_sdk_is_seen_by_anthropic_model(build):
+    with patch.object(_sdk, "AsyncAnthropic", None), pytest.raises(ImportError, match="anthropic"):
+        build()
+
+
+def test_factory_reads_the_patched_async_anthropic():
+    factory = _RecordingFactory()
+    with patch.object(_sdk, "AsyncAnthropic", factory):
+        llm("anthropic:m", api_key="k")
+    assert len(factory.calls) == 1
+
+
+def test_anthropic_constructor_annotations_resolve():
+    anthropic = pytest.importorskip("anthropic")
+    assert get_type_hints(AnthropicModel.__init__)["client"] is anthropic.AsyncAnthropic

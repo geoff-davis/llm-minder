@@ -145,8 +145,8 @@ jobs:
     # Provider SDKs at their declared floors and at the latest release of every
     # supported major line, so a release newer than uv.lock can't go untested.
     # Floors run on Python 3.12 (openai 1.66.x doesn't support 3.14). Each leg
-    # also installs the other two SDKs unpinned, because the classifier suite
-    # imports all three. A new SDK major line is supported once a leg here covers
+    # also installs the other SDKs it needs unpinned, because the classifier
+    # suites import them. A new SDK major line is supported once a leg here covers
     # it (see docs/stability.md).
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -232,6 +232,24 @@ jobs:
           tests: >-
             tests/test_pydantic_ai_strategy.py tests/test_error_classifiers.py
             tests/test_error_classifier_autoselect.py
+        - label: "anthropic floor"
+          requirement: "anthropic==1.0.0"
+          companions: "openai google-genai pydantic-ai-slim"
+          tests: >-
+            tests/test_anthropic_model.py tests/test_anthropic_classifier.py
+            tests/test_models_sdk_wiring.py tests/test_error_classifier_autoselect.py
+        - label: "anthropic 1.x"
+          requirement: "anthropic>=1.0.0,<2"
+          companions: "openai google-genai pydantic-ai-slim"
+          tests: >-
+            tests/test_anthropic_model.py tests/test_anthropic_classifier.py
+            tests/test_models_sdk_wiring.py tests/test_error_classifier_autoselect.py
+        - label: "anthropic 2.x"
+          requirement: "anthropic>=2,<3"
+          companions: "openai google-genai pydantic-ai-slim"
+          tests: >-
+            tests/test_anthropic_model.py tests/test_anthropic_classifier.py
+            tests/test_models_sdk_wiring.py tests/test_error_classifier_autoselect.py
 
     steps:
     - uses: actions/checkout@v7.0.1
@@ -259,7 +277,8 @@ jobs:
         import platform
         from importlib.metadata import PackageNotFoundError, version
         print("python", platform.python_version())
-        for name in ("openai", "httpx", "google-genai", "pydantic-ai", "pydantic-ai-slim", "pydantic"):
+        for name in ("openai", "httpx", "google-genai", "pydantic-ai", "pydantic-ai-slim",
+                     "anthropic", "httpx2", "pydantic"):
             try:
                 print(name, version(name))
             except PackageNotFoundError:

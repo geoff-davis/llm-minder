@@ -52,6 +52,10 @@ errors do reach it, so you can choose their retry policy.
 
 ::: llm_minder.PydanticAIErrorClassifier
 
+### AnthropicErrorClassifier
+
+::: llm_minder.AnthropicErrorClassifier
+
 ## Rate-limit strategies
 
 `RateLimitConfig` controls cooldown and slow-start; a `RateLimitStrategy`

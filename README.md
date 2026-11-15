@@ -8,7 +8,7 @@ checkpoint instead of starting over. Deadlines and spend caps stop a run cleanly
 and token counts include the attempts that failed.
 
 It works with any async client: wrap your own, or use the built-in OpenAI,
-Gemini, OpenRouter, DeepSeek, or PydanticAI support. It's for anyone running
+Anthropic, Gemini, OpenRouter, DeepSeek, or PydanticAI support. It's for anyone running
 LLM calls in bulk from one Python process: dataset labeling, extraction
 pipelines, model evaluations, nightly jobs, and services that share one quota.
 Use it when you need results during the current workflow; for latency-tolerant
@@ -141,6 +141,7 @@ extras for the providers you use:
 | `openrouter` | `OpenRouterModel`, `llm("openrouter:…")` | `openai>=1.66.2` |
 | `deepseek` | `DeepSeekModel`, `llm("deepseek:…")` | `openai>=1.66.2` |
 | `gemini` | `GeminiModel`, `GeminiCachedModel`, `llm("gemini:…")` | `google-genai>=1.49.0` |
+| `anthropic` | `AnthropicModel`, `llm("anthropic:…")` | `anthropic>=1.0.0` |
 | `pydantic-ai` | `PydanticAIStrategy` | `pydantic-ai>=1.32.0` |
 | `progress` | tqdm bars for `progress=True` | `tqdm>=4.66` |
 | `all` | All of the above | All of the above |
@@ -150,8 +151,8 @@ no extra. Supported on Python 3.11–3.15, tested on Linux and macOS.
 
 ## Providers
 
-`llm("provider:model")` covers `openai:`, `gemini:`, `openrouter:`, `deepseek:`,
-and `openai-compatible:` (any other OpenAI-compatible server, with `base_url=`).
+`llm("provider:model")` covers `openai:`, `anthropic:`, `gemini:`, `openrouter:`,
+`deepseek:`, and `openai-compatible:` (any other OpenAI-compatible server, with `base_url=`).
 Keyword arguments forward to the model constructor, for example
 `llm("deepseek:deepseek-v4-flash", thinking=False, max_connections=150)`.
 
@@ -160,12 +161,15 @@ Keyword arguments forward to the model constructor, for example
   model layer; subclass it for Together, Fireworks, vLLM, and similar servers.
 - **Gemini** supports structured response parsing and shared context caching.
 - **PydanticAI** agents run through `PydanticAIStrategy` with typed output.
-- **Anthropic** and anything else work through PydanticAI, `CallableStrategy`, or
-  an `LLMCallStrategy` subclass.
+- **Anthropic** calls the Messages API natively (`AnthropicModel`, provisional),
+  with cache read/write tokens, refusals, and a shared cooldown on 529 overloads.
+- Anything else works through PydanticAI, `CallableStrategy`, or an
+  `LLMCallStrategy` subclass.
 
 For custom clients or cached models, use the explicit two-object form,
 `OpenAIStrategy(OpenAIModel.from_api_key("gpt-6-luna"))`. See the
 [OpenAI](https://geoff-davis.github.io/llm-minder/OPENAI_INTEGRATION/),
+[Anthropic](https://geoff-davis.github.io/llm-minder/ANTHROPIC_INTEGRATION/),
 [Gemini](https://geoff-davis.github.io/llm-minder/GEMINI_INTEGRATION/), and
 [OpenRouter](https://geoff-davis.github.io/llm-minder/OPENROUTER_INTEGRATION/) guides, the
 [custom strategy guide](https://geoff-davis.github.io/llm-minder/examples/custom-strategies/),

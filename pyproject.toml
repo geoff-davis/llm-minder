@@ -84,6 +84,9 @@ openrouter = [
 deepseek = [
     "openai>=1.66.2",
 ]
+anthropic = [
+    "anthropic>=1.0.0",
+]
 progress = [
     "tqdm>=4.66",
 ]
@@ -91,6 +94,7 @@ all = [
     "pydantic-ai>=1.32.0",
     "google-genai>=1.49.0",
     "openai>=1.66.2",
+    "anthropic>=1.0.0",
     "tqdm>=4.66",
 ]
 
@@ -127,6 +131,7 @@ dev = [
     "pydantic-ai>=1.32.0",  # Required for tests
     "google-genai>=1.49.0",  # Required for Gemini tests
     "openai>=1.66.2",  # Required for OpenAI/OpenRouter tests
+    "anthropic>=1.0.0",  # Required for Anthropic tests
     "tqdm>=4.66",  # Required for progress=True tests
     "prek>=0.4.0",
 ]

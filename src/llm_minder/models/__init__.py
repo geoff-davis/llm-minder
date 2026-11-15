@@ -6,13 +6,16 @@ without knowing about provider-specific details.
 
 Added in v0.6.0. Split from one ``models.py`` into this package in v1.1 (#322);
 import from ``llm_minder.models`` (or ``llm_minder``), not from the private
-submodules. The optional SDK handles (``AsyncOpenAI``, ``genai``) live in
+submodules. The optional SDK handles (``AsyncOpenAI``, ``AsyncAnthropic``, ``genai``) live in
 ``llm_minder.models._sdk``, and every provider module reads them there at call
 time, so that is the one place to patch them.
 """
 
 # Re-exports. There is no ``__all__``, as before the split. The private helpers
 # are here because tests import them; they are called, never patched.
+from ._anthropic import (  # noqa: F401
+    AnthropicModel,
+)
 from ._deepseek import (  # noqa: F401
     DeepSeekModel,
 )
