@@ -78,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   probing run with a startup ramp and a short cooldown, an observer that counts the
   requests in the minute before the first rate limit, and how to turn that count
   into per-minute limits ([#345]).
+- The README and the docs home lead with the same pitch and the `asyncio.gather`
+  comparison, mention `describe_limits()`, `gate_waits()` and `max_provider_calls`,
+  lead the benchmarks with the throughput result, and link every guide.
 
 ### Development
 
