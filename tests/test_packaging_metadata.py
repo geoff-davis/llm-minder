@@ -51,3 +51,41 @@ def test_sdist_ships_the_license(project_dir: Path) -> None:
 
 def test_shim_license_matches_the_main_license() -> None:
     assert (ROOT / "shim" / "LICENSE").read_text() == (ROOT / "LICENSE").read_text()
+
+
+# PEP 735 dependency groups (#337, part 2).
+
+DEV_COMMAND_FILES = [
+    *sorted((ROOT / ".github" / "workflows").glob("*.yml")),
+    ROOT / "Makefile",
+    ROOT / "README.md",
+    ROOT / "CONTRIBUTING.md",
+    ROOT / "CLAUDE.md",
+    ROOT / "docs" / "contributing.md",
+]
+
+
+def _requirement_name(requirement: str) -> str:
+    return re.split(r"[<>=!~\[; ]", requirement, maxsplit=1)[0].lower()
+
+
+def test_dev_and_docs_are_dependency_groups_not_extras() -> None:
+    pyproject = _pyproject(ROOT)
+    extras = pyproject["project"]["optional-dependencies"]
+    assert not {"dev", "docs"} & set(extras)
+    assert {"dev", "docs"} <= set(pyproject["dependency-groups"])
+
+
+def test_dev_group_installs_every_provider_extra() -> None:
+    # A group can't include the project's own extras, so dev repeats them; keep
+    # the copy complete so the test suite has every SDK it imports.
+    pyproject = _pyproject(ROOT)
+    all_extra = {_requirement_name(r) for r in pyproject["project"]["optional-dependencies"]["all"]}
+    dev_group = {_requirement_name(r) for r in pyproject["dependency-groups"]["dev"]}
+    assert all_extra <= dev_group, sorted(all_extra - dev_group)
+
+
+@pytest.mark.parametrize("path", DEV_COMMAND_FILES, ids=lambda p: str(p.relative_to(ROOT)))
+def test_no_command_installs_the_removed_extras(path: Path) -> None:
+    text = path.read_text()
+    assert not re.search(r"--extra[ =](dev|docs)\b|llm-minder\[(dev|docs)\]", text)

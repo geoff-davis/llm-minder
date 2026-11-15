@@ -23,8 +23,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 1. **Install dependencies**
 
 ```bash
-uv sync --all-extras
+uv sync --all-groups
 ```
+
+The `dev` dependency group (tests, linters, provider SDKs) is installed by default;
+`--all-groups` adds the `docs` group for building the documentation.
 
 1. **Install markdown lint tooling** (requires Node 20+; installs the version pinned in `package-lock.json`)
 

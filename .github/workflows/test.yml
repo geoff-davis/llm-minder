@@ -40,11 +40,11 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
 
     - name: Install dependencies
-      # [dev] covers everything the test suite needs (pytest, ruff, mypy, ty,
-      # and the provider SDKs); --all-extras would also drag in the docs stack
-      # (mkdocs, matplotlib) for nothing.
+      # The dev dependency group, which uv installs by default, covers everything
+      # the test suite needs (pytest, ruff, mypy, ty, and the provider SDKs). The
+      # docs group (mkdocs, matplotlib) is left out.
       run: |
-        uv sync --extra dev
+        uv sync
 
     # Coverage instrumentation only pays off on the version whose data feeds
     # the coverage comment (3.12); the other matrix legs run plain pytest.
@@ -81,7 +81,7 @@ jobs:
       run: uv python install 3.13
 
     - name: Install dependencies
-      run: uv sync --extra dev --python 3.13
+      run: uv sync --python 3.13
 
     - name: Run tests
       run: uv run pytest tests/ --tb=short -q
@@ -105,7 +105,7 @@ jobs:
       run: uv python install 3.12
 
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync
 
     # mypy is incremental: with a restored cache it only rechecks modules
     # whose sources (or dependencies) changed. Keying on github.sha with
@@ -288,7 +288,7 @@ jobs:
       run: uv python install 3.12
 
     - name: Install dependencies
-      run: uv sync --extra dev
+      run: uv sync
 
     - name: Run reduced scale-soak profile
       run: make scale-smoke
@@ -318,10 +318,11 @@ jobs:
       run: uv python install 3.12
 
     - name: Install dependencies
-      run: uv sync --extra docs
+      # Only the docs group; --no-sync stops `uv run` adding the default dev group.
+      run: uv sync --no-default-groups --group docs
 
     - name: Build docs (strict)
-      run: uv run mkdocs build --strict
+      run: uv run --no-sync mkdocs build --strict
 
   security:
     runs-on: ubuntu-latest
@@ -340,12 +341,12 @@ jobs:
     # No `uv sync` here: `uv export --frozen` reads the lockfile directly and
     # pip-audit runs as an isolated uv tool, so the project env is never used.
     - name: Python security audit
-      # Audit the project's locked runtime deps, including every provider extra,
-      # but not pip-audit's own
+      # Audit every locked dependency: runtime, every provider extra, and the
+      # dev and docs dependency groups. Not pip-audit's own
       # venv (which pulls in pip and would report CVEs in pip itself —
       # those aren't vulnerabilities users of llm-minder are exposed to).
       run: |
-        uv export --frozen --format requirements.txt --no-dev --all-extras \
+        uv export --frozen --format requirements.txt --all-extras --all-groups \
           --no-emit-project -o /tmp/abl-deps.txt
         uv tool install pip-audit
         uv tool run pip-audit --disable-pip --require-hashes -r /tmp/abl-deps.txt
