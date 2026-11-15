@@ -324,7 +324,7 @@ class LLMCallPool(Generic[TOutput]):
         The pool never resizes a model's connection pool, so the rows are in effect.
         See :func:`llm_minder.describe_limits`. Provisional (new in 1.1).
         """
-        return _resolve_limits(self._host.config, (self._strategy,), may_resize=lambda _: False)
+        return _resolve_limits(self._host.config, (self._strategy,), may_resize=lambda _: None)
 
     def cache_stats(self) -> dict[str, Any]:
         """Prompt-cache reads and writes per cache group since creation or the last reset.

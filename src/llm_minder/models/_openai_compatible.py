@@ -397,6 +397,15 @@ class OpenAICompatibleModel:
             self._client_lock_loop = loop
         return self._client_lock
 
+    def _can_resize_pool(self) -> bool:
+        """Whether :meth:`request_concurrency` would rebuild the pool (read by describe_limits)."""
+        return (
+            self._owns_client
+            and not self._client_used
+            and self.max_concurrency is None
+            and self._rebuild_client_kwargs is not None
+        )
+
     async def request_concurrency(self, concurrency: int) -> bool:
         """Ask the model to support ``concurrency`` parallel requests.
 
@@ -417,16 +426,12 @@ class OpenAICompatibleModel:
         """
         if concurrency < 1:
             raise ValueError(f"concurrency must be >= 1; got {concurrency}.")
-        if (
-            not self._owns_client
-            or self._client_used
-            or self.max_concurrency is not None
-            or self._rebuild_client_kwargs is None
-        ):
+        rebuild_kwargs = self._rebuild_client_kwargs
+        if not self._can_resize_pool() or rebuild_kwargs is None:
             return False
         new_client = _sdk.AsyncOpenAI(
             http_client=_sdk._build_openai_http_client(concurrency),
-            **self._rebuild_client_kwargs,
+            **rebuild_kwargs,
         )
         old_client = self._client
         self._client = new_client

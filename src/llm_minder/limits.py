@@ -51,9 +51,10 @@ class LimitRow:
 class EffectiveLimits:
     """The limits a ``ProcessorConfig`` resolves to, one row per limit and scope.
 
-    ``in_effect`` is False when a row may still change at batch start: a built-in
-    OpenAI-compatible model created without ``max_connections`` resizes its
-    connection pool to ``concurrency`` when a batch run first configures it. ``str()``
+    ``in_effect`` is False when a row may still change at batch start: with
+    ``concurrency`` set, a batch run resizes the connection pool of a built-in
+    OpenAI-compatible model that owns its client and has no ``max_connections``, and
+    calls any custom ``request_concurrency`` hook, whose effect is unknown. ``str()``
     gives a readable table.
     """
 
@@ -146,7 +147,7 @@ def _resolve(
     config: ProcessorConfig,
     strategies: Iterable[Any],
     *,
-    may_resize: Callable[[Any], bool],
+    may_resize: Callable[[Any], str | None],
 ) -> EffectiveLimits:
     """Resolve the limit table; shared by every surface so they cannot drift."""
     max_workers = int(config.max_workers or 0)
@@ -179,16 +180,22 @@ def _resolve(
     strategy_list = list(strategies)
     for strategy, label in zip(strategy_list, _strategy_labels(strategy_list), strict=True):
         advertised = strategy_max_concurrency(strategy)
-        resizes = may_resize(strategy)
+        resize = may_resize(strategy)
         if advertised is None:
             source = "not advertised"
         else:
             source = "advertised by the strategy (e.g. its connection pool)"
-        if resizes:
+        if resize == "pool":
             in_effect = False
             source += (
-                f"; a batch run may resize it to concurrency={config.concurrency} at start "
-                "(built-in models created without max_connections)"
+                f"; a batch run resizes the model's connection pool to "
+                f"concurrency={config.concurrency} at start"
+            )
+        elif resize == "hook":
+            in_effect = False
+            source += (
+                f"; a batch run calls the strategy's request_concurrency("
+                f"{config.concurrency}) at start, which may change it"
             )
         rows.append(LimitRow("strategy max_concurrency", advertised, source, label))
 
@@ -224,11 +231,38 @@ def _resolve(
     return EffectiveLimits(rows=tuple(rows), in_effect=in_effect)
 
 
-def _batch_may_resize(config: ProcessorConfig) -> Callable[[Any], bool]:
-    def may_resize(strategy: Any) -> bool:
-        return config.concurrency is not None and callable(
-            getattr(strategy, "request_concurrency", None)
-        )
+def _resize_kind(strategy: Any) -> str | None:
+    """How a batch run's ``request_concurrency(concurrency)`` call may change capacity.
+
+    ``"pool"``: a built-in model will rebuild its connection pool. ``"hook"``: a
+    custom hook may change it (unknown). ``None``: known not to change it, including
+    built-in models with an explicit ``max_connections`` or a caller-owned client,
+    and models without a hook (Gemini, custom ``LLMModel``).
+    """
+    from .callable_strategy import CallableStrategy
+    from .llm_strategies import ModelStrategy
+
+    hook = getattr(type(strategy), "request_concurrency", None)
+    if hook is None:
+        return None
+    if hook is ModelStrategy.request_concurrency:
+        model = strategy.model
+        if getattr(model, "request_concurrency", None) is None:
+            return None
+        can_resize = getattr(model, "_can_resize_pool", None)
+        if can_resize is not None:
+            return "pool" if can_resize() else None
+        return "hook"
+    if hook is CallableStrategy.request_concurrency:
+        return "hook" if strategy._request_concurrency_callback is not None else None
+    return "hook"
+
+
+def _batch_may_resize(config: ProcessorConfig) -> Callable[[Any], str | None]:
+    def may_resize(strategy: Any) -> str | None:
+        if config.concurrency is None:
+            return None
+        return _resize_kind(strategy)
 
     return may_resize
 
@@ -240,7 +274,9 @@ def describe_limits(config: ProcessorConfig, *strategies: Any) -> EffectiveLimit
     concurrency``, ``default``, advertised by the strategy, or ``not set``. Strategy
     rows give the provider capacity (the lowest of the strategy's advertised
     ``max_concurrency``, ``max_provider_concurrency`` and the startup-ramp cap) and
-    the number of attempts that can run at once.
+    the number of attempts that can run at once. A config copied with
+    ``dataclasses.replace()`` reports its resolved values as explicit, because
+    ``replace()`` passes them back in.
 
     Use it before a run of any kind, including ``call()``. The batch processor and
     ``LLMCallPool`` have a ``describe_limits()`` method that fills in their own

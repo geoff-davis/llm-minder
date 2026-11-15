@@ -149,12 +149,75 @@ class TestStrategyRows:
             limits = describe_limits(ProcessorConfig(concurrency=8), OpenAIStrategy(model))
             assert not limits.in_effect
             assert (
-                "may resize it to concurrency=8"
+                "resizes the model's connection pool to concurrency=8"
                 in _row(limits, "strategy max_concurrency", "OpenAIStrategy").source
             )
             assert "before batch start" in str(limits)
         finally:
             await model.cleanup()
+
+    async def test_resize_flag_only_for_real_candidates(self):
+        from unittest.mock import MagicMock
+
+        from llm_minder import CallableStrategy, ModelStrategy
+
+        class FixedModel:
+            max_concurrency = 3
+
+            async def generate(self, *args, **kwargs):
+                raise AssertionError("no provider call expected")
+
+        class HookModel(FixedModel):
+            async def request_concurrency(self, concurrency):
+                return False
+
+        class CustomHook(EchoStrategy):
+            async def request_concurrency(self, concurrency):
+                return False
+
+        async def run(prompt, *, attempt, timeout, state):
+            return prompt
+
+        config = ProcessorConfig(concurrency=8)
+        explicit = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-test", max_connections=3)
+        eligible = OpenAIModel.from_api_key("gpt-4o-mini", api_key="sk-test")
+        try:
+            cases = [
+                (OpenAIStrategy(explicit), None),
+                (OpenAIStrategy(OpenAIModel("gpt-4o-mini", MagicMock())), None),
+                (ModelStrategy(FixedModel()), None),
+                (CallableStrategy(run), None),
+                (OpenAIStrategy(eligible), "resizes the model's connection pool"),
+                (ModelStrategy(HookModel()), "request_concurrency(8)"),
+                (
+                    CallableStrategy(run, request_concurrency=lambda n: False),
+                    "request_concurrency(8)",
+                ),
+                (CustomHook(), "request_concurrency(8)"),
+            ]
+            for strategy, note in cases:
+                limits = describe_limits(config, strategy)
+                row = _row(limits, "strategy max_concurrency", type(strategy).__name__)
+                if note is None:
+                    assert limits.in_effect, strategy
+                    assert "batch run" not in row.source, row.source
+                    # And the real resize agrees: nothing changes.
+                    before = row.value
+                    assert await strategy.request_concurrency(8) is False
+                    after = _row(
+                        describe_limits(config, strategy),
+                        "strategy max_concurrency",
+                        type(strategy).__name__,
+                    ).value
+                    assert after == before
+                else:
+                    assert not limits.in_effect, strategy
+                    assert note in row.source, row.source
+            # Without concurrency nothing is resized.
+            assert describe_limits(ProcessorConfig(), OpenAIStrategy(eligible)).in_effect
+        finally:
+            await explicit.cleanup()
+            await eligible.cleanup()
 
     def test_str_lists_every_row(self):
         text = str(describe_limits(ProcessorConfig(concurrency=4), CappedStrategy(2)))

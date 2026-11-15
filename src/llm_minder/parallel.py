@@ -596,8 +596,9 @@ class ParallelBatchProcessor(
 
         Without ``strategy``, reports a block for each strategy that ``add_work()``
         has configured (none before the first item: configuration-wide rows only).
-        Rows for a strategy the processor hasn't configured yet note that a built-in
-        model's connection pool may still be resized to ``concurrency``; once
+        Rows for a strategy the processor hasn't configured yet note when its
+        capacity can still change at start (a built-in model's connection pool
+        resized to ``concurrency``, or a custom ``request_concurrency`` hook); once
         configured, they are in effect. See :func:`llm_minder.describe_limits`.
 
         Provisional (new in 1.1).
@@ -608,10 +609,10 @@ class ParallelBatchProcessor(
             strategies = [entry.strategy for entry in self._strategy_configurations.values()]
         may_resize = _batch_may_resize(self.config)
 
-        def not_yet_configured(candidate: LLMCallStrategy) -> bool:
+        def not_yet_configured(candidate: LLMCallStrategy) -> str | None:
             entry = self._strategy_configurations.get(id(candidate))
             configured = entry is not None and entry.strategy is candidate and entry.configured
-            return not configured and may_resize(candidate)
+            return None if configured else may_resize(candidate)
 
         return _resolve_limits(self.config, strategies, may_resize=not_yet_configured)
 
