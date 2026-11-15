@@ -52,7 +52,7 @@ model = DeepSeekModel.from_api_key(
 
 Models built with `from_api_key(max_connections=N)` advertise that capacity to
 their strategy. `ParallelBatchProcessor` and `LLMCallPool` emit a `UserWarning`
-when `max_workers > N`; the shared executor holds excess attempts in ABL
+when `max_workers > N`; the shared executor holds excess attempts in llm-minder
 admission before `strategy.execute()` and before `attempt_timeout` starts.
 Matching values avoids unnecessary admission wait:
 
@@ -62,7 +62,7 @@ strategy = DeepSeekStrategy(model)
 config = ProcessorConfig(max_workers=32)
 ```
 
-ABL cannot reliably inspect a caller-supplied `AsyncOpenAI`/httpx transport, so
+llm-minder cannot reliably inspect a caller-supplied `AsyncOpenAI`/httpx transport, so
 models constructed directly with `OpenAIModel(model, client)` advertise unknown
 capacity and do not warn. Set `max_provider_concurrency` to protect a known
 custom-client limit:
@@ -111,7 +111,7 @@ The timeout boundary is deliberately narrow:
 | httpx pool wait occurring inside `strategy.execute()` | **Yes** |
 | Retry backoff between attempts | No |
 
-The transport-pool row is the common trap: ABL cannot distinguish provider time
+The transport-pool row is the common trap: llm-minder cannot distinguish provider time
 from a lower-level wait once `strategy.execute()` begins. Advertised or explicit
 capacity prevents that hidden wait by gating attempts first:
 
@@ -204,7 +204,7 @@ Before enabling `max_tokens_per_minute`, verify all of the following:
   `unknown_usage_attempts`, and `known_zero_usage_attempts`; sustained debt
   means the estimate is too low.
 - Confirm whether an upstream gateway retries internally and whether it reports
-  aggregate usage. Hidden attempts cannot be reconstructed by ABL.
+  aggregate usage. Hidden attempts cannot be reconstructed by llm-minder.
 - Test one recoverable failed-usage retry, one unknown-usage timeout/transport
   failure, and cancellation both before and after provider start.
 - Verify replay and dry-run emit no quota events and do not consume live

@@ -6,7 +6,7 @@ connection pools, startup bursts, and timeout tails matter.
 
 ## Model-Owned Client
 
-`from_api_key(max_connections=N)` lets ABL size and own the httpx client. The
+`from_api_key(max_connections=N)` lets llm-minder size and own the httpx client. The
 model advertises `N`, so execution attempts are admitted before
 `attempt_timeout` starts and never queue invisibly inside the transport.
 
@@ -78,7 +78,7 @@ Metadata and inferred artifact identity record the Responses surface plus a
 canonical schema hash, so a frozen Chat JSON-mode result or a result from a
 different schema cannot be reused accidentally.
 
-ABL validates the surface and schema locally and passes model IDs through to
+llm-minder validates the surface and schema locally and passes model IDs through to
 DeepSeek for validation. See the [provider Responses reference](https://api-docs.deepseek.com/api/create-response/)
 for available models. The `deepseek` extra requires OpenAI SDK 1.66.2 or newer;
 caller-supplied clients must expose callable `responses.create`. This does not
@@ -89,11 +89,11 @@ validates locally but cannot guarantee or repair malformed provider JSON.
 Set `max_workers` to the amount of useful application concurrency and
 `max_connections` to the provider-call capacity. They are often equal. A larger
 worker count can still help when middleware or post-processing occupies workers;
-ABL will admit only the model's advertised capacity into `strategy.execute()`.
+llm-minder will admit only the model's advertised capacity into `strategy.execute()`.
 
 ## User-Supplied Client
 
-ABL cannot resize or reliably inspect a caller-supplied `AsyncOpenAI` client's
+llm-minder cannot resize or reliably inspect a caller-supplied `AsyncOpenAI` client's
 httpx pool. Configure the transport explicitly and declare the same capacity on
 `ProcessorConfig`:
 
@@ -129,13 +129,13 @@ await client.close()
 | --- | --- |
 | httpx connect/read/write/pool timeout | One transport operation |
 | OpenAI SDK timeout | One SDK request |
-| `attempt_timeout` | One `strategy.execute()` attempt, after ABL admission |
+| `attempt_timeout` | One `strategy.execute()` attempt, after llm-minder admission |
 | Retry backoff and coordinated cooldown | Outside `attempt_timeout` |
 | `LLMCallPool` `submit_timeout` | Full caller wall time, including all waits/retries |
 
-Avoid multiplying hidden SDK retries by ABL retries. `from_api_key()` already
+Avoid multiplying hidden SDK retries by llm-minder retries. `from_api_key()` already
 sets SDK `max_retries=0`; do the same for a client you build yourself. That gives
-ABL complete attempt timing, classification, and failed-token accounting. If SDK
+llm-minder complete attempt timing, classification, and failed-token accounting. If SDK
 retries remain enabled, treat one `strategy.execute()` as the outer attempt and
 size `attempt_timeout` for all SDK work inside it.
 
@@ -178,7 +178,7 @@ async with LLMCallPool(
 | Throughput plateaus below provider capacity | `max_connections`, `max_provider_concurrency`, execution p95 | Align pool/admission limits; raise only after measuring |
 | High admission p95, normal execution p95 | `admission_wait_*` and startup-ramp wait | Raise capacity if the provider allows it, or lower worker/pending load |
 | Framework execution timeouts | Attempt `timeout_category`, execution/provider duration | Raise per-attempt timeout or fix provider/client latency |
-| httpx pool timeouts with a custom client | `httpx.Limits`, pool timeout, explicit ABL capacity | Set `max_provider_concurrency` no higher than the httpx pool |
+| httpx pool timeouts with a custom client | `httpx.Limits`, pool timeout, explicit llm-minder capacity | Set `max_provider_concurrency` no higher than the httpx pool |
 | Initial 429/5xx burst | First-attempt errors and startup timing | Enable `StartupRampConfig`; do not confuse it with post-429 slow-start |
 | Repeated 429s after recovery | Cooldown duration and rate-limit retry count | Lower steady capacity/RPM or increase coordinated cooldown |
 | Long request tail in a service | Pool admission and `submit_timeout` | Bound `max_pending`; set an end-to-end submit budget |

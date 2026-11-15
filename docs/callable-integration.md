@@ -2,7 +2,7 @@
 
 `CallableStrategy` connects an existing async provider SDK, OpenAI-compatible
 client, third-party gateway, PydanticAI agent, or internal application service
-to ABL's existing execution pipeline. Built-in provider wrappers are
+to llm-minder's existing execution pipeline. Built-in provider wrappers are
 conveniences, not requirements.
 
 The adapter does not execute a job or implement retries. Each callback
@@ -52,13 +52,13 @@ strategy = CallableStrategy(
 ```
 
 The callback must be declared with `async def` and must resolve to
-`CallOutcome`. ABL passes `attempt`, `timeout`, and `state` as keyword
+`CallOutcome`. llm-minder passes `attempt`, `timeout`, and `state` as keyword
 arguments.
 
 - `attempt` is the logical content/transport attempt. A rate limit retries the
   same logical attempt; validation or ordinary retryable failures advance it.
 - `timeout` is the effective remaining per-attempt budget. It is useful for a
-  client-native timeout, but ABL still enforces the outer timeout.
+  client-native timeout, but llm-minder still enforces the outer timeout.
 - `state` is private to one work item and persists across its attempts. Store
   validation feedback, partial data, or escalation choices there—never on the
   shared `CallableStrategy` instance.
@@ -106,7 +106,7 @@ CallableStrategy(
   `invoke`.
 - `dry_run`: synchronous or async `(prompt) -> CallOutcome`. Without it, the
   standard placeholder dry-run result is used.
-- `max_concurrency`: positive client/transport capacity advertised to ABL.
+- `max_concurrency`: positive client/transport capacity advertised to llm-minder.
 - `concurrency_scope`: identity shared by strategies that use the same client
   pool. The strategy instance is the default scope.
 - `quota_scope`: identity whose RPM/TPM limits and coordinated cooldown the
@@ -126,9 +126,9 @@ it into a provider failure.
 
 `CallOutcome.token_usage` accepts `input_tokens`, `output_tokens`,
 `total_tokens`, `cached_input_tokens`, and `cache_write_input_tokens`. Values
-must be non-negative integers (booleans are rejected). ABL copies the mapping and
+must be non-negative integers (booleans are rejected). llm-minder copies the mapping and
 derives `total_tokens` from reported input plus output when total is omitted. An
-empty mapping means the client reported no usage; ABL does not estimate it or
+empty mapping means the client reported no usage; llm-minder does not estimate it or
 claim complete accounting.
 
 `cached_input_tokens` (read from a prompt cache) and `cache_write_input_tokens`
@@ -148,7 +148,7 @@ token_usage = {
 }
 ```
 
-Metadata may be `None` or a mapping and is copied into a plain dictionary. ABL
+Metadata may be `None` or a mapping and is copied into a plain dictionary. llm-minder
 does not inspect or persist raw provider response objects automatically. The
 reserved `grounding`, `reasoning`, `tool_calls`, and `logprobs` keys retain the
 typed `WorkItemResult` views documented for provider output.
@@ -189,12 +189,12 @@ def on_error(
 Read that value from `state` on the next invocation. Concurrent work items
 cannot see one another's `RetryState`.
 
-Avoid allowing both ABL and an upstream gateway to perform the same transport
+Avoid allowing both llm-minder and an upstream gateway to perform the same transport
 retry policy at full strength. Choose one layer as the transport-retry owner so
 attempt counts, latency, and accounting remain understandable. Even when an
-upstream gateway owns transport retries, ABL remains useful for application
+upstream gateway owns transport retries, llm-minder remains useful for application
 validation recovery, total item and batch deadlines, bounded streaming,
-checkpoint/replay, terminal outcomes, and application-visible accounting. ABL
+checkpoint/replay, terminal outcomes, and application-visible accounting. llm-minder
 cannot report retries hidden inside the upstream service unless that service
 reports them.
 
@@ -238,7 +238,7 @@ failed-attempt tokens, bounded input/output handoff, and a zero-call replay run.
 
 ## Optional OpenAI-Compatible Shape
 
-The SDK remains an optional application dependency; it is not required by ABL:
+The SDK remains an optional application dependency; it is not required by llm-minder:
 
 ```python
 async def invoke(

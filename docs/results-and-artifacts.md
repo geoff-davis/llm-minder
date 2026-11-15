@@ -245,7 +245,7 @@ participate in replay.
 safely reveal its provider, model, route, parser, or application version. Pass
 `identity=ArtifactIdentity(...)` to `CallableStrategy` or directly to
 `JsonlArtifactStore`. Omitting both fails before the invocation callback runs;
-ABL never derives identity from a lambda, closure, object ID, memory address, or
+llm-minder never derives identity from a lambda, closure, object ID, memory address, or
 unstable `repr()`. An explicit store identity takes precedence over the
 strategy's identity.
 
@@ -375,7 +375,7 @@ Changing its explicit identity invalidates replay and executes it again.
 
 When a billed response fails parsing or validation, raise
 `TokenTrackingError(token_usage=...)` from the callback. That attempt's usage is
-retained and added to later successful or terminal usage. ABL cannot account
+retained and added to later successful or terminal usage. llm-minder cannot account
 for transport retries hidden inside an upstream gateway unless the gateway
 reports them.
 
@@ -554,7 +554,7 @@ and terminates the store's worker thread. An external long-lived reader can
 make that final checkpoint report “busy” — recorded, not an error and not
 data loss. SQLite may leave an `-shm` sidecar after a healthy close, and the
 database directory will transiently contain `-wal`/`-shm` files during a run.
-ABL does not encrypt SQLite artifacts; use filesystem permissions and volume
+llm-minder does not encrypt SQLite artifacts; use filesystem permissions and volume
 encryption as your deployment requires.
 
 Cleanup finishes before `close()` reports an error. A previously unobserved
@@ -625,5 +625,5 @@ cross-process exactly-once execution — use one writer per artifact.
 
 On open, the JSONL store still builds an in-memory replay index over complete
 item records for constant-time resume lookup (its `iter_results()` streams
-bounded line pages instead of materializing history, as of v0.21). Very large
+bounded line pages instead of materializing history). Very large
 audit histories are exactly what `SqliteArtifactStore` is for.

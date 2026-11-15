@@ -13,8 +13,8 @@ relevant to current users but are preserved for reference and context.
 
 ### Migration Guides (Pre-Release Versions)
 
-These migration guides documented intermediate versions during development but are no longer
-needed since the package will be released starting with v0.4.0.
+These migration guides documented intermediate versions written before the first public
+release (v0.4.0).
 
 - **MIGRATION.md** - Old migration hub (replaced by version-specific guides)
 - **MIGRATION_V0_1.md** - v0.0.x → v0.1 migration (strategy pattern introduction)
@@ -28,11 +28,5 @@ needed since the package will be released starting with v0.4.0.
 
 ## Current Documentation
 
-For current documentation, see the parent `docs/` directory:
-
-- **API.md** - Complete API reference (v0.4.0)
-- **MIGRATION_V0_4.md** - Migration guide for v0.4.0 (context manager pattern)
-- **GEMINI_INTEGRATION.md** - Gemini-specific integration guide
-
-Since the package is being released at v0.4.0, users will start fresh with the current API
-without needing migration guides from unreleased versions.
+These pages are kept in the repository only and are not published on the documentation site.
+For current documentation, see <https://geoff-davis.github.io/llm-minder/>.

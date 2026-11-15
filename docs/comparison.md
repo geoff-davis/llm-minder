@@ -1,9 +1,9 @@
-# Choosing Between ABL and Alternatives
+# Choosing Between llm-minder and Alternatives
 
 **Last reviewed: 2026-10-02.** Capabilities change; follow the linked primary
 documentation before making a long-lived platform decision.
 
-llm-minder (ABL) is a narrow, in-process execution layer for independent
+llm-minder is a narrow, in-process execution layer for independent
 online LLM calls. It is not a dataset framework, model server, network gateway,
 native batch client, scheduler, or durable workflow engine. That boundary is
 often more useful than a feature checklist.
@@ -17,7 +17,7 @@ often more useful than a feature checklist.
 | Central provider routing and policy | LiteLLM or another AI gateway |
 | Discounted latency-tolerant provider job | Native batch API or Curator |
 | Multi-step durable business workflow | Prefect, Temporal, DBOS, or another workflow engine |
-| Embedded async fan-out with incremental durable outcomes | ABL |
+| Embedded async fan-out with incremental durable outcomes | llm-minder |
 
 ## `asyncio.gather`, a semaphore, and a retry library
 
@@ -32,10 +32,10 @@ producer, coordinate 429 cooldowns across tasks, preserve one terminal outcome
 per accepted item, enforce attempt/item/batch deadlines, account for failed
 billed calls, checkpoint before publication, replay compatible work, shut down
 on early consumer exit, and keep input and completed-result buffers bounded.
-ABL packages those semantics together. It is a worse fit when those semantics
+llm-minder packages those semantics together. It is a worse fit when those semantics
 would be unused overhead.
 
-The two approaches compose poorly at the same layer: either let ABL own the
+The two approaches compose poorly at the same layer: either let llm-minder own the
 item execution loop, or keep the custom gather loop small and explicit.
 
 ## Bespoke Curator
@@ -53,10 +53,10 @@ are first-class data-pipeline features.
 
 Curator is often the better choice when work begins and ends as a dataset, the
 goal is synthetic training data, local/distributed model inference matters, a
-viewer improves curation, or delayed native batches are desirable. ABL should
+viewer improves curation, or delayed native batches are desirable. llm-minder should
 not be chosen merely because the workload has many rows.
 
-ABL's narrower fit is embedding online fan-out inside an existing async
+llm-minder's narrower fit is embedding online fan-out inside an existing async
 application: consume a database cursor without first constructing a dataset,
 wrap an existing async client, yield each terminal result back into application
 control flow, bound completed-result handoff, checkpoint before publication,
@@ -64,7 +64,7 @@ apply logical item and batch deadlines, and carry item-private validation
 recovery state. Its core dependency surface is deliberately small.
 
 Composition is possible. A Curator pipeline can call an application service,
-and an ABL callable can sit over infrastructure also used by Curator, but using
+and an llm-minder callable can sit over infrastructure also used by Curator, but using
 both as the execution owner for the same rows usually duplicates caching,
 retry, and accounting policy. Choose the owner that matches the surrounding
 data flow.
@@ -78,11 +78,11 @@ authentication and virtual keys, centralized spend/budget policy, logging,
 and governance. Those are gateway concerns, and a gateway is the better tool
 when many applications need shared provider access policy.
 
-ABL can sit above LiteLLM or another gateway through `CallableStrategy`. ABL
+llm-minder can sit above LiteLLM or another gateway through `CallableStrategy`. llm-minder
 then manages one application run: bounded production and result consumption,
 application-level validation recovery, deadlines, terminal outcomes,
 checkpoint/replay, and application-visible accounting. It cannot see retries
-or provider attempts hidden inside the gateway. ABL's `GuardrailConfig` token and
+or provider attempts hidden inside the gateway. llm-minder's `GuardrailConfig` token and
 cost budgets cap a single run; organization-wide spend policy still belongs in a
 gateway.
 
@@ -102,7 +102,7 @@ the [Claude Message Batches API](https://platform.claude.com/docs/en/build-with-
 documents most batches finishing within an hour, a 24-hour expiry, and 50% batch
 pricing.
 
-ABL currently performs incremental online calls. It is a better fit when the
+llm-minder currently performs incremental online calls. It is a better fit when the
 application needs live completion-order results, application-specific retry
 state, checkpoint-before-publication, or end-to-end item deadlines. It does not
 submit provider-native batch jobs. Curator is a convenient higher-level option
@@ -118,11 +118,11 @@ schedules, multi-service coordination, distributed workers, or human approval
 steps. They provide a broader execution and operations model than an LLM
 fan-out library.
 
-ABL can run inside one workflow activity or fan-out stage. The workflow engine
-owns durable business orchestration; ABL owns the bounded, retry-aware set of
-independent LLM calls within that stage. Do not use ABL as a DAG engine.
+llm-minder can run inside one workflow activity or fan-out stage. The workflow engine
+owns durable business orchestration; llm-minder owns the bounded, retry-aware set of
+independent LLM calls within that stage. Do not use llm-minder as a DAG engine.
 
-## When not to use ABL
+## When not to use llm-minder
 
 Choose something else when:
 
