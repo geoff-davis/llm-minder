@@ -47,7 +47,6 @@ from .base import (
     BatchTermination,
     LLMWorkItem,
     WorkItemResult,
-    _ProcessorState,
 )
 from .core import ProcessorConfig
 from .parallel import ParallelBatchProcessor
@@ -343,8 +342,7 @@ async def _process_stream_impl(
         resume=resume,
         **processor_kwargs,
     )
-    processor._preserve_completed_result = True
-    processor._capacity_warning_source = capture_capacity_warning_source()
+    cleanup_steps: list[CleanupStep] = []
     if reporter is not None:
         bundled_reporter = reporter
 
@@ -353,14 +351,19 @@ async def _process_stream_impl(
             # ordered cleanup step so its failure follows the same precedence
             # policy as every other cleanup failure instead of replacing the
             # primary error.
-            await bundled_reporter.aclose(
-                completed=processor._stats.processed,
-                total=processor._stats.total,
-            )
+            completed, total = processor._completion_counts()
+            await bundled_reporter.aclose(completed=completed, total=total)
 
-        processor._extra_cleanup_steps.append(CleanupStep("progress reporter", _close_reporter))
+        cleanup_steps.append(CleanupStep("progress reporter", _close_reporter))
+    # Captured here, not inside _own_stream(), so the stack walk starts from
+    # this frame and warning deduplication keeps the caller's source.
+    processor._own_stream(
+        capacity_warning_source=capture_capacity_warning_source(),
+        cleanup_steps=cleanup_steps,
+    )
 
     async def _feed() -> None:
+        producer_error: BaseException | None = None
         try:
             index = 0
             async for entry in _aiter(prompts):
@@ -372,12 +375,11 @@ async def _process_stream_impl(
         except BatchAdmissionClosedError:
             pass  # controlled batch timeout/fail-fast stopped source admission
         except BaseException as exc:  # noqa: BLE001 - surfaced to the consumer below
-            processor._finalization_primary_exception = exc
+            producer_error = exc
         finally:
             # Normal completion, controlled abort, or producer error: close the
             # accepted stream so every queued item receives a terminal result.
-            if processor._state is _ProcessorState.STREAMING:
-                await processor.finish()
+            await processor._end_stream_production(producer_error)
 
     body_error: BaseException | None = None
     try:

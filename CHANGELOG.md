@@ -64,6 +64,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `llm_minder.models.AsyncOpenAI` (the old target now raises `AttributeError`
   rather than patching a copy nothing reads); and the classes' `__module__` names
   the private submodule, for example `llm_minder.models._openai`.
+- `process_stream()` and `process_prompts()` now reach `ParallelBatchProcessor`
+  through a small private interface (stream ownership, completion counts, end of
+  production, close) instead of setting its private attributes, and a test keeps
+  `streaming.py` to that interface ([#175]). Behaviour is unchanged.
 
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
@@ -72,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#353]: https://github.com/geoff-davis/llm-minder/issues/353
 [#322]: https://github.com/geoff-davis/llm-minder/issues/322
 [#344]: https://github.com/geoff-davis/llm-minder/issues/344
+[#175]: https://github.com/geoff-davis/llm-minder/issues/175
 
 ## [1.0.1] - 2026-11-13
 
