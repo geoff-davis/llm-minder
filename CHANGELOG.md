@@ -18,12 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `google-genai` 3.x is supported: CI now tests its latest release alongside the
   1.x and 2.x lines and the 1.49.0 floor. The requirement is unchanged
   (`google-genai>=1.49.0`), so 3.x could already be installed; it was untested.
-- `GuardrailConfig(max_provider_calls=N)` is a hard cap on physical provider
-  attempts in a processor run, retries and rate-limit retries included. It is
-  checked before each call starts, so concurrent workers can't overshoot it. The
-  attempt that would exceed it is refused and the run stops as `budget_exceeded`,
-  like the token and cost caps. `get_stats()` reports `provider_calls_started`
-  ([#272]).
+- `GuardrailConfig(max_provider_calls=N)` is a hard cap on the provider attempts
+  the library makes in a processor run, its own retries and rate-limit retries
+  included. It is checked before each call starts, so concurrent workers can't
+  overshoot it. The attempt that would exceed it is refused and the run stops as
+  `budget_exceeded`, like the token and cost caps. `get_stats()` reports
+  `provider_calls_started` ([#272]). Retries inside a provider SDK or gateway
+  aren't counted, so disable them for a strict ceiling on provider requests (see
+  [the guardrails guide](docs/guardrails.md#provider-call-cap)).
 - `describe_limits(config, *strategies)`, and `describe_limits()` on
   `ParallelBatchProcessor` and `LLMCallPool`, list each throughput limit with its
   value and where it came from (explicit, derived from `concurrency`, default, or
@@ -123,6 +125,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `license-files`), so the wheel carries `License-Expression: MIT` and the
   `License ::` classifier is gone ([#337]). Building from source needs hatchling
   1.27 or later. The async-batch-llm shim gets the same change in its next release.
+- Routine maintenance: pinned GitHub Actions bumped, the lockfile refreshed, the
+  v1.0.1 legacy fixtures added, and tests that drive the provider call cap through
+  the real guardrail and admission paths.
 
 [#300]: https://github.com/geoff-davis/llm-minder/issues/300
 [#174]: https://github.com/geoff-davis/llm-minder/issues/174
