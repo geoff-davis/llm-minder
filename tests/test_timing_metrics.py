@@ -18,6 +18,7 @@ from llm_minder import (
     RetryConfig,
     TokenUsage,
     call_result,
+    summarize_gate_waits,
 )
 from llm_minder._internal.executor_host import ExecutorHost
 
@@ -161,14 +162,18 @@ async def test_initial_capacity_waits_are_attributed_to_first_successful_attempt
         strategy=strategy,
     )
 
+    coordinator = host._rate_limit_coord
+    coordinator._rate_limit_event.clear()  # a cooldown is in progress
+
     async def wait_if_paused() -> None:
         await asyncio.sleep(0.01)
+        coordinator._rate_limit_event.set()  # the cooldown ends
 
     async def apply_slow_start() -> float:
         return 0.01
 
-    monkeypatch.setattr(host._rate_limit_coord, "wait_if_paused", wait_if_paused)
-    monkeypatch.setattr(host._rate_limit_coord, "apply_slow_start", apply_slow_start)
+    monkeypatch.setattr(coordinator, "wait_if_paused", wait_if_paused)
+    monkeypatch.setattr(coordinator, "apply_slow_start", apply_slow_start)
     try:
         result = await host.executor.execute(
             LLMWorkItem(item_id="timed", strategy=strategy, prompt="x")
@@ -180,6 +185,40 @@ async def test_initial_capacity_waits_are_attributed_to_first_successful_attempt
     assert result.success
     assert attempt.cooldown_wait_seconds >= 0.008
     assert attempt.startup_ramp_wait_seconds >= 0.008
+
+
+@pytest.mark.asyncio
+async def test_cooldown_check_without_a_cooldown_records_no_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Time spent getting through the cooldown check isn't a cooldown (#365).
+
+    Under load, awaiting the check can take over a millisecond even though the
+    coordinator isn't paused. The sleep stands in for that delay.
+    """
+    strategy = _TimingStrategy(delay=0)
+    host: ExecutorHost[str, str, None] = ExecutorHost(
+        ProcessorConfig(max_workers=1),
+        strategy=strategy,
+    )
+    coordinator = host._rate_limit_coord
+    assert not coordinator.is_paused
+
+    async def wait_if_paused() -> None:
+        await asyncio.sleep(0.01)
+
+    monkeypatch.setattr(coordinator, "wait_if_paused", wait_if_paused)
+    try:
+        result = await host.executor.execute(
+            LLMWorkItem(item_id="timed", strategy=strategy, prompt="x")
+        )
+    finally:
+        await host.aclose()
+
+    assert result.success
+    assert result.timing.attempts[0].cooldown_wait_seconds == 0.0
+    cooldown = {g.gate: g for g in summarize_gate_waits([result]).gates}["rate-limit cooldown"]
+    assert (cooldown.total_seconds, cooldown.attempts_waited) == (0.0, 0)
 
 
 @pytest.mark.asyncio

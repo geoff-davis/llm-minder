@@ -758,16 +758,29 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
         coordinator = (
             admission_state.cooldown if admission_state is not None else self._rate_limit_coord
         )
+        # Count the time only if the wait actually blocked (#365). When the
+        # coordinator isn't paused, wait_if_paused() returns at once and the
+        # measured time is the guardrail wrapper's scheduling overhead. The
+        # check runs inside the awaited coroutine, at the moment the wait
+        # would block, so a cooldown that starts while the wrapper is
+        # scheduling is still counted.
+        blocked = False
+
+        async def wait_if_paused() -> None:
+            nonlocal blocked
+            blocked = coordinator.is_paused
+            await coordinator.wait_if_paused()
+
         cooldown_started = time.perf_counter()
         try:
             await await_with_guardrails(
-                coordinator.wait_if_paused(),
+                wait_if_paused(),
                 item_deadline=deadline,
                 item_id=item_id,
                 abort_controller=self._abort_controller,
             )
         finally:
-            if retry_state is not None:
+            if retry_state is not None and blocked:
                 runtime_state(retry_state).current_attempt.cooldown_wait_seconds += max(
                     0.0, time.perf_counter() - cooldown_started
                 )
