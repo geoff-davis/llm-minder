@@ -294,15 +294,15 @@ sent through strategy or middleware recovery hooks.
 
 ## Visibility boundaries
 
-Token accounting covers attempts visible to ABL, including recoverable
+Token accounting covers attempts visible to llm-minder, including recoverable
 failed-attempt usage. Retries hidden inside an upstream gateway require
 gateway-reported usage to be visible. If a gateway returns only aggregate
-usage, ABL cannot reconstruct its internal attempts or exact reservation
+usage, llm-minder cannot reconstruct its internal attempts or exact reservation
 deltas.
 
 Providers implement quotas differently: fixed windows, rolling windows,
 weighted model budgets, cached-token rules, and account-level policies all
-exist. ABL's gate is a local continuously refilled smoother. It reduces bursts
+exist. llm-minder's gate is a local continuously refilled smoother. It reduces bursts
 but does not claim to reproduce a provider's enforcement exactly.
 
 TPM admission also does not schedule active GPU sequences, KV-cache occupancy,
@@ -391,7 +391,7 @@ that coordinator-owned cooldown continues to pause its peers until completion
 or host shutdown.
 
 If the rate-limit strategy raises or returns a non-finite or negative duration,
-ABL logs a warning and peers wait for at least the configured
+llm-minder logs a warning and peers wait for at least the configured
 `cooldown_seconds` (and a longer server hint, subject to its configured cap).
 Bare `ExponentialBackoffStrategy()` now uses the same 300-second initial cooldown
 and 1.5 multiplier as `RateLimitConfig`. Both retry backoffs are overflow-safe.

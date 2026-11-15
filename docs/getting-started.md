@@ -138,7 +138,7 @@ compatibility still includes item ID, prompt, participating context, provider,
 model, and identity versions. A compatible success is returned with
 `replayed_from_artifact=True` without another provider call.
 
-For an arbitrary callable, provide an explicit `ArtifactIdentity`; ABL cannot
+For an arbitrary callable, provide an explicit `ArtifactIdentity`; llm-minder cannot
 safely infer the provider, route, parser, or application version from a Python
 function.
 
@@ -203,7 +203,7 @@ strategy = CallableStrategy(
 
 Put item-specific validation feedback or escalation state in the supplied
 `RetryState`, never on a strategy shared by concurrent items. Avoid letting
-both ABL and an upstream gateway run the same transport retry policy at full
+both llm-minder and an upstream gateway run the same transport retry policy at full
 strength.
 
 See [Use Your Existing Async Client](callable-integration.md) for lifecycle,

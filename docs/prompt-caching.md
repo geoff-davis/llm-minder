@@ -73,7 +73,7 @@ reads better and keeps jobs apart:
 from llm_minder import DeepSeekModel, OpenAIModel
 
 # A label for every call this model makes. It is never sent to the provider.
-model = DeepSeekModel.from_api_key("deepseek-chat", cache_group="tier1-dedupe")
+model = DeepSeekModel.from_api_key("deepseek-v4-flash", cache_group="tier1-dedupe")
 
 # OpenAI: send a cache key on every call; it also names the group. (On GPT-5.6
 # and later the key separates cache accounting; earlier models also route by it.)
