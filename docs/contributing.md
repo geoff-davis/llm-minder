@@ -17,7 +17,7 @@ cd llm-minder
 
 # Create virtual environment and install dependencies
 uv venv
-uv sync --all-extras
+uv sync --all-groups  # the dev group, plus the docs group
 ```
 
 ### 2. Install Git Hooks
@@ -76,7 +76,7 @@ Build and preview documentation:
 
 ```bash
 # Install docs dependencies
-uv sync --extra docs
+uv sync --group docs
 
 # Serve docs locally
 uv run mkdocs serve

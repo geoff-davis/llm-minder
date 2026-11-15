@@ -112,7 +112,8 @@ def projects() -> tuple[dict, dict]:
 
 def test_shim_forwards_every_user_extra(projects):
     main, shim = projects
-    user_extras = set(main["optional-dependencies"]) - {"dev", "docs"}
+    # dev and docs are dependency groups (#337), so every extra is a user extra.
+    user_extras = set(main["optional-dependencies"])
     assert set(shim["optional-dependencies"]) == user_extras
     for extra, requirements in shim["optional-dependencies"].items():
         assert requirements == [

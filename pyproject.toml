@@ -93,6 +93,17 @@ all = [
     "openai>=1.66.2",
     "tqdm>=4.66",
 ]
+
+[project.urls]
+Homepage = "https://github.com/geoff-davis/llm-minder"
+Documentation = "https://geoff-davis.github.io/llm-minder/"
+Repository = "https://github.com/geoff-davis/llm-minder"
+Issues = "https://github.com/geoff-davis/llm-minder/issues"
+
+# Development-only dependencies (PEP 735). They are not published as extras;
+# `uv sync` installs the dev group by default, and `--group docs` (or
+# `--all-groups`) adds the docs stack.
+[dependency-groups]
 docs = [
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.5.0",
@@ -119,12 +130,6 @@ dev = [
     "tqdm>=4.66",  # Required for progress=True tests
     "prek>=0.4.0",
 ]
-
-[project.urls]
-Homepage = "https://github.com/geoff-davis/llm-minder"
-Documentation = "https://geoff-davis.github.io/llm-minder/"
-Repository = "https://github.com/geoff-davis/llm-minder"
-Issues = "https://github.com/geoff-davis/llm-minder/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_minder"]

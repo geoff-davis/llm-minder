@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   does. It used to yield the rest of its snapshot. Both stores check between
   pages, not between items, so results from a page already read can still come
   out first ([#353]).
+- The `dev` and `docs` extras are gone from the published package: they are now
+  PEP 735 dependency groups ([#337]). `pip install llm-minder[dev]` now warns
+  about an unknown extra and installs only the core package. In a clone,
+  `uv sync` installs the dev group and `uv sync --all-groups` adds the docs
+  stack.
 
 ### Fixed
 

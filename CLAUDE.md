@@ -406,7 +406,7 @@ around lists and code fences; HTML allowed.
 
 ### Documentation site
 
-`uv sync --extra docs && uv run mkdocs serve` to preview locally. Pushes
+`uv sync --group docs && uv run mkdocs serve` to preview locally. Pushes
 to `main` auto-deploy to GitHub Pages via `.github/workflows/docs.yml`.
 
 ### Building / publishing

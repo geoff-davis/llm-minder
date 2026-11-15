@@ -480,7 +480,7 @@ Clone the repository and use its pinned development environment:
 ```bash
 git clone https://github.com/geoff-davis/llm-minder.git
 cd llm-minder
-uv sync --all-extras
+uv sync --all-groups
 make ci
 ```
 
