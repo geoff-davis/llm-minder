@@ -450,6 +450,9 @@ When rate limit (429) is detected:
 3. Resume with slow-start (gradual ramp-up)
 4. Automatically retry failed items
 
+To size these settings when you don't know your quota, see
+[When you don't know your limits](choosing-your-limits.md#when-you-dont-know-your-limits).
+
 ### Multimodal Inputs
 
 Process images with text:
@@ -619,6 +622,11 @@ config = ProcessorConfig(
     rate_limit=RateLimitConfig(cooldown_seconds=60.0)
 )
 ```
+
+If you don't know your project's limits, AI Studio lists them for each model, and
+[When you don't know your limits](choosing-your-limits.md#when-you-dont-know-your-limits)
+shows how to measure them with a short probing run. A 429 for an exhausted daily
+quota fails as `quota_exhausted` and isn't retried.
 
 ### Validation Errors
 
