@@ -1,5 +1,7 @@
 [build-system]
-requires = ["hatchling"]
+# hatchling 1.27 is the first to write PEP 639 License-Expression metadata;
+# older versions silently fall back to the legacy License field.
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -8,7 +10,8 @@ version = "1.0.1"
 description = "Provider-neutral asyncio toolkit for concurrent LLM calls with retries, scoped RPM/TPM admission, bounded streaming, resumable checkpoints, and deadlines."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "Geoff Davis", email = "geoff@keksi.ai"}
 ]
@@ -52,7 +55,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
-    "License :: OSI Approved :: MIT License",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
