@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SqliteArtifactStore` does. It used to raise an `ArtifactSerializationError`
   that blamed the cost calculator. Runs through a processor never hit this, since
   `prepare_item()` resolves the identity first.
+- `MetricsObserver.export_prometheus()` escapes backslashes and line feeds in label
+  values, as well as double quotes. A label value containing either used to give
+  output a scraper rejects, or one that read back as a different value. Output is
+  unchanged for values without them ([#362]).
 
 ### Documentation
 
@@ -106,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#319]: https://github.com/geoff-davis/llm-minder/issues/319
 [#321]: https://github.com/geoff-davis/llm-minder/issues/321
 [#345]: https://github.com/geoff-davis/llm-minder/issues/345
+[#362]: https://github.com/geoff-davis/llm-minder/issues/362
 
 ## [1.0.1] - 2026-11-13
 
