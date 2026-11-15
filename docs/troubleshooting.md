@@ -43,13 +43,13 @@ workers makes the run slower.
 
 **Likely cause.** The provider account's request/token quota is below offered
 load, a suggested wait is long, the rate-limit retry budget is too generous,
-or a gateway and ABL are both retrying the same transport failure.
+or a gateway and llm-minder are both retrying the same transport failure.
 
 **How to confirm.** Check provider quota dashboards and response headers. Look
 for coordinated-cooldown logs, repeated logical attempt numbers, suggested
 waits, and `RetryConfig.max_rate_limit_retries` exhaustion (the item fails with
 `error_category="rate_limit_retries_exceeded"`). Inspect gateway
-logs for hidden retries beneath each ABL attempt. If cooldowns follow
+logs for hidden retries beneath each llm-minder attempt. If cooldowns follow
 application exceptions rather than provider responses, check how they are
 classified: an untyped exception without a status code whose message contains
 `429`, `resource_exhausted`, `quota exceeded` or `rate limit` is treated as a
@@ -128,10 +128,10 @@ enough tokens and later small estimates do not bypass it indefinitely.
 when they spend independent upstream quotas; otherwise head-of-line waiting is
 the fairness trade-off of one shared budget.
 
-## Gateway retrying makes reported usage differ from ABL attempts
+## Gateway retrying makes reported usage differ from llm-minder attempts
 
 **Cause.** A gateway may perform several upstream attempts inside one visible
-`strategy.execute()` call. ABL can account only for the usage the gateway
+`strategy.execute()` call. llm-minder can account only for the usage the gateway
 returns.
 
 **Fix.** Choose one strong retry owner, inspect gateway logs, and configure the
@@ -169,7 +169,7 @@ backoff, and later attempts are outside that single-attempt budget.
 time and admission/cooldown/backoff fields, and check `timing.timeout_category`
 (for example `admission_timeout` when a deadline hit during the provider-capacity
 wait). Distinguish the SDK/httpx timeout
-from ABL's attempt timeout.
+from llm-minder's attempt timeout.
 
 **Fix.** Set the HTTP client timeout for network phases, `attempt_timeout` for
 one provider attempt, `GuardrailConfig.total_timeout_per_item` for the whole
@@ -238,7 +238,7 @@ provider call may be long, or workers may be in cooldown/backoff. Artifact I/O
 can also delay checkpoint-before-publication. At the low level, preloading a
 bounded queue before workers start cannot make progress. A consumer that stops
 draining `process_stream()` leaves publishers waiting until generator cleanup.
-An external gateway may be retrying invisibly underneath ABL.
+An external gateway may be retrying invisibly underneath llm-minder.
 
 **How to confirm.** Check in this order:
 
@@ -348,7 +348,7 @@ Do not weaken identity compatibility to force reuse.
 
 ## OpenAIModel rejects a request field or can't reach its server
 
-**Symptom.** After upgrading to v0.27, `OpenAIModel` raises
+**Symptom.** After upgrading from v0.26 or earlier, `OpenAIModel` raises
 `ValueError: OpenAI Responses: ...` before any request, or calls to a custom
 `base_url` fail with 404.
 
@@ -441,11 +441,11 @@ suggested a network gateway. It is an in-process shared executor.
 background dispatcher or service.
 
 **Fix.** Use LiteLLM or another real gateway for central routing/governance.
-Place ABL above it when an application run also needs ABL's bounded execution,
+Place llm-minder above it when an application run also needs llm-minder's bounded execution,
 recovery, deadlines, and artifacts.
 
 **Related guide.** [Single Call and Shared Call Pool](api/single-call-pool.md) and
-[Choosing Between ABL and Alternatives](comparison.md#litellm-and-other-ai-gateways).
+[Choosing Between llm-minder and Alternatives](comparison.md#litellm-and-other-ai-gateways).
 
 ## `ImportError`, `AttributeError` or `TypeError` after upgrading to 1.0
 
@@ -460,7 +460,7 @@ positional configuration arguments, the legacy `ParallelBatchProcessor` paramete
 `gemini_safety_ratings`, calling `cache_hit_rate()`, omitting `cached_token_rate`,
 integer prompts, or a 2-tuple from `execute()`.
 
-**How to confirm.** The error message names the replacement. On v0.31, run your
+**How to confirm.** The error message names the replacement. On v0.32, run your
 tests with `-W error::DeprecationWarning` to find every use before upgrading.
 
 **Fix.** Use the replacements in the

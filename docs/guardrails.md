@@ -167,7 +167,7 @@ Provisional: this API is new in v0.27 and may change in a minor release; see
 from llm_minder import AttemptUsage, GuardrailConfig, ProcessorConfig
 
 def price(usage: AttemptUsage) -> float:
-    # Your prices, in your currency. ABL ships no price table.
+    # Your prices, in your currency. llm-minder ships no price table.
     return (
         usage.usage.get("input_tokens", 0) * 0.15
         + usage.usage.get("output_tokens", 0) * 0.60
@@ -462,7 +462,7 @@ are not disguised as controlled guardrail termination.
 ## Retry delay cannot fit
 
 If the actual jittered retry delay is at least the remaining item deadline,
-ABL fails immediately with `ItemDeadlineExceeded` instead of spending that time
+llm-minder fails immediately with `ItemDeadlineExceeded` instead of spending that time
 waiting. Its message and cause retain the last provider error; the attempt timing
 keeps that error's category and reports zero retry-backoff wait. The final result
 uses `framework_total_item_timeout`, so `abort_on_error_categories` matches that

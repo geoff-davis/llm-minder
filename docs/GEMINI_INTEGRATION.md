@@ -133,10 +133,9 @@ for item in result.results:
 
 ### 2. GeminiCachedModel (With Context Caching)
 
-Perfect for RAG applications with large shared context. Since v0.6.0, caching
-lives on a dedicated **model** — `GeminiCachedModel` — which you wrap in the
-ordinary `GeminiStrategy`. (The old `GeminiCachedStrategy` was removed; the
-model now owns the cache find/create/renew/delete lifecycle.)
+Perfect for RAG applications with large shared context. Caching lives on a
+dedicated **model**, `GeminiCachedModel`, which you wrap in the ordinary
+`GeminiStrategy`. The model owns the cache find/create/renew/delete lifecycle.
 
 ```python
 from llm_minder import GeminiCachedModel, GeminiStrategy

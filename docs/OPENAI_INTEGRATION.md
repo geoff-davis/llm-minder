@@ -430,7 +430,7 @@ arguments except `api_surface`; `DeepSeekModel` adds its own `api_surface` and
 
 Without `max_connections`, the openai SDK builds its own httpx client with
 `max_connections=1000` and `max_keepalive_connections=100` (the SDK's
-`DEFAULT_CONNECTION_LIMITS`; the same values in openai 1.66.2, the minimum ABL
+`DEFAULT_CONNECTION_LIMITS`; the same values in openai 1.66.2, the minimum llm-minder
 supports, and in current 3.x releases). That has two effects at high concurrency:
 
 - Above 100 concurrent requests, connections beyond the keep-alive limit are
@@ -439,7 +439,7 @@ supports, and in current 3.x releases). That has two effects at high concurrency
 - Above 1000 concurrent requests, extra workers block waiting for a connection,
   and that wait counts against `attempt_timeout`.
 
-ABL can't see the SDK's default pool, so it doesn't warn or gate on it. The
+llm-minder can't see the SDK's default pool, so it doesn't warn or gate on it. The
 exception is `ProcessorConfig(concurrency=N)`: before the first request it
 rebuilds an owned default-pool client with a pool of `N`.
 
@@ -456,11 +456,11 @@ on the underlying `httpx.AsyncClient`. It's a convenience for the common case;
 if you need finer control, build your own `http_client=httpx.AsyncClient(...)`
 and pass that instead (the two are mutually exclusive).
 
-ABL records `max_connections` as `model.max_concurrency`; `ModelStrategy`
+llm-minder records `max_connections` as `model.max_concurrency`; `ModelStrategy`
 forwards it, and processors/gateways warn when `max_workers` exceeds the known
 capacity. The shared executor automatically gates attempts at that capacity
 before `attempt_timeout` starts. For a user-supplied client, declare the limit
-on `ProcessorConfig` because ABL cannot inspect the transport reliably:
+on `ProcessorConfig` because llm-minder cannot inspect the transport reliably:
 
 ```python
 import httpx

@@ -25,7 +25,8 @@ covers every stable name.
 | v0.1 to v0.3 | [v0.1](v0.1.md), then the v0.4 row |
 
 Guides for v0.0.x to v0.3, written before the first public release, are kept in the
-[archive](../archive/README.md).
+[repository archive](https://github.com/geoff-davis/llm-minder/blob/main/docs/archive/README.md);
+they aren't part of this site.
 
 ## Release evidence
 
