@@ -55,14 +55,36 @@ def test_shim_license_matches_the_main_license() -> None:
 
 # PEP 735 dependency groups (#337, part 2).
 
-DEV_COMMAND_FILES = [
-    *sorted((ROOT / ".github" / "workflows").glob("*.yml")),
-    ROOT / "Makefile",
-    ROOT / "README.md",
-    ROOT / "CONTRIBUTING.md",
-    ROOT / "CLAUDE.md",
-    ROOT / "docs" / "contributing.md",
-]
+# Records of past runs keep the command they ran at their own revision.
+HISTORICAL = {
+    ROOT / "CHANGELOG.md",
+    ROOT / "docs" / "sqlite-maintenance-evidence.md",
+}
+
+
+def _dev_command_files() -> list[Path]:
+    candidates = [
+        *(ROOT / ".github" / "workflows").glob("*.yml"),
+        ROOT / "Makefile",
+        ROOT / "README.md",
+        ROOT / "CONTRIBUTING.md",
+        ROOT / "CLAUDE.md",
+        *(ROOT / "docs").rglob("*.md"),
+        *(ROOT / "examples").rglob("*.py"),
+        *(ROOT / "scripts").rglob("*.py"),
+        *(ROOT / "benchmarks").rglob("*.py"),
+    ]
+    excluded_dirs = {ROOT / "docs" / "internal", ROOT / "docs" / "archive"}
+    return sorted(
+        path
+        for path in candidates
+        if path.is_file()
+        and path not in HISTORICAL
+        and not any(parent in excluded_dirs for parent in path.parents)
+    )
+
+
+DEV_COMMAND_FILES = _dev_command_files()
 
 
 def _requirement_name(requirement: str) -> str:

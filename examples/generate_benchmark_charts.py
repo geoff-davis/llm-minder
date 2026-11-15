@@ -20,7 +20,7 @@ on the cost bars).
 So the published charts/numbers are reproducible from a committed source of
 truth. Requires matplotlib:
 
-    uv sync --extra docs
+    uv sync --group docs
     uv run python examples/generate_benchmark_charts.py
 """
 
