@@ -281,7 +281,7 @@ config = ProcessorConfig(
             {ErrorCategory.AUTHENTICATION, ErrorCategory.INSUFFICIENT_BALANCE}
         ),
         max_total_tokens=20_000_000,  # stop the run at a spend cap
-        max_provider_calls=60_000,  # hard cap on provider calls, retries included
+        max_provider_calls=60_000,  # hard cap on the library's provider attempts
         abort_mode=AbortMode.DRAIN_ACTIVE,
     ),
 )
@@ -310,7 +310,11 @@ What to know before relying on it:
 - **Token and cost budgets are soft caps.** Calls already running when the cap
   is reached finish (or are cancelled with `AbortMode.CANCEL_ACTIVE`), so usage
   can overshoot by at most one call per worker. `max_provider_calls` is a hard
-  cap: it is checked before each call starts, so the run never exceeds it.
+  cap on the attempts the library makes, retries included: it is checked before
+  each attempt starts, so concurrent workers can't overshoot it. Retries made
+  inside an SDK client or upstream gateway you supply aren't counted; for a strict
+  ceiling on provider requests, disable those retries (see the
+  [provider call cap](https://geoff-davis.github.io/llm-minder/guardrails/#provider-call-cap)).
 - **Checkpoints come before publication.** A result from a normal execution is
   appended and flushed before it is returned or streamed; `fsync=True` adds
   durability. Audit records for batch deadline, abort, and budget stops are
