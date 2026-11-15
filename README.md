@@ -8,9 +8,11 @@ checkpoint instead of starting over. Deadlines and spend caps stop a run cleanly
 and token counts include the attempts that failed.
 
 It works with any async client: wrap your own, or use the built-in OpenAI,
-Gemini, OpenRouter, DeepSeek, or PydanticAI support. Use it when you need results
-during the current workflow; for latency-tolerant jobs, a provider's native batch
-API may be cheaper.
+Gemini, OpenRouter, DeepSeek, or PydanticAI support. It's for anyone running
+LLM calls in bulk from one Python process: dataset labeling, extraction
+pipelines, model evaluations, nightly jobs, and services that share one quota.
+Use it when you need results during the current workflow; for latency-tolerant
+jobs, a provider's native batch API may be cheaper.
 
 [![PyPI version](https://img.shields.io/pypi/v/llm-minder)](https://pypi.org/project/llm-minder/)
 [![PyPI Downloads](https://img.shields.io/pepy/dt/llm-minder)](https://pepy.tech/projects/llm-minder)
@@ -26,10 +28,7 @@ API may be cheaper.
 [Examples](https://github.com/geoff-davis/llm-minder/tree/main/examples) ·
 [Changelog](https://github.com/geoff-davis/llm-minder/blob/main/CHANGELOG.md)
 
-> **Renamed:** this project was published as `async-batch-llm` through v0.32. From 1.0
-> it is `llm-minder`, imported as `llm_minder`. Upgrading? Read the
-> [1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/)
-> and see [Upgrading](#upgrading) below.
+> Formerly `async-batch-llm` (through v0.32); see [Upgrading](#upgrading).
 
 ## Quick start
 
@@ -73,51 +72,6 @@ or [open the no-key notebook in Colab](https://colab.research.google.com/github/
 
 ![Credential-free terminal demo](https://raw.githubusercontent.com/geoff-davis/llm-minder/main/docs/assets/v0.20-quickstart.gif)
 
-## Typical jobs
-
-**Labeling a large dataset.** You need 200,000 support tickets tagged by topic and
-urgency. A quarter of the way in, the provider starts returning 429s, every
-in-flight call retries at once, and the limit gets worse. When the script
-finally dies, a restart pays for the first 50,000 calls again. With
-llm-minder, workers that share a quota pause together and ramp back up,
-the RPM and TPM limits you set are enforced before a call goes out, and with a
-SQLite checkpoint and `ResumePolicy.REUSE_SUCCESSES`, a rerun reuses every
-compatible success and runs the rest.
-See [large runs](https://geoff-davis.github.io/llm-minder/large-runs/) and
-[`example_production_resume.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_production_resume.py).
-
-**Extracting structured data.** You're pulling fields out of contracts or
-invoices into a schema, and the cheap model occasionally returns JSON that
-doesn't validate. Bad output and rate limits want different fixes: the first
-might need a stronger model, the second only needs to wait. Rate limits draw on
-their own retry budget, separate from other failures, and a strategy's
-`on_error()` can escalate only the items that failed validation, so the
-expensive model sees the hard cases and nothing else.
-See [`example_smart_model_escalation.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_smart_model_escalation.py).
-
-**Comparing models on your own data.** Before switching models, you run the same
-1,000 prompts through three providers and grade the answers. You want a result
-per item, not a list with exceptions mixed in, and token counts that include
-retries, so the cost comparison is honest. The
-[GSM8K benchmark](https://geoff-davis.github.io/llm-minder/benchmarks/) in
-this repo is built exactly this way, with an LLM judge as the fallback grader;
-the [walkthrough](https://geoff-davis.github.io/llm-minder/examples/benchmark-walkthrough/)
-shows the code.
-
-**A nightly job with a deadline and a budget.** An enrichment job must finish
-before the morning report and must not spend more than a set amount. A batch
-deadline and token or cost caps stop the run cleanly, keep every result that
-already finished, and record why the run stopped. With a checkpoint and a
-resume policy, the next run reuses every compatible success and runs the rest.
-See [guardrails](https://geoff-davis.github.io/llm-minder/guardrails/).
-
-**Adding concurrency to an app you already have.** Your service already calls an
-LLM through its own client or gateway, and you don't want a new SDK.
-`CallableStrategy` wraps your existing async function, and `LLMCallPool` gives
-concurrent requests in a long-running service one shared rate-limit cooldown
-and a concurrency limit.
-See [use your existing async client](#use-your-existing-async-client).
-
 ## Why not just `asyncio.gather`?
 
 A semaphore plus `asyncio.gather()` caps concurrency, and for a small script
@@ -130,24 +84,45 @@ that is enough. Production batches need more:
 | Request **and** token quotas (RPM + TPM) | Atomic per-scope admission with usage reconciliation and refunds |
 | The input is a million rows, or the consumer is slow | Bounded input and result queues apply backpressure in both directions |
 | The process dies at item 80,000 | JSONL or indexed SQLite checkpoints; resume replays only compatible results |
-| A run must not exceed a time or money budget | Item deadlines, batch deadlines, token/cost caps, and category-based fail-fast |
+| A run must not exceed a time or money budget | Item deadlines, batch deadlines, token/cost caps, a hard provider-call cap, and category-based fail-fast |
 | "How many tokens did that cost?" | Tokens and timing include retries and failed attempts |
+| "Which limit is slowing this down?" | `describe_limits()` lists every effective limit and where it came from; `batch.gate_waits()` shows where attempts waited |
 | Exceptions mixed into a result list | Typed per-item results, lifecycle events, metrics, middleware, and progress callbacks |
 
 For delayed, discounted processing, use a provider's native batch API. The
 [scenario-based comparison](https://geoff-davis.github.io/llm-minder/comparison/)
 covers Bespoke Curator, gateways, native batch APIs, and workflow engines.
 
+## Typical jobs
+
+- **Labeling a large dataset.** 200,000 tickets, a provider that starts returning
+  429s a quarter of the way in, and a script that might die. Workers sharing a
+  quota pause together, and a rerun resumes from a SQLite checkpoint instead of
+  paying for finished calls again. See [large runs](https://geoff-davis.github.io/llm-minder/large-runs/).
+- **Extracting structured data.** When the cheap model returns JSON that doesn't
+  validate, a strategy's `on_error()` escalates only those items to a stronger
+  model; rate limits just wait, on their own retry budget. See
+  [`example_smart_model_escalation.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_smart_model_escalation.py).
+- **Comparing models on your own data.** One result per item and token counts
+  that include retries, so the cost comparison is honest. The
+  [benchmark walkthrough](https://geoff-davis.github.io/llm-minder/examples/benchmark-walkthrough/) is built this way.
+- **A nightly job with a deadline and a budget.** A batch deadline, token or cost
+  caps, or a hard call cap stop the run cleanly and keep every finished result.
+  See [guardrails](https://geoff-davis.github.io/llm-minder/guardrails/).
+- **Adding concurrency to an app you already have.** `CallableStrategy` wraps
+  your existing async client, and `LLMCallPool` gives a long-running service one
+  shared cooldown and concurrency limit. See
+  [use your existing async client](#use-your-existing-async-client).
+
 ## Benchmarks
 
 Dated measurements from the GSM8K math benchmark, not provider guarantees:
 
-- **Wall time** (June 2026). 30 serial calls took 39–65 seconds; with a worker pool they
-  took 2.1–4.2 seconds on the two unthrottled providers.
-- **Throughput** (June 2026). At the same concurrency over 1,000 items, the worker pool
-  processed 72–108 items/s, against 55–58 items/s for a hand-written
-  semaphore pool.
-- **Model bake-off** (all 1,319 items, August 2026): DeepSeek V4 Flash scored
+- **Throughput** (June 2026). At the same concurrency over 1,000 items,
+  llm-minder processed 72–108 items/s, against 55–58 items/s for a hand-written
+  semaphore pool over `asyncio.gather`, with no rate limits on any leg.
+- **Accounting** (all 1,319 items, August 2026). Token counts that include
+  retries made a like-for-like cost comparison possible: DeepSeek V4 Flash scored
   96.9% for **$0.11**, Gemini 3.5 Flash-Lite 96.6% for **$0.71**, and GLM 5.3 Flash
   via OpenRouter 96.3% for **$0.03**.
 
@@ -190,7 +165,9 @@ Keyword arguments forward to the model constructor, for example
 
 For custom clients or cached models, use the explicit two-object form,
 `OpenAIStrategy(OpenAIModel.from_api_key("gpt-6-luna"))`. See the
-[provider guides](https://geoff-davis.github.io/llm-minder/),
+[OpenAI](https://geoff-davis.github.io/llm-minder/OPENAI_INTEGRATION/),
+[Gemini](https://geoff-davis.github.io/llm-minder/GEMINI_INTEGRATION/), and
+[OpenRouter](https://geoff-davis.github.io/llm-minder/OPENROUTER_INTEGRATION/) guides, the
 [custom strategy guide](https://geoff-davis.github.io/llm-minder/examples/custom-strategies/),
 and [OpenAI-compatible high-throughput guide](https://geoff-davis.github.io/llm-minder/openai-high-throughput/).
 Model IDs and service limits change independently of this package, so check the
@@ -304,6 +281,7 @@ config = ProcessorConfig(
             {ErrorCategory.AUTHENTICATION, ErrorCategory.INSUFFICIENT_BALANCE}
         ),
         max_total_tokens=20_000_000,  # stop the run at a spend cap
+        max_provider_calls=60_000,  # hard cap on the library's provider attempts
         abort_mode=AbortMode.DRAIN_ACTIVE,
     ),
 )
@@ -329,9 +307,14 @@ What to know before relying on it:
   `batch.termination`. A fail-fast category triggers only once an item fails for
   good, not on a retryable attempt. Checkpoint write failures and cancellation by
   your own code still raise.
-- **Budgets are soft caps.** Calls already running when the cap is reached
-  finish (or are cancelled with `AbortMode.CANCEL_ACTIVE`), so usage can
-  overshoot by at most one call per worker.
+- **Token and cost budgets are soft caps.** Calls already running when the cap
+  is reached finish (or are cancelled with `AbortMode.CANCEL_ACTIVE`), so usage
+  can overshoot by at most one call per worker. `max_provider_calls` is a hard
+  cap on the attempts the library makes, retries included: it is checked before
+  each attempt starts, so concurrent workers can't overshoot it. Retries made
+  inside an SDK client or upstream gateway you supply aren't counted; for a strict
+  ceiling on provider requests, disable those retries (see the
+  [provider call cap](https://geoff-davis.github.io/llm-minder/guardrails/#provider-call-cap)).
 - **Checkpoints come before publication.** A result from a normal execution is
   appended and flushed before it is returned or streamed; `fsync=True` adds
   durability. Audit records for batch deadline, abort, and budget stops are
@@ -382,6 +365,20 @@ config = ProcessorConfig(
     token_estimator=CharacterTokenEstimator(expected_output_tokens=400),
 )
 ```
+
+New in 1.1: check what a configuration resolves to before spending quota, and
+see where a finished run spent its time waiting:
+
+```python
+from llm_minder import describe_limits
+
+print(describe_limits(config, strategy))  # every limit, its value, and its source
+print(batch.gate_waits())  # waits by gate: capacity, quota, cooldown, ramp, backoff
+```
+
+If you don't know your provider's limits,
+[Choosing Your Limits](https://geoff-davis.github.io/llm-minder/choosing-your-limits/#when-you-dont-know-your-limits)
+shows how to probe for them safely.
 
 The [Token-Aware Admission guide](https://geoff-davis.github.io/llm-minder/token-aware-admission/)
 explains estimators, shared quota scopes, refunds, underestimation debt, retries,
@@ -456,6 +453,11 @@ grounding, and the benchmark.
 - [Results, Artifacts, and Resume](https://geoff-davis.github.io/llm-minder/results-and-artifacts/)
 - [Deadlines, Budgets and Fail-Fast Guardrails](https://geoff-davis.github.io/llm-minder/guardrails/)
 - [Bounded Work and Backpressure](https://geoff-davis.github.io/llm-minder/bounded-work/)
+- [Large Runs (100k–1M)](https://geoff-davis.github.io/llm-minder/large-runs/)
+- [Token-Aware Admission](https://geoff-davis.github.io/llm-minder/token-aware-admission/)
+- [Prompt Caching](https://geoff-davis.github.io/llm-minder/prompt-caching/)
+- [Use Your Existing Async Client](https://geoff-davis.github.io/llm-minder/callable-integration/)
+- [Benchmarks](https://geoff-davis.github.io/llm-minder/benchmarks/)
 - [API Reference](https://geoff-davis.github.io/llm-minder/api/core/)
 - [API Stability](https://geoff-davis.github.io/llm-minder/stability/)
 
@@ -466,7 +468,8 @@ Within 1.x, minor and patch releases don't break code that uses the stable API; 
 that covers. Run your tests with `-W error::DeprecationWarning` to catch anything
 slated for removal.
 
-From 0.x, read the
+From 0.x, note the rename: install `llm-minder` and import `llm_minder` (an
+`async-batch-llm` shim still forwards to it). Then read the
 [1.0 migration guide](https://geoff-davis.github.io/llm-minder/migration/v1.0/). It
 starts from v0.32, the last 0.x release and the last to support Python 3.10. Coming
 from an older release, upgrade to v0.32 first; the
