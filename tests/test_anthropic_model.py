@@ -6,6 +6,7 @@ HTTP transport is an ``httpx2.MockTransport``.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -596,6 +597,46 @@ class TestRealSdk:
         assert response.metadata["finish_reason"] == "tool_use"
         json.dumps(response.metadata)
 
+    @pytest.mark.parametrize("default_system", ["default", None])
+    async def test_cache_group_follows_the_system_prompt_actually_sent(self, default_system):
+        # The SDK merges extra_body over named parameters, so a nested
+        # extra_body system is what goes on the wire; the group must hash it (#375 R1).
+        seen = []
+
+        def handler(request):
+            seen.append(json.loads(request.content))
+            return httpx2.Response(200, json=_message_json())
+
+        model = _sdk_model(handler, system_instruction=default_system)
+        response = await model.generate("Hi", config={"extra_body": {"system": "actual"}})
+        assert seen[0]["system"] == "actual"
+        expected = "si:" + hashlib.sha256(b"actual").hexdigest()[:12]
+        assert response.metadata["cache_group"] == expected
+
+    async def test_explicit_cache_group_still_wins_over_the_sent_system(self):
+        def handler(request):
+            return httpx2.Response(200, json=_message_json())
+
+        model = _sdk_model(handler, system_instruction="default", cache_group="mine")
+        response = await model.generate("Hi", config={"extra_body": {"system": "actual"}})
+        assert response.metadata["cache_group"] == "mine"
+
+    async def test_per_call_headers_override_model_defaults(self):
+        # Per-call extra_headers win per key; untouched defaults survive (#375 R2).
+        seen = []
+
+        def handler(request):
+            seen.append(request.headers)
+            return httpx2.Response(200, json=_message_json())
+
+        model = _sdk_model(handler, extra_headers={"x-review": "default", "x-keep": "kept"})
+        await model.generate("Hi", config={"extra_headers": {"x-review": "call"}})
+        assert seen[0]["x-review"] == "call"
+        assert seen[0]["x-keep"] == "kept"
+
+        await model.generate("Hi")
+        assert seen[1]["x-review"] == "default"
+
     async def test_overloaded_is_not_retried_by_sdk_and_classifies_as_rate_limit(self):
         calls = []
 
@@ -644,3 +685,37 @@ def _status_error(cls, status: int, error_type: str, headers=None, details=None)
     body = {"type": "error", "error": error}
     response = httpx2.Response(status, request=request, json=body, headers=headers or {})
     return cls(error_type, response=response, body=body)
+
+
+@pytest.mark.parametrize("store_name", ["jsonl", "sqlite"])
+async def test_artifact_identity_names_the_anthropic_provider(tmp_path, store_name):
+    # Checkpoints record provider="anthropic", like the other built-ins (#375 review).
+    from llm_minder import JsonlArtifactStore, SqliteArtifactStore
+    from llm_minder.artifacts import infer_artifact_identity
+
+    def handler(request):
+        return httpx2.Response(200, json=_message_json())
+
+    strategy = AnthropicStrategy(_sdk_model(handler))
+    identity = infer_artifact_identity(strategy)
+    assert identity.provider == "anthropic"
+    assert identity.model == MODEL
+
+    store_type = JsonlArtifactStore if store_name == "jsonl" else SqliteArtifactStore
+    from llm_minder import ProcessorConfig, process_prompts
+
+    path = tmp_path / f"store.{store_name}"
+    result = await process_prompts(
+        strategy,
+        [("x", "Hi")],
+        config=ProcessorConfig(max_workers=1),
+        artifact_store=store_type(path),
+    )
+    assert result.succeeded == 1
+    reopened = store_type(path)
+    try:
+        records = [r async for r in reopened.iter_results()]
+    finally:
+        await reopened.close()
+    assert len(records) == 1
+    await strategy.cleanup()

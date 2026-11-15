@@ -270,7 +270,18 @@ class AnthropicModel:
         create = self._client.messages.create
         call_kwargs = self._split_request(create, request)
         if self._default_extra_headers:
-            call_kwargs["extra_headers"] = self._default_extra_headers
+            # Model defaults first; per-call headers (config["extra_headers"]) win.
+            call_headers = call_kwargs.get("extra_headers")
+            call_kwargs["extra_headers"] = {
+                **self._default_extra_headers,
+                **(dict(call_headers) if isinstance(call_headers, Mapping) else {}),
+            }
+        # The SDK merges extra_body over named parameters, so a system prompt
+        # there is the one actually sent; label the cache group by it.
+        effective_system = call_kwargs.get("system")
+        sent_extra = call_kwargs.get("extra_body")
+        if isinstance(sent_extra, Mapping) and "system" in sent_extra:
+            effective_system = sent_extra["system"]
 
         response = await create(**call_kwargs)
 
@@ -310,7 +321,7 @@ class AnthropicModel:
                 raw=response,
                 cache_write_input_tokens=cache_writes,
             ),
-            label or _cache_group(None, request.get("system")),
+            label or _cache_group(None, effective_system),
         )
 
     @staticmethod
