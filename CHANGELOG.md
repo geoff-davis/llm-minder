@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   values, as well as double quotes. A label value containing either used to give
   output a scraper rejects, or one that read back as a different value. Output is
   unchanged for values without them ([#362]).
+- `AttemptTiming.cooldown_wait_seconds` counts only time spent waiting on an active
+  rate-limit cooldown. It used to include the time taken to check for one, so under
+  load a run with no rate limits could show a small cooldown row in `gate_waits()`
+  ([#365]).
 
 ### Documentation
 
@@ -106,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#319]: https://github.com/geoff-davis/llm-minder/issues/319
 [#321]: https://github.com/geoff-davis/llm-minder/issues/321
 [#362]: https://github.com/geoff-davis/llm-minder/issues/362
+[#365]: https://github.com/geoff-davis/llm-minder/issues/365
 
 ## [1.0.1] - 2026-11-13
 
