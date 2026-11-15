@@ -1,34 +1,38 @@
-# Review context: v0.25.0 release preparation
+# Review context: v1.2 development
 
-The executor and SQLite evidence changes have completed independent review.
-Review release preparation for accurate metadata, packaging, and documentation;
-report new evidence rather than reopening the accepted scope below.
+v1.1.0 is released (2026-11-15). Paste this into background review prompts so they
+don't re-report accepted trade-offs. Report new evidence rather than reopening the
+settled decisions below. Prune at each release.
 
-## Accepted implementation and evidence
+## Settled decisions (shipped in 1.0/1.1)
 
-- D1 and D2 are merged through PRs #162 and #163. Private admission stages and
-  attempt outcomes preserve public hooks, original exception identity, quota
-  ownership, and cleanup order. Classification and cumulative failed usage are
-  no longer transported through mutable exception attributes.
-- Provider/custom usage stamps remain compatibility inputs. A hook that writes
-  an explicit zero dictionary reports known zero; an unknown compatibility
-  dictionary copied into a stamp loses its provenance. This limitation is
-  documented in `docs/token-aware-admission.md`.
-- Session E is reviewed in PR #164. Keep the SQLite backup timer and all three
-  indexes. The historical CPython wait claim lacks an independently reproduced
-  trigger. `docs/evidence/sqlite-maintenance-evidence.md` records evidence and limits.
-- Public signatures, result schemas, artifact compatibility, replay eligibility,
-  and cleanup contracts are unchanged. Durable historical decisions are in
-  `docs/cleanup-lifecycle-contract.md`, `docs/results-and-artifacts.md`, and the
-  v0.24/v0.25 migration guides.
+- The public API is frozen under `docs/stability.md`. New names start provisional;
+  `scripts/api_snapshot.py` must not change unless a PR adds API on purpose.
+- `GuardrailConfig.max_provider_calls` counts attempts the library makes, including
+  its own retries. SDK and gateway retries are not counted; the built-in
+  OpenAI-compatible models pass `max_retries=0`, and
+  `docs/guardrails.md#provider-call-cap` tells users who build their own client (or
+  use Gemini's retry options) to turn retries off. Processor-only: `call()`/`LLMCallPool` reject it.
+- A closed JSONL or SQLite store raises `ArtifactIOError` ("closed") from every
+  method, including an `iter_results()` iterator already running (raised at the next
+  page, not mid-page).
+- `describe_limits()` gaps are by design: no worker-pool wait row, RPM and TPM share
+  one quota row, and the startup-ramp row overlaps capacity.
+- `AttemptTiming.cooldown_wait_seconds` counts only time spent waiting on an active
+  cooldown.
+- Optional SDK handles live in `llm_minder.models._sdk`; tests patch them there.
+- `dev` and `docs` are dependency groups, not published extras.
 
-## Release boundary
+## Out of scope unless the PR says otherwise
 
-Session E must merge before the v0.25.0 release branch. Tagging and publication
-require a separate maintainer go-ahead. No SQLite migration, new execution API,
-provider-module split, or statistics-policy change is part of this release.
+- The v1.2 milestone issues not being worked on in the PR under review.
+- Unscheduled: #338 (JSONL store memory), #340 (batch vs caching cost estimator).
+- Multi-process coordination, persistent queues and provider batch APIs
+  (CLAUDE.md, "Known limitations").
 
-For new behavioral findings, follow `AGENTS.md`: reproduce against an isolated
-base, preserve the review target, and exercise both artifact backends when
-record eligibility or replay changes. A passing suite alone does not establish
-coverage of a newly identified path.
+## Review method
+
+Follow `AGENTS.md`: reproduce against an isolated base, preserve the review target,
+and exercise both artifact backends when record eligibility, replay or store
+behaviour changes. A passing suite alone does not establish coverage of a newly
+identified path.
