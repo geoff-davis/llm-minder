@@ -394,18 +394,24 @@ class ProcessorConfig:
         max_result_queue_size: Bound on finished results waiting for a streaming
             consumer; 0 is unbounded. A positive value makes workers wait for a slow
             consumer.
-        post_processor_timeout: Seconds a post-processor may run for one result
-            (default 90). A post-processor that times out is logged; the item's
-            result is unchanged.
+        post_processor_timeout: How long a worker waits for a post-processor on
+            one result (default 90). On timeout the error is logged, the item's
+            result is unchanged, and the worker moves on. Cancelling the wait
+            can't stop a synchronous post-processor's thread, and
+            ``process_all()`` waits for that thread before returning.
         concurrent_post_processing: When ``True``, post-processors run as background
             tasks, at most ``max_workers`` at once, so a slow one doesn't hold up a
             worker. They then no longer run in completion order and may overlap.
             ``process_all()`` still waits for all of them. Default ``False``: inline,
             in completion order.
         progress_interval: Log a progress line every N items.
-        progress_callback_timeout: Seconds to wait for a ``progress_callback`` call
-            before logging a warning and cancelling it (default 5); ``None`` never
-            cancels it. Processing doesn't wait for the callback either way.
+        progress_callback_timeout: Seconds before a ``progress_callback`` call's
+            task is cancelled, with a warning (default 5); ``None`` disables the
+            timeout. Workers never wait for progress callbacks, but batch
+            completion does: ``process_all()`` waits for every live callback and
+            callback thread before it returns, so with ``None`` a slow async
+            callback delays completion. Cancelling can't stop a synchronous
+            callback already running in a thread.
         progress_refresh_interval_seconds: Minimum time between redraws of the
             bundled ``progress=True`` bar. Custom callbacks still run per item.
         dry_run: Skip provider calls and admission, and return each strategy's
