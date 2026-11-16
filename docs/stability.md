@@ -99,6 +99,7 @@ removed in 1.0; see [Removed in 1.0](#removed-in-10).
 | `AttemptUsage` | Provisional (new in 0.27, with the token and cost budget) |
 | `CacheGroupTracker`, `CacheFloorBreach` | Provisional (new in 0.30, with the cache-group statistics) |
 | `describe_limits`, `EffectiveLimits`, `LimitRow`, `summarize_gate_waits`, `GateWaitReport`, `GateWait` | Provisional (new in 1.1, with the limit report) |
+| `AttemptAdmission`, `AttemptRequest` | Provisional (new in 1.2, with the attempt admission hook) |
 
 ### Strategies, models and classifiers
 
@@ -146,6 +147,7 @@ Every exception type below subclasses `LLMMinderError`.
 | `FrameworkTimeoutError`, `RateLimitRetriesExceeded`, `TokenTrackingError`, `LLMCallError` | Stable |
 | `EmptyResponseError`, `ProviderResponseError`, `MiddlewareContractError`, `QuotaScopeError` | Stable |
 | `TruncatedResponseError` | Provisional (new in 1.0, with `EmptyResponseError.reason`) |
+| `AdmissionRefused` | Provisional (new in 1.2, with the attempt admission hook) |
 | `StructuredOutputSchemaError`, `StructuredOutputValidationError` | Stable |
 | `TokenEstimationError`, `TokenEstimatorRequired`, `TokenEstimateExceedsLimit` | Stable |
 | `ArtifactError`, `ArtifactIdentityError`, `ArtifactFormatError`, `ArtifactIOError`, `ArtifactSerializationError` | Stable |
@@ -244,6 +246,11 @@ so files written by earlier releases still load and resume.
   per-provider mapping and the flattened rendering given to token estimators may
   change; string prompts and their checkpoint fingerprints are stable and unchanged.
   The `raw_messages` artifact field is provisional on the same terms.
+- **Attempt admission hook.** `AttemptAdmission`, `AttemptRequest`, `AdmissionRefused`,
+  `GuardrailConfig.admission`, `ErrorCategory.BATCH_ADMISSION_REFUSED` and
+  `termination.kind == "admission_refused"` are new in 1.2 and provisional (see
+  [Attempt admission hook](guardrails.md#attempt-admission-hook)). The request fields
+  and the point at which `admit` runs may change once the hook has seen real use.
 - **Log probabilities.** `.logprobs` and the `logprobs` metadata key pass through each
   provider's own structure and stay provisional; the other typed views are stable
   (see above).

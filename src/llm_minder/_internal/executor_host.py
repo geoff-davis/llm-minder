@@ -81,6 +81,12 @@ class ExecutorHost(Generic[TInput, TOutput, TContext]):
                 "(process_all, streaming, process_prompts, process_stream), not call(), "
                 "call_result() or LLMCallPool"
             )
+        if config.guardrails.admission is not None:
+            raise ValueError(
+                "GuardrailConfig.admission is supported only by batch processor runs "
+                "(process_all, streaming, process_prompts, process_stream), not call(), "
+                "call_result() or LLMCallPool"
+            )
         if config.guardrails.min_cache_hit_rate is not None:
             raise ValueError(
                 "min_cache_hit_rate is supported only by batch processor runs "

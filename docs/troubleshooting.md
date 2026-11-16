@@ -331,7 +331,7 @@ previous result's category is never replayed under any policy. Those are
 configuration failures (`token_estimator_required`, `token_estimation_error`,
 `token_estimate_exceeds_limit`, `quota_scope_error`), `middleware_filtered`,
 `artifact_serialization_error`, and guardrail audit records (`batch_aborted`,
-`batch_deadline_exceeded`, `batch_budget_exceeded`,
+`batch_deadline_exceeded`, `batch_budget_exceeded`, `batch_admission_refused`,
 `framework_total_item_timeout`); see
 [Middleware and replay](results-and-artifacts.md#middleware-and-replay).
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import math
 from collections.abc import Callable
@@ -12,6 +13,7 @@ from typing import TYPE_CHECKING, Literal
 from .._internal.input_validation import suggest_keyword_errors
 
 if TYPE_CHECKING:
+    from ..attempt_admission import AttemptAdmission
     from ..budget import AttemptUsage
     from ..token_estimation import TokenEstimator
 
@@ -252,6 +254,15 @@ class GuardrailConfig:
     same way a token or cost cap does. A run whose items all finish within the cap
     completes normally. Processor runs only, like budgets.
 
+    ``admission`` (provisional) is an :class:`~llm_minder.AttemptAdmission` hook:
+    an object whose synchronous ``admit(request)`` is called immediately before
+    each provider attempt, after every other gate and the ``max_provider_calls``
+    check, and whose ``settle(ticket, usage, success)`` is called exactly once for
+    each admitted attempt. Raising :class:`~llm_minder.AdmissionRefused` from
+    ``admit`` (or any other exception from ``admit`` or ``settle``) stops the run
+    as ``admission_refused``; unfinished items end ``batch_admission_refused``.
+    Processor runs only, like budgets.
+
     ``min_cache_hit_rate`` (provisional) stops the run when a cache group's hit
     rate falls below it. Each provider attempt that returns a result is counted
     under the ``cache_group`` in its metadata; the rate is cached over input
@@ -273,6 +284,7 @@ class GuardrailConfig:
     max_provider_calls: int | None = None
     min_cache_hit_rate: float | None = None
     cache_hit_window: int = 50
+    admission: AttemptAdmission | None = None
 
     def __post_init__(self) -> None:
         self.abort_mode = AbortMode(self.abort_mode)
@@ -324,6 +336,21 @@ class GuardrailConfig:
                 "max_provider_calls must be a positive int or None "
                 f"(got {self.max_provider_calls!r})"
             )
+        if self.admission is not None:
+            for method in ("admit", "settle"):
+                hook = getattr(self.admission, method, None)
+                if not callable(hook):
+                    raise ValueError(
+                        "admission must be an AttemptAdmission with callable admit() and "
+                        f"settle() methods or None (got {self.admission!r}, which has no "
+                        f"callable {method}())"
+                    )
+                if inspect.iscoroutinefunction(hook):
+                    raise ValueError(
+                        f"admission.{method}() must be synchronous (a plain def, not "
+                        "async def): it runs on the event loop with no await between the "
+                        "check and the provider call"
+                    )
         if self.cost_function is not None and not callable(self.cost_function):
             raise ValueError("cost_function must be callable or None")
         if self.max_total_cost is not None and self.cost_function is None:

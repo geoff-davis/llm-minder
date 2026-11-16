@@ -549,7 +549,12 @@ class BatchTermination:
     """Serializable reason a batch stopped accepting or executing work."""
 
     kind: Literal[
-        "completed", "batch_timeout", "fail_fast", "budget_exceeded", "artifact_error"
+        "completed",
+        "batch_timeout",
+        "fail_fast",
+        "budget_exceeded",
+        "admission_refused",
+        "artifact_error",
     ] = "completed"
     reason: str | None = None
     error_category: str | None = None

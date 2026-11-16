@@ -39,6 +39,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   items (string fingerprints are unchanged) and, with `include_prompt=True`, store the
   list as `raw_messages`; the artifact schema version is unchanged. Provisional. See
   [Structured message prompts](docs/structured-prompts.md) ([#315]).
+- An attempt admission hook for hard caps such as a spend limit:
+  `GuardrailConfig(admission=...)` takes an `AttemptAdmission`, an object with
+  synchronous `admit(request)` and `settle(ticket, usage, success)` methods. `admit`
+  runs immediately before each provider attempt, after every other gate and the
+  `max_provider_calls` check, and receives an `AttemptRequest` (item, attempt and try
+  numbers, strategy, `prompt` or `messages`, and a `ModelStrategy`'s effective
+  `generation_config`). `settle` runs exactly once for each admitted attempt,
+  including timeouts, cancellations, aborts and attempts stopped before they reach
+  the provider, with the attempt's token usage or `None`. Raising `AdmissionRefused`
+  (or any exception) from `admit`, or an exception from `settle`, stops the run with
+  `termination.kind == "admission_refused"`; unfinished items end with the new
+  `batch_admission_refused` category, which is never replayed from either artifact
+  store. A refused attempt isn't counted in `provider_calls_started`. With the hook
+  set, built-in models whose SDK client retries on its own get a one-time warning.
+  Processor runs only: `call()`, `call_result()` and `LLMCallPool` reject it. All new
+  names are provisional. See
+  [Attempt admission hook](docs/guardrails.md#attempt-admission-hook), which includes
+  a worked hard spend cap with Anthropic cache pricing ([#331]).
 
 ### Changed
 
@@ -51,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [#314]: https://github.com/geoff-davis/llm-minder/issues/314
 [#315]: https://github.com/geoff-davis/llm-minder/issues/315
+[#331]: https://github.com/geoff-davis/llm-minder/issues/331
 
 ## [1.1.0] - 2026-11-15
 

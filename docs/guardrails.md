@@ -275,6 +275,209 @@ internally can bill more than one request per call. The built-in OpenAI-compatib
 models pass `max_retries=0` to the SDK by default. If you build the client yourself,
 or use Gemini's own retry options, turn those retries off for a strict cap.
 
+## Attempt admission hook
+
+Provisional: new in 1.2; it may change in a minor release.
+
+`max_total_cost` is a soft cap: usage is known only after a call finishes, so calls
+already running can take a run past it. When a run must never pass a limit, for
+example "this run may spend at most $20", reserve each call's worst case before it
+starts and settle to its actual cost afterwards. `GuardrailConfig(admission=...)`
+takes an object with two synchronous methods, `admit(request)` and
+`settle(ticket, usage, success)` (the `AttemptAdmission` protocol):
+
+- **`admit(request)`** runs immediately before each physical provider attempt
+  (first tries, retries and rate-limit retries), after every other gate: provider
+  capacity, cooldowns, RPM/TPM admission and the `max_provider_calls` check. A
+  ticket is never held while an attempt waits. It returns a ticket, any object, or
+  raises `AdmissionRefused` to refuse.
+- **`settle(ticket, usage, success)`** is called exactly once for every ticket
+  `admit` returned: after a success, a provider failure, a timeout, a cancellation
+  or an abort, and also when the attempt was admitted but never reached the
+  provider (for example its item deadline expired, or a cooldown began). `usage` is
+  the attempt's `TokenUsage`, including usage attached to a failed attempt's
+  exception. An attempt that never reached the provider settles with zero usage
+  (`input_tokens`, `output_tokens` and `total_tokens` all 0), since nothing was
+  sent. `None` means a call started but no usage is known, for example it timed out
+  or was cancelled; a provider may still bill it.
+
+The processor calls both methods on the event loop, outside its own locks, with no
+await between `admit` and the start of the call. So a hook that checks and reserves
+against its own in-memory state is atomic without a lock. That's why both must be
+synchronous and must not block: `GuardrailConfig` rejects `async def` methods, and a
+hook that needs I/O should reserve in memory and reconcile elsewhere.
+
+**The request.** `AttemptRequest` carries `item_id`, `attempt` (the logical
+attempt, as passed to `execute()`), `try_number` (the physical try; a rate-limit
+retry keeps `attempt` and gets a new `try_number`), the `strategy`, and what the
+call will send:
+
+- `prompt` for a string item, or `messages` for a
+  [message-list item](structured-prompts.md). Exactly one is set (`prompt` is `""`
+  for a message-list item), so an estimator must read whichever one is.
+- `generation_config`: for a `ModelStrategy`, the effective config for this attempt,
+  with `attempt_generation_config()` merged over `generation_config`, so the output
+  bound (`max_tokens`, `max_output_tokens`) is visible. `None` when the strategy has
+  none, and for other strategies. Building it calls `attempt_generation_config()` a
+  second time per attempt, so keep that method free of side effects.
+
+The request doesn't include a system instruction or tools set on the model, so
+leave a margin for them.
+
+**Refusal.** `AdmissionRefused`, or any other exception from `admit`, stops the run
+like a budget: no new provider call or retry starts, `abort_mode` decides what
+happens to calls already running, and `termination.kind == "admission_refused"`
+with the exception's message as the reason (another exception type is also logged,
+and its reason names the type). The refused item and every accepted item that
+hadn't finished end with `AdmissionRefused` and
+`error_category="batch_admission_refused"`. A refused attempt isn't retried, isn't
+classified as a provider error, and isn't counted in `provider_calls_started`.
+
+**A failing `settle`.** An exception from `settle` is logged and stops the run the
+same way, as `admission_refused`: a spend cap that can't record spend must not keep
+admitting. The attempt that was being settled keeps its own outcome.
+
+**Scope and artifacts.** Like budgets, the hook applies to processor runs only;
+`call()`, `call_result()` and `LLMCallPool` reject `GuardrailConfig(admission=...)`
+with `ValueError`. `batch_admission_refused` results are audit records like other
+batch-abort results, in both artifact stores: written best-effort and never
+replayed, so a resumed run executes those items again. A `BatchResult` serialized
+with `termination.kind == "admission_refused"` can't be read by 1.1 or earlier.
+
+**SDK retries.** The hook sees the attempts the framework makes. An SDK that
+retries HTTP requests inside one attempt can bill several requests for one ticket.
+The built-in OpenAI-compatible and Anthropic models build their clients with
+`max_retries=0`. With `admission` set, the processor logs a warning, once per model,
+when a built-in model's client retries on its own: a `max_retries` override, a
+client you passed in, or Gemini `retry_options`.
+
+### Example: a hard spend cap
+
+The cap below reserves `input_estimate * input_price + max_output * output_price`
+at `admit`, refuses when committed plus reserved spend would pass the limit, and
+settles each ticket to the attempt's actual cost. The input estimate counts UTF-8
+bytes, which can't be fewer than the tokens a byte-level tokenizer produces, so it
+is high (about four times, for English) but safe. For Anthropic prompt caching the
+worst case prices every input token as a cache write (`cache_write_rate` 1.25 for
+the 5-minute TTL, 2.0 for the 1-hour TTL), and the settled cost charges cache reads
+at the discounted rate. The built-in models report `input_tokens` including cache
+reads and writes, which is what `actual_cost` assumes.
+
+```python
+import json
+import math
+from dataclasses import dataclass
+
+from llm_minder import (
+    AdmissionRefused,
+    AttemptRequest,
+    CachedTokenRates,
+    GuardrailConfig,
+    ProcessorConfig,
+    TokenUsage,
+)
+
+
+@dataclass(frozen=True)
+class Prices:
+    input_per_mtok: float
+    output_per_mtok: float
+    cache_read_rate: float = 1.0  # fraction of the input price for a cache read
+    cache_write_rate: float = 1.0  # multiple of the input price for a cache write
+
+
+class HardSpendCap:
+    """Committed plus reserved spend never passes ``limit``."""
+
+    def __init__(
+        self,
+        limit: float,
+        prices: Prices,
+        *,
+        default_max_output: int,
+        overhead_tokens: int = 2_000,
+    ) -> None:
+        self.limit = limit
+        self.prices = prices
+        self.default_max_output = default_max_output  # when the config sets no bound
+        self.overhead_tokens = overhead_tokens  # system instruction, tools, formatting
+        self.spent = 0.0  # settled cost
+        self.reserved = 0.0  # worst case of admitted attempts not yet settled
+
+    def input_estimate(self, request: AttemptRequest) -> int:
+        if request.messages is None:
+            text = request.prompt
+        else:
+            text = json.dumps([dict(message) for message in request.messages], default=str)
+        return len(text.encode("utf-8")) + self.overhead_tokens
+
+    def max_output(self, request: AttemptRequest) -> int:
+        # Providers differ in which alias wins when several are set, so take the
+        # largest. A bound that isn't a positive int can't be trusted to apply,
+        # so it brings back the default rather than shrinking the reservation.
+        config = request.generation_config or {}
+        keys = ("max_tokens", "max_output_tokens", "max_completion_tokens")
+        bounds: list[int] = []
+        for key in (k for k in keys if k in config):
+            value = config[key]
+            valid = isinstance(value, int) and not isinstance(value, bool) and value > 0
+            bounds.append(value if valid else self.default_max_output)
+        return max(bounds, default=self.default_max_output)
+
+    def admit(self, request: AttemptRequest) -> float:
+        p = self.prices
+        input_price = p.input_per_mtok * max(1.0, p.cache_write_rate)
+        worst = (
+            self.input_estimate(request) * input_price
+            + self.max_output(request) * p.output_per_mtok
+        ) / 1_000_000
+        if self.spent + self.reserved + worst > self.limit:
+            raise AdmissionRefused(
+                f"Spend cap ${self.limit:.2f}: ${self.spent:.4f} spent and "
+                f"${self.reserved:.4f} reserved; the next attempt could cost ${worst:.4f}"
+            )
+        self.reserved += worst
+        return worst  # the ticket
+
+    def settle(self, ticket: object, usage: TokenUsage | None, success: bool) -> None:
+        assert isinstance(ticket, float)
+        self.reserved -= ticket
+        # Unknown usage may still have been billed (a timeout or cancellation),
+        # so a hard cap keeps the worst case.
+        self.spent += ticket if usage is None else self.actual_cost(usage)
+
+    def actual_cost(self, usage: TokenUsage) -> float:
+        p = self.prices
+        read = usage.get("cached_input_tokens", 0)
+        written = usage.get("cache_write_input_tokens", 0)
+        plain = max(0, usage.get("input_tokens", 0) - read - written)
+        input_tokens = plain + read * p.cache_read_rate + written * p.cache_write_rate
+        output_cost = usage.get("output_tokens", 0) * p.output_per_mtok
+        return (input_tokens * p.input_per_mtok + output_cost) / 1_000_000
+
+
+cap = HardSpendCap(
+    20.0,
+    # Placeholder prices per million tokens: use your model's price list.
+    Prices(
+        input_per_mtok=3.0,
+        output_per_mtok=15.0,
+        cache_read_rate=CachedTokenRates.ANTHROPIC_READ,
+        cache_write_rate=CachedTokenRates.ANTHROPIC_WRITE,  # ANTHROPIC_WRITE_1H for 1-hour
+    ),
+    default_max_output=16_000,  # AnthropicModel's default max_tokens
+)
+config = ProcessorConfig(guardrails=GuardrailConfig(admission=cap))
+```
+
+After the run, `cap.spent` is the settled spend. Keeping the worst case for
+`usage=None` makes the cap strict, at the price of charging started calls that
+failed before billing (a refused connection, a 429 or 5xx response with no usage) at
+their worst case. Attempts that never started settle with zero usage, so they
+release their reservation exactly. Release the reservation for `None` instead if you'd rather
+under-count those than over-count them. Without caching, leave both cache rates
+at 1.0.
+
 ## Cache hit-rate floor
 
 A prompt cache that stops hitting can multiply a run's input cost without any call

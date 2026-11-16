@@ -126,6 +126,11 @@ Read the named file before changing any of these.
   takes inside `prepare()` (for example `GeminiCachedModel`'s cache lock) is acquired under it. Keep that order
   (lifecycle, then model) and do not call back into the lifecycle from model code. When adding a lock, check
   whether it can be taken while another is held.
+- **The attempt admission hook runs outside every lock.** `GuardrailConfig.admission` is called right after
+  `AbortController.begin_provider_call` returns, with no await before the call starts, and each ticket is settled
+  synchronously and once (`AdmissionSlot`): on the attempt's `finally` before any await, or in
+  `await_with_guardrails` on a pre-start failure. Adding an await before either breaks exactly-once settle under
+  cancellation (`_internal/guardrails.py`, `_internal/item_executor.py`).
 - **Rate-limit state lives on `RateLimitCoordinator`** (`_internal/rate_limit_coordinator.py`).
   `ParallelBatchProcessor._in_cooldown` is a read-only property that delegates to it; do not assign it. Only one
   worker triggers the cooldown for a generation (atomic check-and-set under the coordinator's lock); callers whose
