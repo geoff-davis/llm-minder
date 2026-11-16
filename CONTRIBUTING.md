@@ -186,8 +186,7 @@ and a manual upload would race or fail on auth.
    definitions, under a new `[X.Y.Z] - YYYY-MM-DD` heading and leave an empty
    `[Unreleased]` above it; check that every link in the section (migration
    guide, issues) resolves. Bump `version` in `pyproject.toml`; run `uv lock`
-   so the lockfile picks up the new project version; update the "Current
-   version" line in `CLAUDE.md`; add a one-line row for the release to
+   so the lockfile picks up the new project version; add a one-line row for the release to
    `docs/roadmap.md`, linking its migration guide if there is one. Run
    `make package-check` locally (the publish workflow runs it too). Open a
    "Prepare release vX.Y.Z" PR from a `release/vX.Y.Z` branch and merge it
