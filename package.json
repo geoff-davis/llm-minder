@@ -1,6 +1,6 @@
 {
   "name": "llm-minder",
-  "version": "0.8.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Markdown tooling for the llm-minder Python package.",
   "directories": {

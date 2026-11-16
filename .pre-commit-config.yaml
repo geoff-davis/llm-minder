@@ -4,6 +4,10 @@
 # (installs both the pre-commit and pre-push hook types; see
 # default_install_hook_types below)
 # Run manually: uv run prek run --all-files
+#
+# Ruff, mypy and ty are local hooks that call the versions in uv.lock, and
+# markdownlint uses the version in package-lock.json, so hooks, `make ci` and
+# CI cannot drift apart.
 
 default_install_hook_types: [pre-commit, pre-push]
 
@@ -25,37 +29,43 @@ repos:
         always_run: true
         pass_filenames: false
 
-  # Ruff - Fast Python linter (replaces flake8, isort, etc.)
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.5
-    hooks:
-      # Run the linter
-      - id: ruff-check
-        args: [--fix]
-        exclude: ^examples/
-      # Run the formatter
-      - id: ruff-format
-        exclude: ^examples/
-
-  # Mypy - Static type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
-    hooks:
-      - id: mypy
-        args: [--ignore-missing-imports]
-        additional_dependencies:
-          - pydantic>=2.0.0
-          - types-aiofiles
-        files: ^src/llm_minder/
-
-  # Ty - Additional static type checking
+  # Python tools are local hooks that run the versions locked in uv.lock, the
+  # same ones `make ci` and CI use, so there is no hook `rev` to keep in step.
   - repo: local
     hooks:
-      - id: ty
-        name: ty
-        entry: uv run ty check src
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --locked ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter]
+        require_serial: true
+        exclude: ^examples/
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter]
+        require_serial: true
+        exclude: ^examples/
+      # Checks the whole package with the project's real dependencies, as
+      # `make typecheck` does, rather than only the staged files.
+      - id: mypy
+        name: mypy
+        entry: uv run --locked mypy src/llm_minder/ --ignore-missing-imports
         language: system
         pass_filenames: false
+        files: ^(src/llm_minder/|pyproject\.toml$)
+      - id: ty
+        name: ty
+        entry: uv run --locked ty check src
+        language: system
+        pass_filenames: false
+      - id: uv-lock
+        name: uv.lock matches pyproject.toml
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$
 
   # General code quality checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -90,11 +100,18 @@ repos:
       - id: no-commit-to-branch
         args: [--branch, main, --branch, master]
 
-  # Markdown linting
-  - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.19.0
+  # Markdown linting with the markdownlint-cli2 pinned in package-lock.json.
+  # Skips with a message when node_modules is absent (run `npm ci`); CI's
+  # quality job enforces it either way.
+  - repo: local
     hooks:
       - id: markdownlint-cli2
-        args: [--fix]
+        name: markdownlint-cli2
+        entry: scripts/markdownlint_hook.sh --fix
+        language: system
         files: \.(md|markdown)$
         exclude: ^docs/archive/
+        # One invocation, so the skip message prints once.
+        require_serial: true
+        # Shows the skip message; the script prints nothing else on success.
+        verbose: true

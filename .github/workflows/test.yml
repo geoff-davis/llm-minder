@@ -29,7 +29,25 @@ jobs:
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3
@@ -48,6 +66,7 @@ jobs:
 
     # Coverage instrumentation only pays off on the version whose data feeds
     # the coverage comment (3.12); the other matrix legs run plain pytest.
+    # The run fails below the fail_under floor in [tool.coverage.report].
     - name: Run tests with coverage
       if: matrix.python-version == '3.12'
       run: |
@@ -70,7 +89,25 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3
@@ -94,7 +131,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3
@@ -125,6 +180,17 @@ jobs:
 
     - name: Check formatting
       run: uv run ruff format --check src/ tests/
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v7.1.0
+      with:
+        node-version: '20'
+
+    - name: Install npm dependencies
+      run: npm ci
+
+    - name: Lint Markdown
+      run: make markdown-lint
 
     - name: Run type checker (mypy)
       run: uv run mypy src/llm_minder/ --ignore-missing-imports
@@ -252,7 +318,25 @@ jobs:
             tests/test_models_sdk_wiring.py tests/test_error_classifier_autoselect.py
 
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3
@@ -296,7 +380,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3
@@ -326,7 +428,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3
@@ -347,7 +467,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v7.0.1
+    - name: Check out repository
+      id: checkout
+      uses: actions/checkout@v7.0.1
+      # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+      # retries can run instead of hanging; the step cap bounds the rest.
+      timeout-minutes: 5
+      continue-on-error: true
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
+
+    # One fresh attempt if the first checkout failed or timed out.
+    - name: Retry checkout
+      if: steps.checkout.outcome != 'success'
+      uses: actions/checkout@v7.0.1
+      timeout-minutes: 5
+      env:
+        GIT_HTTP_LOW_SPEED_LIMIT: "1"
+        GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v10.3.3

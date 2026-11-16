@@ -68,9 +68,11 @@ it selects the `integration` tests, which make paid API calls when keys are set.
 
 ## Commits and pull requests
 
-- Hooks run on every commit (ruff, mypy, whitespace, YAML/TOML, markdownlint, no commits to `main`) and
-  `check-branch-fresh` on every push. Run them on everything with `uv run prek run --all-files`. Do not use
-  `--no-verify`.
+- Hooks run on every commit (ruff, mypy and ty at the versions in `uv.lock`; `uv lock --check`; whitespace,
+  YAML/TOML; markdownlint at the version in `package-lock.json`, skipped with a message when `node_modules` is
+  absent; no commits to `main`) and `check-branch-fresh` on every push. Ruff and mypy are local hooks, so there is
+  no hook `rev` to keep in step with the lockfile. Run them on everything with `uv run prek run --all-files`. Do
+  not use `--no-verify`.
 - `make ci` must pass before requesting review.
 - Commit subjects are short and imperative (`Add on_error retry callback`), with a focused scope. Record breaking
   behavior in `CHANGELOG.md`.
@@ -93,7 +95,7 @@ it selects the `integration` tests, which make paid API calls when keys are set.
 - Any test that triggers a retry uses the shared `fast_retry` / `fast_rate_limit` fixtures in `tests/conftest.py`;
   otherwise each retry costs a second or more against the library defaults.
 - The default test timeout is 60 s (`pytest-timeout`), so a deadlock fails instead of hanging CI. A test may
-  override it; the scale-soak and integration tests do.
+  override it; the scale-soak and integration tests do. `faulthandler_timeout = 50` dumps every stack first.
 - `tests/test_doc_examples.py` parses every fenced Python block in `README.md`, this file, `examples/README.md`
   and `docs/`, resolves `llm_minder` imports and compares overridden hook signatures with the live base classes.
   It does not run the snippets. Opt a block out with `<!-- doc-snippet: skip -->` above the fence.
@@ -162,8 +164,12 @@ Read the named file before changing any of these.
 - `test.yml` runs on every push and PR: `test` (Python 3.11 to 3.15; all five legs are required checks),
   `test-macos`, `quality` (ruff, mypy, ty, `make package-check`), `sdk-compat` (each SDK's floor and the latest
   release of every supported major), `scale-smoke`, `docs-build` and `security` (pip-audit on every locked
-  dependency: runtime, provider extras, and the dev and docs groups; plus npm audit). Markdownlint runs
-  only in the hook and `make ci`, not in CI.
+  dependency: runtime, provider extras, and the dev and docs groups; plus npm audit). `quality` also runs
+  `make markdown-lint` after `npm ci`.
+- Every `--cov` run, including the 3.12 coverage leg, enforces `fail_under` in `[tool.coverage.report]`. Raise it
+  when coverage grows; never lower it to pass.
+- Every checkout has a 5-minute step timeout, a low-speed abort and one retry step. Keep that pattern in new
+  jobs.
 - `docs.yml` deploys the MkDocs site to GitHub Pages on push to `main`.
 - `publish.yml` is tag-triggered: version check, `make package-check`, PyPI upload. It does not create the GitHub
   release; `/release-tag` does, after PyPI confirms.

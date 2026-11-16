@@ -50,10 +50,10 @@ typecheck-user:  ## Strict-check a sample app that uses only the public API (myp
 MARKDOWN_FILES = $$(git ls-files '*.md' ':!:docs/archive/*')
 
 markdown-lint:  ## Check markdown files
-	npx markdownlint-cli2 $(MARKDOWN_FILES)
+	npx --no-install markdownlint-cli2 $(MARKDOWN_FILES)
 
 markdown-lint-fix:  ## Fix markdown issues
-	npx markdownlint-cli2 $(MARKDOWN_FILES) --fix
+	npx --no-install markdownlint-cli2 $(MARKDOWN_FILES) --fix
 
 check-all:  ## Run all checks (lint + typecheck + test)
 	@echo "==> Running linter..."
@@ -88,7 +88,7 @@ pre-commit-install:  ## Install git hooks via prek
 pre-commit-run:  ## Run hooks on all files via prek
 	uv run prek run --all-files
 
-pre-commit-update:  ## Update hooks to latest versions via prek
+pre-commit-update:  ## Update remote hook revs via prek (ruff/mypy/ty follow uv.lock)
 	uv run prek autoupdate
 
 scale-smoke:  ## Run the reduced deterministic scale-soak profile (CI-sized)
