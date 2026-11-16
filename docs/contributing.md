@@ -151,7 +151,7 @@ llm-minder/
 ├── tests/                  # Test suite
 ├── examples/               # Example scripts
 ├── docs/                   # Documentation
-└── CLAUDE.md              # AI assistant context
+└── AGENTS.md              # AI assistant context (CLAUDE.md imports it)
 ```
 
 ## Adding New Strategies

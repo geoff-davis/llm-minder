@@ -68,7 +68,7 @@ def _dev_command_files() -> list[Path]:
         ROOT / "Makefile",
         ROOT / "README.md",
         ROOT / "CONTRIBUTING.md",
-        ROOT / "CLAUDE.md",
+        ROOT / "AGENTS.md",
         *(ROOT / "docs").rglob("*.md"),
         *(ROOT / "examples").rglob("*.py"),
         *(ROOT / "scripts").rglob("*.py"),

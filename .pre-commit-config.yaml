@@ -14,7 +14,7 @@ default_stages: [pre-commit]
 
 repos:
   # Refuse pushes from a branch based on a stale main (multi-machine
-  # development guard; see CLAUDE.md "Sync before working").
+  # development guard; see AGENTS.md "Before starting work").
   - repo: local
     hooks:
       - id: check-branch-fresh

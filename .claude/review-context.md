@@ -28,7 +28,7 @@ settled decisions below. Prune at each release.
 - The v1.2 milestone issues not being worked on in the PR under review.
 - Unscheduled: #338 (JSONL store memory), #340 (batch vs caching cost estimator).
 - Multi-process coordination, persistent queues and provider batch APIs
-  (CLAUDE.md, "Known limitations").
+  (`AGENTS.md`, "Out of scope by design").
 
 ## Review method
 

@@ -39,7 +39,7 @@ DOC_FILES = sorted(
     path
     for path in {
         REPO_ROOT / "README.md",
-        REPO_ROOT / "CLAUDE.md",
+        REPO_ROOT / "AGENTS.md",
         REPO_ROOT / "examples" / "README.md",
         *(REPO_ROOT / "docs").rglob("*.md"),
     }
