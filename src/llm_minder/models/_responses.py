@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from .._internal.responses_translation import (
     merge_request_configs,
+    translate_input,
 )
 from ..base import LLMResponse
 from ..strategies.errors import (
@@ -146,7 +147,9 @@ class _ResponsesSurface:
         config: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Build ``responses.create`` kwargs (DeepSeek's request policy)."""
-        input_value: str | list[Any] = prompt if isinstance(prompt, str) else list(prompt)
+        # Chat-shaped lists (including #315 messages items) map to Responses input
+        # items; native Responses items and parts pass through unchanged.
+        input_value = translate_input(prompt if isinstance(prompt, str) else list(prompt))
         si = system_instruction or self._default_system_instruction
         has_system = isinstance(input_value, list) and _has_system_message(input_value)
 

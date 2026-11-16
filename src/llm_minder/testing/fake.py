@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import random
 from collections.abc import Callable, Mapping, Sequence
-from typing import Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
+from .._internal.messages import render_messages
 from ..artifacts import ArtifactIdentity
-from ..base import RetryState
-from ..callable_strategy import CallableStrategy, CallOutcome
+from ..base import RetryState, TokenUsage
+from ..callable_strategy import CallableStrategy, CallOutcome, _normalize_token_usage
 from ..core.config import _validate_number
+from ..provider_calls import provider_call
 from ..strategies import DefaultErrorClassifier, ErrorInfo
 
 T = TypeVar("T")
@@ -42,6 +44,13 @@ class FakeStrategy(CallableStrategy[T], Generic[T]):
     A nonzero failure rate requires an explicit seed. Schedule ordering follows
     invocation order, so concurrent scheduling can change which item fails.
     Use ``FakeRateLimitError()`` in the schedule to exercise cooldowns.
+
+    Messages items (``LLMWorkItem(messages=...)``) are supported and share the
+    same call counter, schedule and latency. Their output is
+    ``messages_handler(messages)`` when one is given; otherwise a callable
+    ``response`` receives the flattened ``"role: text"`` rendering (the string
+    token estimators see), and a fixed ``response`` is returned as is.
+    ``messages_handler`` is provisional (new in 1.2).
     """
 
     def __init__(
@@ -54,6 +63,7 @@ class FakeStrategy(CallableStrategy[T], Generic[T]):
         seed: int | None = None,
         token_usage: Mapping[str, int] | None = None,
         identity: ArtifactIdentity | None = None,
+        messages_handler: Callable[[list[dict[str, Any]]], T] | None = None,
     ) -> None:
         _validate_number(latency, name="latency")
         if latency < 0:
@@ -66,13 +76,13 @@ class FakeStrategy(CallableStrategy[T], Generic[T]):
         schedule = tuple(failure_schedule)
         if any(error is not None and not isinstance(error, Exception) for error in schedule):
             raise TypeError("failure_schedule entries must be exceptions or None")
+        if messages_handler is not None and not callable(messages_handler):
+            raise TypeError("messages_handler must be callable or None")
         usage = dict(token_usage or {})
         rng = random.Random(seed)
         self.calls = 0
 
-        async def invoke(
-            prompt: str, *, attempt: int, timeout: float, state: RetryState | None
-        ) -> CallOutcome[T]:
+        async def simulate(produce: Callable[[], T]) -> CallOutcome[T]:
             index = self.calls
             self.calls += 1
             failure = schedule[index] if index < len(schedule) else None
@@ -84,7 +94,35 @@ class FakeStrategy(CallableStrategy[T], Generic[T]):
                 # Copying exception instances is not generally safe; callers can
                 # supply distinct instances when they need independent traces.
                 raise failure
-            output = response(prompt) if callable(response) else response
-            return CallOutcome(cast(T, output), dict(usage))  # type: ignore[redundant-cast]
+            return CallOutcome(produce(), dict(usage))
 
+        def respond(prompt: str) -> T:
+            output = response(prompt) if callable(response) else response
+            return cast(T, output)  # type: ignore[redundant-cast]
+
+        async def invoke(
+            prompt: str, *, attempt: int, timeout: float, state: RetryState | None
+        ) -> CallOutcome[T]:
+            return await simulate(lambda: respond(prompt))
+
+        def respond_to_messages(messages: list[dict[str, Any]]) -> T:
+            if messages_handler is not None:
+                return messages_handler(messages)
+            return respond(render_messages(messages))
+
+        self._simulate = simulate
+        self._respond_to_messages = respond_to_messages
         super().__init__(invoke, identity=identity, error_classifier=_FakeClassifier())
+
+    async def execute_messages(
+        self,
+        messages: Sequence[Mapping[str, Any]],
+        attempt: int,
+        timeout: float,
+        state: RetryState | None = None,
+    ) -> tuple[T, TokenUsage, dict[str, Any] | None]:
+        """Simulate a call for a messages item (see the class docstring)."""
+        copied = [dict(message) for message in messages]
+        async with provider_call(state):
+            outcome = await self._simulate(lambda: self._respond_to_messages(copied))
+        return outcome.output, _normalize_token_usage(outcome.token_usage), None

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Mapping, Sequence
 from typing import Any, Generic, TypeVar, cast
 
 from ._internal.capacity import warn_if_worker_capacity_exceeded
@@ -40,6 +41,7 @@ from ._internal.cleanup import CleanupAction, CleanupPhase, CleanupStep, SharedC
 from ._internal.executor_host import ExecutorHost
 from ._internal.guardrails import AbortCause, AbortController
 from ._internal.input_validation import validate_strategy
+from ._internal.messages import build_work_item, require_messages_support
 from .base import BatchTermination, LLMWorkItem, WorkItemResult
 from .cache_groups import CacheGroupTracker
 from .core import ProcessorConfig
@@ -172,8 +174,14 @@ class LLMCallPool(Generic[TOutput]):
             report.raise_first()
         return False
 
-    async def submit(self, prompt: str, *, timeout: float | None = None) -> TOutput:
+    async def submit(
+        self, prompt: str | Sequence[Mapping[str, Any]], *, timeout: float | None = None
+    ) -> TOutput:
         """Submit one prompt and await its output, raising on failure.
+
+        ``prompt`` is a string, or a list of Chat-shaped messages sent as the
+        item's ``messages`` (the strategy must override ``execute_messages()``,
+        or this raises ``TypeError``). Messages are provisional (new in 1.2).
 
         Blocks on the semaphore when the pool is saturated (backpressure), unless
         ``max_pending`` is set (then an over-cap submit raises immediately). A
@@ -183,7 +191,7 @@ class LLMCallPool(Generic[TOutput]):
         return unwrap_result(await self.submit_result(prompt, timeout=timeout))
 
     async def submit_result(
-        self, prompt: str, *, timeout: float | None = None
+        self, prompt: str | Sequence[Mapping[str, Any]], *, timeout: float | None = None
     ) -> WorkItemResult[TOutput, Any]:
         """Like :meth:`submit` but returns the WorkItemResult instead of raising.
 
@@ -196,14 +204,15 @@ class LLMCallPool(Generic[TOutput]):
         """
         if self._closed:
             raise RuntimeError("Shared call pool is closed")
+        if not isinstance(prompt, str):
+            # A configuration error, raised rather than returned as a result.
+            require_messages_support(self._strategy)
 
         self._seq += 1
         item_id = f"req-{self._seq}"
 
         if self._abort is not None and self._abort.aborted:
-            return self._abort.result_for(
-                LLMWorkItem(item_id=item_id, strategy=self._strategy, prompt=prompt)
-            )
+            return self._abort.result_for(build_work_item(item_id, self._strategy, prompt))
 
         # Admission cap. The check + increment below run with no `await` between
         # them, so in asyncio this is race-free and correctly counts waiters
@@ -214,9 +223,7 @@ class LLMCallPool(Generic[TOutput]):
             )
 
         effective_timeout = self._submit_timeout if timeout is None else timeout
-        work_item: LLMWorkItem[Any, TOutput, Any] = LLMWorkItem(
-            item_id=item_id, strategy=self._strategy, prompt=prompt
-        )
+        work_item: LLMWorkItem[Any, TOutput, Any] = build_work_item(item_id, self._strategy, prompt)
 
         self._inflight += 1
         self._idle.clear()

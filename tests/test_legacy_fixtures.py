@@ -49,6 +49,20 @@ STORES = [
     )
     if (FIXTURES / release / name).exists()
 ]
+# Structured message prompts (#315); releases before 1.2 have none.
+MESSAGE_PROMPTS = [
+    ("m_ok", [{"role": "system", "content": "S"}, {"role": "user", "content": "delta"}]),
+    ("m_bad", [{"role": "user", "content": [{"type": "text", "text": "gamma"}]}]),
+]
+MESSAGE_STORES = [
+    (release, name, store)
+    for release in RELEASES
+    for name, store in (
+        ("messages.jsonl", JsonlArtifactStore),
+        ("messages.sqlite", SqliteArtifactStore),
+    )
+    if (FIXTURES / release / name).exists()
+]
 
 
 class NewStrategy(LLMCallStrategy[str]):
@@ -58,6 +72,12 @@ class NewStrategy(LLMCallStrategy[str]):
     async def execute(self, prompt, attempt, timeout, state=None):
         self.calls.append(prompt)
         return f"new:{prompt}", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}, None
+
+    async def execute_messages(self, messages, attempt, timeout, state=None):
+        content = messages[-1]["content"]
+        return await self.execute(
+            content if isinstance(content, str) else content[0]["text"], attempt, timeout, state
+        )
 
 
 def test_every_release_has_its_fixtures():
@@ -139,3 +159,21 @@ def test_serialized_batch_result_loads(release, name):
     assert by_id["ok1"].output == "old:alpha"
     assert by_id["bad"].error_category == "logic_error"
     assert batch.total_input_tokens + batch.total_output_tokens == 10
+
+
+@pytest.mark.parametrize(("release", "name", "store_type"), MESSAGE_STORES)
+@pytest.mark.asyncio
+async def test_messages_records_replay(tmp_path, release, name, store_type):
+    path = tmp_path / name
+    shutil.copy(FIXTURES / release / name, path)
+    strategy = NewStrategy()
+    batch = await process_prompts(
+        strategy,
+        MESSAGE_PROMPTS,
+        artifact_store=store_type(path, identity=IDENTITY, include_prompt=True),
+        resume=ResumePolicy.REUSE_SUCCESSES,
+        preserve_order=True,
+    )
+    assert strategy.calls == ["gamma"]
+    assert [r.output for r in batch.results] == ["old:delta", "new:gamma"]
+    assert [r.replayed_from_artifact for r in batch.results] == [True, False]

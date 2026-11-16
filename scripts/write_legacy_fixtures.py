@@ -28,6 +28,13 @@ IDENTITY = {"provider": "fixture", "model": "fixture-model", "prompt_version": "
 PROMPTS = [("ok1", "alpha"), ("ok2", "beta"), ("bad", "gamma")]
 
 
+# Structured message prompts (#315), written from the release that added them.
+MESSAGE_PROMPTS = [
+    ("m_ok", [{"role": "system", "content": "S"}, {"role": "user", "content": "delta"}]),
+    ("m_bad", [{"role": "user", "content": [{"type": "text", "text": "gamma"}]}]),
+]
+
+
 class FixtureStrategy(abl.LLMCallStrategy):
     async def execute(self, prompt, attempt, timeout, state=None):
         if prompt == "gamma":
@@ -35,11 +42,16 @@ class FixtureStrategy(abl.LLMCallStrategy):
         tokens = {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
         return f"old:{prompt}", tokens, {"fixture": True}
 
+    async def execute_messages(self, messages, attempt, timeout, state=None):
+        content = messages[-1]["content"]
+        text = content if isinstance(content, str) else content[0]["text"]
+        return await self.execute(text, attempt, timeout, state)
 
-async def run(store) -> abl.BatchResult:
+
+async def run(store, prompts=PROMPTS) -> abl.BatchResult:
     return await abl.process_prompts(
         FixtureStrategy(),
-        PROMPTS,
+        prompts,
         artifact_store=store,
         resume=abl.ResumePolicy.REUSE_ALL,
         preserve_order=True,
@@ -52,6 +64,13 @@ async def main(out: Path) -> None:
     batch = await run(abl.JsonlArtifactStore(out / "artifacts.jsonl", identity=identity))
     if hasattr(abl, "SqliteArtifactStore"):
         await run(abl.SqliteArtifactStore(out / "artifacts.sqlite", identity=identity))
+    if hasattr(abl.LLMCallStrategy, "execute_messages"):
+        for name, store_type in (
+            ("messages.jsonl", abl.JsonlArtifactStore),
+            ("messages.sqlite", abl.SqliteArtifactStore),
+        ):
+            store = store_type(out / name, identity=identity, include_prompt=True)
+            await run(store, MESSAGE_PROMPTS)
     (out / "batch_result.json").write_text(batch.to_json())
     batch.to_jsonl(out / "batch_result.jsonl")
     (out / "VERSION").write_text(abl.__version__ + "\n")

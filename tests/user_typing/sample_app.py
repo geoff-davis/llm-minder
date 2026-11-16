@@ -8,7 +8,7 @@ change to the library breaks it, users' typed code breaks the same way.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, assert_type
@@ -40,6 +40,7 @@ from llm_minder import (
     TokenUsage,
     ToolCall,
     WorkItemResult,
+    call,
     call_result,
     llm,
     process_prompts,
@@ -142,6 +143,51 @@ async def run_high_level() -> list[dict[str, int]]:
         outputs.append(single.output)
     async with LLMCallPool(strategy) as pool:
         outputs.append(await pool.submit("eeeee"))
+    return outputs
+
+
+class ChatStrategy(LLMCallStrategy[str]):
+    """A custom strategy that also accepts structured message prompts (#315)."""
+
+    async def execute(
+        self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None
+    ) -> tuple[str, TokenUsage, dict[str, Any] | None]:
+        return await self.execute_messages(
+            [{"role": "user", "content": prompt}], attempt, timeout, state
+        )
+
+    async def execute_messages(
+        self,
+        messages: Sequence[Mapping[str, Any]],
+        attempt: int,
+        timeout: float,
+        state: RetryState | None = None,
+    ) -> tuple[str, TokenUsage, dict[str, Any] | None]:
+        last = messages[-1]["content"]
+        text = last if isinstance(last, str) else json.dumps(last)
+        return text, {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}, None
+
+
+async def run_messages() -> list[str]:
+    strategy = ChatStrategy()
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": "Be terse."},
+        {
+            "role": "user",
+            "content": [{"type": "text", "text": "hi", "cache_control": {"type": "ephemeral"}}],
+        },
+    ]
+    item = LLMWorkItem(item_id="m", strategy=strategy, messages=messages)
+    assert_type(item.messages, Sequence[Mapping[str, Any]] | None)
+    async with ParallelBatchProcessor[str, str, None]() as processor:
+        await processor.add_work(item)
+        batch = await processor.process_all()
+    outputs = [r.output for r in batch.results if r.output is not None]
+    outputs.append(await call(strategy, messages))
+    streamed = await process_prompts(strategy, ["plain", messages, ("k", messages, None)])
+    outputs.extend(r.output for r in streamed.results if r.output is not None)
+    async with LLMCallPool(strategy) as pool:
+        outputs.append(await pool.submit(messages))
     return outputs
 
 

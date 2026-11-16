@@ -90,11 +90,9 @@ async def example_anthropic_prompt_caching() -> None:
     """Demonstrate Anthropic prompt caching via OpenRouter — explicit opt-in.
 
     Anthropic caches per-message-block when the block carries
-    ``cache_control: {"type": "ephemeral"}``. To send those structured
-    blocks through the framework, write a small ``LLMCallStrategy`` that
-    builds the list of message dicts inside ``execute()`` and hands them
-    straight to ``model.generate(prompt=messages_list)`` — bypassing the
-    ``LLMWorkItem.prompt: str`` constraint.
+    ``cache_control: {"type": "ephemeral"}``. Pass the message list as the
+    work item's ``messages=`` (instead of ``prompt=``); the built-in
+    ``OpenRouterStrategy`` sends it as written.
 
     The first call writes the cache; subsequent calls within the TTL
     (~5 minutes by default) hit it and ``cached_input_tokens`` reports the
@@ -107,45 +105,18 @@ async def example_anthropic_prompt_caching() -> None:
     long_system = "You are a helpful assistant specialized in concise factual answers. " + (
         "This is reference context that should be cached on the second call. " * 80
     )
-
-    from llm_minder.base import LLMResponse, RetryState, TokenUsage
-    from llm_minder.llm_strategies import LLMCallStrategy
-
-    class CachedAnthropicStrategy(LLMCallStrategy[str]):
-        """Build a system+user message list with cache_control on the system block."""
-
-        def __init__(self, model: OpenRouterModel, system_text: str) -> None:
-            self.model = model
-            self.system_text = system_text
-
-        async def execute(
-            self,
-            prompt: str,
-            attempt: int,
-            timeout: float,
-            state: RetryState | None = None,
-        ) -> tuple[str, TokenUsage, None]:
-            messages = [
-                {
-                    "role": "system",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": self.system_text,
-                            "cache_control": {"type": "ephemeral"},
-                        }
-                    ],
-                },
-                {"role": "user", "content": prompt},
-            ]
-            response: LLMResponse = await self.model.generate(messages)
-            return response.text, response.token_usage, None
+    system_message = {
+        "role": "system",
+        "content": [
+            {"type": "text", "text": long_system, "cache_control": {"type": "ephemeral"}},
+        ],
+    }
 
     model = OpenRouterModel.from_api_key(
         "anthropic/claude-haiku-4-5",
         api_key=os.environ["OPENROUTER_API_KEY"],
     )
-    strategy = CachedAnthropicStrategy(model, system_text=long_system)
+    strategy = OpenRouterStrategy(model)
     config = ProcessorConfig(max_workers=1, attempt_timeout=60.0)
 
     # Run two questions back-to-back: the second should hit the cache.
@@ -155,7 +126,11 @@ async def example_anthropic_prompt_caching() -> None:
             error_classifier=OpenRouterErrorClassifier(),
         ) as processor:
             await processor.add_work(
-                LLMWorkItem(item_id=f"round_{round_idx}", strategy=strategy, prompt=q)
+                LLMWorkItem(
+                    item_id=f"round_{round_idx}",
+                    strategy=strategy,
+                    messages=[system_message, {"role": "user", "content": q}],
+                )
             )
             result = await processor.process_all()
 

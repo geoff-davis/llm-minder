@@ -13,7 +13,7 @@ import inspect
 import logging
 import weakref
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, NoReturn, TypeVar, cast, overload
 
 from .base import LLMResponse, RetryState, TokenUsage
@@ -152,6 +152,30 @@ class LLMCallStrategy(ABC, Generic[TOutput]):
             for examples.
         """
         pass
+
+    async def execute_messages(
+        self,
+        messages: Sequence[Mapping[str, Any]],
+        attempt: int,
+        timeout: float,
+        state: "RetryState | None" = None,
+    ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
+        """Execute an LLM call for a structured messages prompt (opt-in).
+
+        Called instead of :meth:`execute` for a work item built with
+        ``messages=``. ``messages`` is the item's validated list in the Chat
+        Completions shape (a private copy for this attempt), and the other
+        arguments and the return value are as for :meth:`execute`.
+
+        The base implementation raises ``TypeError``. A strategy supports
+        messages by overriding this method; submitting a messages item to a
+        strategy that doesn't raises ``TypeError`` before any provider call.
+
+        Provisional (new in 1.2, #315).
+        """
+        from ._internal.messages import unsupported_messages_error
+
+        raise unsupported_messages_error(self)
 
     async def cleanup(self) -> None:
         """
@@ -512,6 +536,30 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
             is forwarded from ``LLMResponse.metadata`` (provider, finish_reason,
             model, safety_ratings, etc.). Added the metadata slot in v0.10.0.
         """
+        return await self._generate_and_parse(prompt, attempt, state)
+
+    async def execute_messages(
+        self,
+        messages: Sequence[Mapping[str, Any]],
+        attempt: int,
+        timeout: float,
+        state: RetryState | None = None,
+    ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
+        """Send a messages prompt through ``model.generate(list_of_messages, ...)``.
+
+        Mirrors :meth:`execute`: the same generation config, per-attempt config,
+        ``provider_call`` window, parsing, and token usage attached on a parse
+        failure. Each built-in model maps the Chat-shaped list to its provider
+        (see the structured-prompts guide); a custom ``LLMModel`` receives the
+        list as is. Provisional (new in 1.2, #315).
+        """
+        return await self._generate_and_parse(
+            [dict(message) for message in messages], attempt, state
+        )
+
+    async def _generate_and_parse(
+        self, prompt: str | list[Any], attempt: int, state: RetryState | None
+    ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
         # Only pass `config` when set, so a custom LLMModel whose generate()
         # doesn't accept the kwarg keeps working — the default path is identical
         # to before generation_config existed.

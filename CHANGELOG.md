@@ -23,8 +23,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one shared cooldown, and parses `retry-after` into the suggested wait. All new
   names are provisional. See [the Anthropic guide](docs/ANTHROPIC_INTEGRATION.md)
   ([#314]).
+- Structured message prompts: `LLMWorkItem(messages=[...])` takes a list of Chat
+  Completions-shaped messages in place of `prompt`, for system messages, several turns
+  and per-block markers such as Anthropic `cache_control`. The list is validated and
+  deep-copied when the item is built, with errors that name the bad element.
+  `call()`, `call_result()`, `LLMCallPool.submit()`/`submit_result()`,
+  `process_prompts()` and `process_stream()` accept message lists too. Strategies opt
+  in by overriding the new `execute_messages()`; every built-in model strategy and
+  `FakeStrategy` (with a new `messages_handler=`) do, and a strategy that doesn't
+  raises `TypeError` before any request. OpenAI-compatible Chat Completions models
+  send the list as written, Responses models translate it, and `AnthropicModel`,
+  `GeminiModel` and `GeminiCachedModel` map it, raising `ValueError` for what they
+  can't express. A system message in the list replaces the model's
+  `system_instruction`. Checkpoints fingerprint message items separately from string
+  items (string fingerprints are unchanged) and, with `include_prompt=True`, store the
+  list as `raw_messages`; the artifact schema version is unchanged. Provisional. See
+  [Structured message prompts](docs/structured-prompts.md) ([#315]).
+
+### Changed
+
+- A `process_prompts()`/`process_stream()` tuple entry whose prompt is a list or tuple
+  is now a message list; it used to be converted with `str()`.
+- `DeepSeekModel(api_surface="responses")` now passes list prompts through the same
+  Chat-to-Responses translation as `OpenAIModel`. Native Responses input items and
+  roles are kept, but a list with message types the translation rejects now raises
+  `ValueError` instead of reaching the API.
 
 [#314]: https://github.com/geoff-davis/llm-minder/issues/314
+[#315]: https://github.com/geoff-davis/llm-minder/issues/315
 
 ## [1.1.0] - 2026-11-15
 

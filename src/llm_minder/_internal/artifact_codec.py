@@ -161,6 +161,26 @@ def identity_mapping(identity: Any, *, for_fingerprint: bool = False) -> dict[st
     }
 
 
+MESSAGES_FINGERPRINT_TAG = "messages:v1:"
+
+
+def fingerprint_messages(messages: Any) -> str:
+    """Fingerprint a messages prompt (#315) in its own value domain.
+
+    The SHA-256 of the canonical JSON (sorted keys, compact separators,
+    ``ensure_ascii=False``), tagged in the fingerprint *value*:
+    ``"messages:v1:<hex>"``. A string prompt's fingerprint is a bare 64-character
+    hex digest (unchanged since v0.18), so no string, whatever its bytes, can
+    produce a messages fingerprint or match one, in this release or an older
+    reader. (A prefix inside the digest would not separate the domains: the
+    string equal to prefix + canonical JSON hashes to the same value.) The
+    result still fills ``prompt_fingerprint``, so neither store's index changes.
+    """
+    value = _to_fingerprint_value(messages, path="$.messages")
+    digest = hashlib.sha256(_encode_canonical_utf8(value, path="$.messages")).hexdigest()
+    return MESSAGES_FINGERPRINT_TAG + digest
+
+
 def fingerprint_identity(identity: Any) -> tuple[dict[str, JSONValue], str]:
     """Return the redacted persisted identity and private compatibility hash."""
     persisted = identity_mapping(identity)
@@ -176,9 +196,13 @@ def fingerprint_work_item(
     context_fingerprinter: ContextFingerprinter | None,
 ) -> PreparedArtifactItem:
     """Fingerprint one input without retaining its raw prompt or context."""
-    _validate_utf8(work_item.prompt, path="$.prompt")
     _validate_utf8(work_item.item_id, path="$.item_id")
-    prompt_hash = hashlib.sha256(work_item.prompt.encode("utf-8")).hexdigest()
+    if work_item.messages is not None:
+        prompt_hash = fingerprint_messages(work_item.messages)
+    else:
+        # Byte-identical to every earlier release, so string checkpoints replay.
+        _validate_utf8(work_item.prompt, path="$.prompt")
+        prompt_hash = hashlib.sha256(work_item.prompt.encode("utf-8")).hexdigest()
     context_hash: str | None = None
     legacy_context_hash: str | None = None
     legacy_combined_hash: str | None = None
@@ -304,7 +328,13 @@ def build_item_record(
         if include_context
         else None
     )
-    raw_prompt = to_json_value(work_item.prompt, path="$.raw_prompt") if include_prompt else None
+    raw_prompt: JSONValue = None
+    raw_messages: JSONValue = None
+    if include_prompt:
+        if work_item.messages is not None:
+            raw_messages = to_json_value(work_item.messages, path="$.raw_messages")
+        else:
+            raw_prompt = to_json_value(work_item.prompt, path="$.raw_prompt")
     cost = cost_calculator(result) if cost_calculator is not None else None
     if cost is not None:
         cost = float(cost)
@@ -340,6 +370,11 @@ def build_item_record(
         "raw_context": raw_context,
         "result": serialized_result,
     }
+    if work_item.messages is not None:
+        # Only messages records carry the key, so string records keep their shape.
+        # Readers ignore unknown keys: a 1.1 reader loads the record and, since no
+        # 1.1 input can produce a messages fingerprint, never replays it.
+        record["raw_messages"] = raw_messages
     _encode_canonical_utf8(record)
     return record
 

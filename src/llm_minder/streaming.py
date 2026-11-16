@@ -30,8 +30,9 @@ from collections.abc import (
     Callable,
     Iterable,
     Mapping,
+    Sequence,
 )
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from ._internal.capacity import capture_capacity_warning_source
 from ._internal.cleanup import CleanupStep, cancel_and_join
@@ -40,6 +41,7 @@ from ._internal.input_validation import (
     validate_keywords,
     validate_strategy,
 )
+from ._internal.messages import build_work_item
 from .artifacts import ArtifactStore, ResumePolicy
 from .base import (
     BatchAdmissionClosedError,
@@ -63,7 +65,15 @@ TOutput = TypeVar("TOutput")
 # (item_id, prompt, context) triple. The context is forwarded to
 # LLMWorkItem.context — so it reaches WorkItemResult.context and any
 # post_processor (handy for carrying DB ids, gold labels, routing keys, etc.).
-PromptEntry = str | tuple[str, str] | tuple[str, str, Any]
+# In place of each prompt string, a list of Chat-shaped messages becomes the
+# item's ``messages`` (#315, provisional). A bare messages entry must be a list:
+# a bare tuple is always the (item_id, prompt[, context]) form.
+PromptEntry = (
+    str
+    | Sequence[Mapping[str, Any]]
+    | tuple[str, str | Sequence[Mapping[str, Any]]]
+    | tuple[str, str | Sequence[Mapping[str, Any]], Any]
+)
 PromptSource = Iterable[PromptEntry] | AsyncIterable[PromptEntry]
 
 
@@ -88,30 +98,35 @@ async def _aiter(source: PromptSource) -> AsyncIterator[Any]:
 
 
 def _to_work_item(
-    entry: PromptEntry, index: int, strategy: LLMCallStrategy[TOutput]
+    entry: object, index: int, strategy: LLMCallStrategy[TOutput]
 ) -> LLMWorkItem[Any, TOutput, Any]:
+    # ``entry`` is typed ``object`` (it is a PromptEntry when callers follow the
+    # types) so the checks below narrow it without depending on tuple lengths.
     if isinstance(entry, tuple):
-        # Cast to a variadic tuple so positional access doesn't depend on the
-        # type checker narrowing the tuple length (which it can't do via len()).
-        parts = cast("tuple[Any, ...]", entry)
-        if len(parts) == 2:
-            return LLMWorkItem(item_id=str(parts[0]), strategy=strategy, prompt=str(parts[1]))
-        if len(parts) == 3:
-            return LLMWorkItem(
-                item_id=str(parts[0]),
-                strategy=strategy,
-                prompt=str(parts[1]),
-                context=parts[2],
+        parts: tuple[Any, ...] = entry
+        if len(parts) in (2, 3):
+            prompt = parts[1]
+            if not isinstance(prompt, (list, tuple)):
+                prompt = str(prompt)
+            return build_work_item(
+                str(parts[0]), strategy, prompt, parts[2] if len(parts) == 3 else None
             )
         raise TypeError(
             "prompt tuple must be (item_id, prompt) or (item_id, prompt, context); "
             f"got a tuple of length {len(parts)} at index {index}."
         )
+    if isinstance(entry, list):
+        return build_work_item(f"item_{index}", strategy, entry)
     if not isinstance(entry, str):
         # Integer prompts were accepted (and converted) before 1.0.
+        hint = (
+            " For one messages prompt, wrap the message list: [messages]."
+            if isinstance(entry, Mapping)
+            else ""
+        )
         raise TypeError(
-            f"Prompt at index {index} must be a string or a 2- or 3-tuple; "
-            f"got {type(entry).__name__}."
+            f"Prompt at index {index} must be a string, a list of messages, or a 2- or "
+            f"3-tuple; got {type(entry).__name__}.{hint}"
         )
     return LLMWorkItem(item_id=f"item_{index}", strategy=strategy, prompt=entry)
 
@@ -314,6 +329,8 @@ async def _process_stream_impl(
         prompts: Sync or async iterable of bare prompt strings (ids
             auto-generated), ``(item_id, prompt)`` pairs, and/or
             ``(item_id, prompt, context)`` triples (context → result.context).
+            Any prompt may instead be a list of Chat-shaped messages, sent as
+            the item's ``messages`` (provisional, new in 1.2).
         config: Processor configuration. Defaults to ``ProcessorConfig()``. Set
             ``max_queue_size`` to bound accepted-but-not-started input and
             ``max_result_queue_size`` to bound completed results waiting for

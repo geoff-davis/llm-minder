@@ -90,6 +90,8 @@ passing, post-processors, middleware, observers, error handling).
   LLM integrations.
   - `async prepare()` — initialize resources (caches, connections)
   - `async execute(prompt, attempt, timeout, state=None)` — make the call
+  - `async execute_messages(messages, attempt, timeout, state=None)` — opt-in
+    (#315): override it to accept message-list items; the base raises
   - `async on_error(exception, attempt, state=None)` — track error types
   - `async cleanup()` — release resources
 - **`LLMModel` / `ManagedLLMModel`** (`core/protocols.py`) — provider-side
@@ -98,7 +100,8 @@ passing, post-processors, middleware, observers, error handling).
 - **`LLMResponse`** (`base.py`) — normalized response: `text`, token counts
   (input/output/total/cached), provider metadata dict, raw response.
 - **`LLMWorkItem`** (`base.py`) — work unit: `item_id`, `strategy`,
-  `prompt: str`, optional `context`.
+  `prompt: str` or `messages` (a Chat Completions message list, #315), optional
+  `context`.
 - **`ParallelBatchProcessor`** (`parallel.py`) — worker pool, rate-limit
   coordination, retry/backoff, framework-level timeout via
   `asyncio.wait_for()`. Optional `progress_callback(completed, total,
@@ -301,11 +304,12 @@ collected = await metrics.get_metrics()
   `PydanticAIStrategy(agent=...)`, `GeminiStrategy(model=...)`, etc.
 - **Mutating results in post-processor.** Treat `result.output` as
   read-only or build new objects — concurrent post-processors share state.
-- **Structured prompts.** `LLMWorkItem.prompt` is a string. For structured
-  message lists (e.g. Anthropic `cache_control` markers via OpenRouter),
-  build them inside a custom `execute()` and call
-  `model.generate(messages_list)` directly. See
-  `docs/OPENROUTER_INTEGRATION.md`.
+- **Structured prompts.** `LLMWorkItem.prompt` is a string. For message
+  lists (system turns, multiple turns, `cache_control` markers), pass
+  `messages=` instead (or a list to `call()`/`process_prompts`); see
+  `docs/structured-prompts.md`. Custom strategies opt in by overriding
+  `execute_messages()`; without it, message items raise `TypeError` before
+  any call.
 
 ### Workflow pitfalls
 
@@ -608,6 +612,7 @@ src/llm_minder/
 │   ├── input_validation.py
 │   ├── item_executor.py  # per-item retry/classification engine
 │   ├── logical_item.py   # effective request shared by preprocessing/replay/retries
+│   ├── messages.py       # message-list prompts (#315): validation, rendering, provider mapping
 │   ├── rate_limit_coordinator.py
 │   ├── responses_translation.py # Chat-style request -> OpenAI Responses
 │   ├── strategy_lifecycle.py
@@ -628,6 +633,8 @@ src/llm_minder/
 - `docs/OPENROUTER_INTEGRATION.md` — OpenRouter deep dive, including the
   per-upstream caching matrix and the Anthropic `cache_control` opt-in
   pattern.
+- `docs/structured-prompts.md` — message-list prompts (#315): shape, per-model
+  mapping, checkpoints.
 - `docs/api/` — API reference (entrypoints, core, errors, artifacts,
   single-call-pool, strategies, observers).
 - `docs/stability.md` — the 1.0 compatibility promise: stable, provisional, and

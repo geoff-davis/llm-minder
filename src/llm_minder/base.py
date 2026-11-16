@@ -9,7 +9,7 @@ import logging
 import math
 import time
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from types import TracebackType
@@ -261,12 +261,21 @@ class LLMWorkItem(Generic[TInput, TOutput, TContext]):
         strategy: LLM call strategy that encapsulates how to make the LLM call
         prompt: The prompt/input to pass to the LLM
         context: Optional context data passed through to results/post-processor
+        messages: Keyword-only. A structured prompt in the Chat Completions shape
+            (``[{"role": "system", "content": "..."}, {"role": "user", "content":
+            [{"type": "text", "text": "...", "cache_control": {...}}]}]``), used
+            instead of ``prompt``: set exactly one of a non-empty ``prompt`` or
+            ``messages``. It is validated and deep-copied into JSON values when the
+            item is built, and needs a strategy that overrides
+            ``LLMCallStrategy.execute_messages()`` (the built-in model strategies
+            and ``FakeStrategy`` do). Provisional (new in 1.2, #315).
     """
 
     item_id: str
     strategy: "LLMCallStrategy[TOutput]"
     prompt: str = ""
     context: TContext | None = None
+    messages: Sequence[Mapping[str, Any]] | None = field(default=None, kw_only=True)
     # Assigned by BatchProcessor.add_work() when the item is accepted. Kept on
     # the work item so duplicate item IDs remain independently orderable.
     submission_index: int | None = field(default=None, compare=False)
@@ -301,8 +310,19 @@ class LLMWorkItem(Generic[TInput, TOutput, TContext]):
         if not isinstance(self.prompt, str):
             raise TypeError(
                 f"prompt must be a string (got {type(self.prompt).__name__}: {repr(self.prompt)[:80]}). "
-                f"If you need to pass structured data, serialize it to a string first."
+                f"For a structured prompt, pass messages=[{{'role': ..., 'content': ...}}] instead."
             )
+        if self.messages is not None:
+            from ._internal.messages import normalize_messages, require_messages_support
+
+            if self.prompt:
+                raise ValueError(
+                    "Set exactly one of prompt or messages: this work item has both. "
+                    "Leave prompt empty when passing messages."
+                )
+            # Re-run on middleware replacements too, so an edited list is frozen again.
+            self.messages = normalize_messages(self.messages)
+            require_messages_support(self.strategy)
 
 
 @dataclass

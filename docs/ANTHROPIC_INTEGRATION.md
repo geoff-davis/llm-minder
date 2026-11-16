@@ -86,12 +86,17 @@ strategy = llm(
 
 ## Requests
 
-- A string prompt becomes one user message. Structured message lists, and
-  `cache_control` on individual content blocks, aren't supported yet
-  ([#315](https://github.com/geoff-davis/llm-minder/issues/315)); a list prompt
-  raises `TypeError`.
+- A string prompt becomes one user message. For several turns, or
+  `cache_control` on individual content blocks, give the work item a message list
+  with `messages=` (see [Structured message prompts](structured-prompts.md)).
+  Leading `system` messages become the top-level `system` field, as text blocks
+  that keep their `cache_control`; `user` and `assistant` messages pass through.
+  Other roles, non-text parts, and a system message after a user or assistant one
+  raise `ValueError` before the request is sent.
 - `system_instruction` becomes the top-level `system` field. A per-call
-  `system_instruction` wins over the model's default.
+  `system_instruction` wins over the model's default, and a system message in a
+  message list wins over both. The cache group is labelled by the system actually
+  sent.
 - `max_tokens` is required by the API and defaults to 16,000. Calls are
   non-streaming, and the SDK refuses a non-streaming call whose `max_tokens` could
   take longer than 10 minutes (above about 21,000) unless the client has an explicit
@@ -172,6 +177,27 @@ result = await processor.process_all()
 billable = result.effective_input_tokens(
     CachedTokenRates.ANTHROPIC_READ,  # cache reads cost 10% of normal input
     cache_write_rate=CachedTokenRates.ANTHROPIC_WRITE,  # 1.25x; ANTHROPIC_WRITE_1H is 2.0x
+)
+```
+
+To place breakpoints yourself, put `cache_control` on individual text blocks of
+a message list:
+
+```python
+from llm_minder import LLMWorkItem
+
+item = LLMWorkItem(
+    item_id="q1",
+    strategy=strategy,
+    messages=[
+        {
+            "role": "system",
+            "content": [
+                {"type": "text", "text": LONG_SHARED_INSTRUCTIONS, "cache_control": {"type": "ephemeral"}},
+            ],
+        },
+        {"role": "user", "content": "First question"},
+    ],
 )
 ```
 
@@ -289,14 +315,13 @@ config = ProcessorConfig(max_workers=100, max_provider_concurrency=64)
 
 ## Out of scope for now
 
-Structured messages and per-block `cache_control`
-([#315](https://github.com/geoff-davis/llm-minder/issues/315)), streaming mode, the
-refusal `fallbacks` beta, Message Batches and server tools.
+Image and document content blocks, streaming mode, the refusal `fallbacks` beta,
+Message Batches and server tools.
 
 ## See also
 
 - [`examples/example_anthropic.py`](https://github.com/geoff-davis/llm-minder/blob/main/examples/example_anthropic.py)
   — runnable example.
 - [`docs/OPENROUTER_INTEGRATION.md`](OPENROUTER_INTEGRATION.md) — Claude through
-  OpenRouter, with the structured-message `cache_control` pattern.
+  OpenRouter, with the same `messages=` and `cache_control` pattern.
 - [Prompt caching guide](prompt-caching.md) — cache groups and hit-rate floors.

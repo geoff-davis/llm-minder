@@ -32,6 +32,7 @@ from ._internal.guardrails import (
 )
 from ._internal.input_validation import processor_keyword_hints, suggest_keyword_errors
 from ._internal.item_executor import ItemExecutor, _detach_traceback
+from ._internal.messages import require_messages_support
 from ._internal.rate_limit_coordinator import RateLimitCoordinator
 from ._internal.strategy_lifecycle import StrategyLifecycle
 from .artifacts import (
@@ -576,6 +577,9 @@ class ParallelBatchProcessor(
     async def add_work(self, work_item: LLMWorkItem[TInput, TOutput, TContext]) -> None:
         """Queue a work item and register its identity-scoped admission state."""
         self._check_accepting_work()
+        if work_item.messages is not None:
+            # Construction checks this too; repeat it for a strategy swapped since.
+            require_messages_support(work_item.strategy)
         assert self._abort_controller is not None
         if self._abort_controller.aborted:
             raise BatchAdmissionStopped("Batch is no longer accepting work")

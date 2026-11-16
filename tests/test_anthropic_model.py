@@ -82,11 +82,12 @@ class TestRequest:
             "messages": [{"role": "user", "content": "Hi"}],
         }
 
-    async def test_list_prompt_raises_type_error_pointing_at_315(self):
+    async def test_list_prompt_is_chat_shaped_messages(self):
+        # #315: lists are no longer rejected; test_structured_prompts_models.py
+        # covers the mapping in detail.
         client = _client()
-        with pytest.raises(TypeError, match="315"):
-            await AnthropicModel(MODEL, client).generate([{"role": "user", "content": "x"}])
-        client.messages.create.assert_not_awaited()
+        await AnthropicModel(MODEL, client).generate([{"role": "user", "content": "x"}])
+        assert _sent(client)["messages"] == [{"role": "user", "content": "x"}]
 
     async def test_system_instruction_default_and_per_call_override(self):
         client = _client()

@@ -22,10 +22,12 @@ prepared strategy and coordinator are reused across calls.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Any, TypeVar
 
 from ._internal.executor_host import ExecutorHost
 from ._internal.input_validation import validate_strategy
+from ._internal.messages import build_work_item, require_messages_support
 from .base import LLMWorkItem, WorkItemResult
 from .core import ProcessorConfig
 from .llm_strategies import LLMCallStrategy
@@ -71,7 +73,7 @@ def unwrap_result(result: WorkItemResult[TOutput, Any]) -> TOutput:
 
 async def call_result(
     strategy: LLMCallStrategy[TOutput],
-    prompt: str,
+    prompt: str | Sequence[Mapping[str, Any]],
     *,
     config: ProcessorConfig | None = None,
     error_classifier: Any = None,
@@ -81,16 +83,23 @@ async def call_result(
     Inspect ``.success`` / ``.output`` / ``.error`` / ``.token_usage``. Use this
     when you want token accounting or to branch on failure without exceptions;
     for the happy-path one-liner use :func:`call`.
+
+    ``prompt`` is a string, or a list of Chat-shaped messages sent as the
+    item's ``messages`` (the strategy must override ``execute_messages()``;
+    see :class:`~llm_minder.LLMWorkItem`). Messages are provisional (new in 1.2).
     """
     validate_strategy(strategy)
+    if not isinstance(prompt, str):
+        # Fail before building the host: a str-only strategy can't take messages.
+        require_messages_support(strategy)
     host: ExecutorHost[Any, TOutput, Any] = ExecutorHost(
         config or ProcessorConfig(max_workers=1),
         strategy=strategy,
         error_classifier=error_classifier,
     )
     try:
-        work_item: LLMWorkItem[Any, TOutput, Any] = LLMWorkItem(
-            item_id=_SINGLE_CALL_ITEM_ID, strategy=strategy, prompt=prompt
+        work_item: LLMWorkItem[Any, TOutput, Any] = build_work_item(
+            _SINGLE_CALL_ITEM_ID, strategy, prompt
         )
         result = await host.executor.execute(work_item)
     except BaseException as exc:
@@ -108,7 +117,7 @@ async def call_result(
 
 async def call(
     strategy: LLMCallStrategy[TOutput],
-    prompt: str,
+    prompt: str | Sequence[Mapping[str, Any]],
     *,
     config: ProcessorConfig | None = None,
     error_classifier: Any = None,
@@ -116,7 +125,8 @@ async def call(
     """Run one prompt and return its output, raising on failure.
 
     Set a timeout or retry policy via ``config`` (e.g.
-    ``ProcessorConfig(attempt_timeout=20)``).
+    ``ProcessorConfig(attempt_timeout=20)``). ``prompt`` may be a list of
+    Chat-shaped messages, as for :func:`call_result`.
     """
     result = await call_result(strategy, prompt, config=config, error_classifier=error_classifier)
     return unwrap_result(result)
