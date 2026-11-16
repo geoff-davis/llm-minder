@@ -172,29 +172,85 @@ Read the named file before changing any of these.
 
 ## Direct Herdr Reviews
 
-For this repository, Claude implements and Codex reviews. The user authorizes direct
-review requests and replies through Herdr; no manual relay is needed.
+For this repository, Claude implements and Codex reviews. The user authorizes direct review requests and replies
+through Herdr; no manual relay is needed. That covers message delivery only: a review verdict does not authorize a
+commit, push, merge, tag or publication.
 
-- Verify `HERDR_ENV=1` and use `herdr agent list` to check agent identity and repository
-  before sending. The current live names are `abl-implementer` (Claude) and
-  `abl-reviewer` (Codex). Names belong to live occupants; rediscover them after restarts.
-- Claude requests review with `herdr agent prompt abl-reviewer "<review request>"`.
-  Include the base, immutable commit or patch/hash, evidence location, scope, settled
-  decisions, and known limitations. Keep the review target unchanged during review.
-- Codex replies with `herdr agent prompt abl-implementer "<review verdict and findings>"`.
-  Review read-only in an isolated snapshot; leave implementation edits to Claude.
-  Follow the evidence protocol below and identify the exact target in every verdict.
-- Put each review round's files under one directory, `/tmp/abl-review/<PR>-r<round>/`,
-  and delete the whole directory once the verdict is sent. Snapshots, tarballs,
-  environments, logs and test temp dirs can be regenerated, so none of them is kept.
-  Probe scripts and their output can't be: before deleting, put the full probe code (or
-  exact commands to recreate it) and the output that matters in the verdict, or point to
-  a committed regression test that covers it.
-- Send without `--wait` so neither agent blocks waiting for the other's turn. Do not
-  send acknowledgment loops or duplicate prompts. If delivery is uncertain, inspect
-  the target before retrying; never answer an approval dialog on the user's behalf.
-- Review approval does not itself authorize a commit, push, merge, tag, or publication;
-  follow the user's authorization for those actions.
+- Verify `HERDR_ENV=1` and check `herdr agent list` for agent kind and repository before every send. The live
+  names are `abl-implementer` (Claude) and `abl-reviewer` (Codex). Names are cleared when an agent exits; after a
+  restart, restore them with `herdr agent rename <pane> <name>`. If identity is ambiguous, stop and ask.
+- Codex's sandbox reaches Herdr only through `prefix_rule(pattern=["herdr", "agent"], decision="allow")` in
+  `~/.codex/rules/default.rules`. A `herdr agent prompt` reply is typed into the recipient's pane, so it arrives
+  looking like pasted text.
+
+### When review is required
+
+Review is required before pushing unless every changed file (`git diff --name-only <base>..<head>`) is on this
+list:
+
+- `docs/**` (including `docs/internal/`), `CHANGELOG.md`, and `*.md` other than `AGENTS.md` and `CLAUDE.md`;
+- `uv.lock`, and Dependabot pull requests with green CI;
+- a whole-tree format commit that contains nothing else.
+
+Decide by the paths, not by whether the change feels behavioral. Agent instruction files, `.claude/`, hooks, CI
+and `pyproject.toml` are reviewed. Public-API, shared-policy (category lists, swallow-or-re-raise rules, replay
+predicates), artifact-schema and security changes also get the API or design agreed first. A release gets a review
+of the range since the last release before `/release-prep`.
+
+Every pull request description has a `Review:` line: either
+`docs/internal/reviews/<PR>_review.md, approved at <head SHA>` or `exempt: <which rule>`. The person merging checks
+it.
+
+### Tiers
+
+The implementer declares the tier in the handoff; the reviewer may raise it with a reason.
+
+| Tier | Applies to | Evidence | Rounds |
+| --- | --- | --- | --- |
+| Small | A local fix that adds, removes or loosens no guard | Regression test failing on the pre-fix code; focused tests; lint and types | One |
+| Standard | New or changed logic, contracts, or the scope of a guard | As Small, plus a probe of each new or changed condition | One, plus one to verify blocking fixes |
+| Critical | Replay and record eligibility, store schemas, checkpoint and data-loss guards, cancellation and lock ordering, public API, security | Probes of every condition in the changed acceptance or refusal logic | Up to three |
+
+A condition probe mutates one conjunct, threshold or budget term in an isolated copy and counts as caught only when
+the intended assertion fails. An import error, a harness failure or removing a whole guard does not count.
+
+### When implementing
+
+- Commit the slice locally with normal hooks; that commit is the review target. Do not amend or rebase it during
+  the review; answer findings with new commits.
+- Write the handoff to `docs/internal/reviews/<PR>_review.md` before prompting (that directory is gitignored and
+  local to the main checkout, which Codex also reads). Include base and head SHAs, tier, acceptance criteria,
+  evidence (each fix with its regression test shown failing on the base), the policy sweep where one applies,
+  settled decisions from `.claude/review-context.md`, known limitations and out-of-scope items.
+- Prompt only an idle or done reviewer, without `--wait`, with the handoff path, the target and the round:
+  `herdr agent prompt abl-reviewer "<request>"`. Keep the prompt short; the file holds the detail.
+- After sending, poll the handoff file in the background about once a minute until it holds a verdict naming this
+  round and the exact target, or until 60 minutes pass. An older verdict does not count, and an `idle` or `done`
+  state may predate the request. If the reviewer is blocked or settles without a matching verdict, inspect it with
+  `herdr agent read abl-reviewer`; do not resend. At the time limit, stop and tell the user.
+- Fix blocking findings. Record each non-blocking one with its home: a follow-up commit, an issue number, or
+  deliberately unchanged with the reason.
+
+### When reviewing
+
+- Read-only. Review the exact target in an isolated snapshot under `/tmp/abl-review/<PR>-r<round>/`; never stash,
+  reset or edit the implementer's tree. Leave implementation edits to Claude.
+- Run the same probe on base and target before calling something a regression. Reuse the implementer's evidence
+  and run focused checks; repeat full suites only when evidence is missing, stale or invalidated.
+- Give each finding a stable ID (`R1`, `R2`, ...), severity, blocking or not, location, trigger and evidence. A
+  finding blocks only if it defeats the acceptance criteria or introduces a regression. Separate confirmed defects
+  from hypotheses.
+- Append the round and a verdict naming the exact target to the handoff file, then send one prompt to
+  `abl-implementer` with the verdict.
+- Delete the round directory once the verdict is sent. Probe code and output that can't be regenerated go into the
+  verdict or a committed regression test first.
+
+### Limits
+
+Three review rounds per pull request, counting the first, unless the user extends them. No acknowledgment messages
+and no duplicate prompts; on uncertain delivery, inspect the peer before retrying. A blocked approval dialog goes
+to the user; one agent never answers another's permission prompt. Stop and tell the user on approval, after the
+third round, at the time limit, on a stalled exchange, or on any decision that needs new authority.
 
 ## Review Fixes & Handoffs
 
