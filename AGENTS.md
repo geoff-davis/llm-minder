@@ -238,6 +238,14 @@ Do not "fix" these without an issue that says so.
   artifact store replay on resume.
 - DeepSeek reuses `OpenAIErrorClassifier` because it is OpenAI-compatible.
 
+## Context window
+
+A full context window is compacted, and the session continues: the conversation is replaced by a summary and work
+carries on. Running low is not a reason to stop, rush, or hand work to a subagent that would not otherwise get it.
+When the token usage reminder shows the window is nearly full (auto-compaction fires at about 13k to 15k tokens
+remaining), reach a clean state first: notes or the plan file updated, the review handoff current, and the working
+tree either committed or described.
+
 ## Where context lives
 
 - `docs/internal/` (gitignored, local to the main checkout): plans, design documents, handoffs and Codex review
