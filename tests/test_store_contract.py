@@ -1113,6 +1113,37 @@ async def test_messages_are_not_stored_without_include_prompt(
         assert stored == {"structured": None}
 
 
+_ONE_MESSAGE = [{"role": "user", "content": "hi"}]
+_CANONICAL = json.dumps(_ONE_MESSAGE, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "crafted",
+    [_CANONICAL, "llm-minder:messages:v1\0" + _CANONICAL],
+    ids=["canonical-json", "digest-preimage"],
+)
+@pytest.mark.parametrize("messages_first", [False, True], ids=["string-first", "messages-first"])
+async def test_crafted_strings_never_replay_against_messages(
+    tmp_path: Path, store_type: Any, suffix: str, crafted: str, messages_first: bool
+) -> None:
+    """No string, even one equal to a messages item's digest preimage, shares its key."""
+    path = tmp_path / f"crafted{suffix}"
+    first, second = (_ONE_MESSAGE, crafted) if messages_first else (crafted, _ONE_MESSAGE)
+    await process_prompts(
+        _MessagesStrategy(), [("x", first)], artifact_store=store_type(path, identity=_identity())
+    )
+    resumed = _MessagesStrategy()
+    batch = await process_prompts(
+        resumed,
+        [("x", second)],
+        artifact_store=store_type(path, identity=_identity()),
+        resume=ResumePolicy.REUSE_ALL,
+    )
+    assert batch.results[0].replayed_from_artifact is False
+    assert len(resumed.calls) + len(resumed.message_calls) == 1
+
+
 @pytest.mark.asyncio
 async def test_string_and_messages_items_never_replay_against_each_other(
     tmp_path: Path, store_type: Any, suffix: str

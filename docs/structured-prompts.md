@@ -91,8 +91,9 @@ request is sent, and the item fails without a retry.
 
 ### System instructions
 
-A system message in the list wins. Without one, a per-call
-`system_instruction` applies, then the model's default:
+A system message in the list wins, even an empty one (`""` or `[]`), which sends
+no system prompt at all. Without one, a per-call `system_instruction` applies,
+then the model's default:
 
 1. `system` messages in the list;
 2. `system_instruction=` passed to `generate()`;
@@ -178,12 +179,12 @@ with a middleware error.
 
 ## Checkpoints and resume
 
-A message item's input fingerprint is a SHA-256 of the canonical JSON of the
-list, under a prefix that keeps it apart from string fingerprints. String
-fingerprints are unchanged, so existing checkpoints replay as before. A string
-item and a message item never replay against each other, even with the same
-text, and any change to the list (including a `cache_control` marker) is a
-new input.
+A message item's input fingerprint is `messages:v1:` followed by the SHA-256 of
+the canonical JSON of the list. String fingerprints are bare SHA-256 digests,
+unchanged, so existing checkpoints replay as before, and no string, whatever it
+contains, can match a message item's fingerprint. A string item and a message
+item never replay against each other, even with the same text, and any change
+to the list (including a `cache_control` marker) is a new input.
 
 With `include_prompt=True`, JSONL records store the list as `raw_messages`
 (`raw_prompt` stays `null`), and SQLite stores it as a JSON array in the

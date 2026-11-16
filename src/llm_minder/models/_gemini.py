@@ -172,7 +172,12 @@ class GeminiModel:
 
         # Precedence: system messages in the list, then the per-call
         # system_instruction, then the model default.
-        si = list_si or system_instruction or self._default_system_instruction
+        # A system message in the list replaces the others even when empty ("" means
+        # send no system instruction), so presence, not truthiness, decides.
+        if list_si is not None:
+            si: str | None = list_si or None
+        else:
+            si = system_instruction or self._default_system_instruction
         if si is not None:
             call_config["system_instruction"] = si
 

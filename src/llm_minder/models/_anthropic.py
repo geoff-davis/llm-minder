@@ -269,7 +269,9 @@ class AnthropicModel:
         # Precedence: system messages in the list, then the per-call
         # system_instruction, then the model default.
         system = (
-            list_system
+            # A system message in the list replaces the default even when empty:
+            # "" or [] means send no system prompt.
+            (list_system or None)
             if list_system is not None
             else system_instruction or self._default_system_instruction
         )

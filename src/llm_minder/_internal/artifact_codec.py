@@ -161,22 +161,24 @@ def identity_mapping(identity: Any, *, for_fingerprint: bool = False) -> dict[st
     }
 
 
-MESSAGES_FINGERPRINT_PREFIX = b"llm-minder:messages:v1\0"
+MESSAGES_FINGERPRINT_TAG = "messages:v1:"
 
 
 def fingerprint_messages(messages: Any) -> str:
-    """Fingerprint a messages prompt (#315) under its own domain prefix.
+    """Fingerprint a messages prompt (#315) in its own value domain.
 
-    Canonical JSON (sorted keys, compact separators, ``ensure_ascii=False``)
-    after the prefix, so ``"x"`` and ``[{"role": "user", "content": "x"}]`` are
-    different inputs and a list can never collide with a string prompt equal to
-    its JSON. The result still fills ``prompt_fingerprint``, so neither store's
-    index changes.
+    The SHA-256 of the canonical JSON (sorted keys, compact separators,
+    ``ensure_ascii=False``), tagged in the fingerprint *value*:
+    ``"messages:v1:<hex>"``. A string prompt's fingerprint is a bare 64-character
+    hex digest (unchanged since v0.18), so no string, whatever its bytes, can
+    produce a messages fingerprint or match one, in this release or an older
+    reader. (A prefix inside the digest would not separate the domains: the
+    string equal to prefix + canonical JSON hashes to the same value.) The
+    result still fills ``prompt_fingerprint``, so neither store's index changes.
     """
     value = _to_fingerprint_value(messages, path="$.messages")
-    return hashlib.sha256(
-        MESSAGES_FINGERPRINT_PREFIX + _encode_canonical_utf8(value, path="$.messages")
-    ).hexdigest()
+    digest = hashlib.sha256(_encode_canonical_utf8(value, path="$.messages")).hexdigest()
+    return MESSAGES_FINGERPRINT_TAG + digest
 
 
 def fingerprint_identity(identity: Any) -> tuple[dict[str, JSONValue], str]:

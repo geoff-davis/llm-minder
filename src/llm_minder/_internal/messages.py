@@ -127,22 +127,21 @@ def _defining_class(cls: type, name: str) -> type | None:
 
 
 def _execute_overrides_messages_hook(cls: type) -> bool:
-    """True when ``execute()`` is overridden below the class that defines ``execute_messages()``.
+    """True when the ``execute()`` in use is more specific than the ``execute_messages()`` in use.
 
-    A subclass of a built-in strategy that customizes only ``execute()`` would otherwise have
-    message items silently bypass its customization through the inherited hook.
+    "More specific" means earlier in the strategy's MRO, which covers both a subclass and a
+    mixin listed before the base (``class S(ExecuteMixin, FakeStrategy)``). Such a strategy
+    customizes only ``execute()``; through the inherited hook, message items would silently
+    bypass that customization.
     """
     from ..llm_strategies import LLMCallStrategy
 
     messages_owner = _defining_class(cls, "execute_messages")
     execute_owner = _defining_class(cls, "execute")
-    return (
-        messages_owner is not None
-        and messages_owner is not LLMCallStrategy
-        and execute_owner is not None
-        and execute_owner is not messages_owner
-        and issubclass(execute_owner, messages_owner)
-    )
+    if messages_owner is None or execute_owner is None or messages_owner is LLMCallStrategy:
+        return False
+    mro = cls.__mro__
+    return mro.index(execute_owner) < mro.index(messages_owner)
 
 
 def supports_messages(strategy: object) -> bool:
@@ -257,6 +256,7 @@ def to_anthropic(
     """
     provider = "Anthropic"
     system_blocks: list[dict[str, Any]] = []
+    saw_system = False
     converted: list[dict[str, Any]] = []
     for index, message in enumerate(_iter_messages(provider, messages)):
         path = f"$.messages[{index}]"
@@ -273,6 +273,7 @@ def to_anthropic(
                     "is a system message after a non-system one; Anthropic takes system "
                     "text only at the start",
                 )
+            saw_system = True
             system_blocks.extend(
                 _text_parts(provider, content, f"{path}.content", keep_extras=True)
             )
@@ -288,7 +289,9 @@ def to_anthropic(
             )
     if not converted:
         raise _shape_error(provider, "$.messages", "needs at least one user or assistant message")
-    system: str | list[dict[str, Any]] | None = None
+    # Presence is tracked apart from content: an empty system message ("" or [])
+    # still replaces the default, as "" (no system prompt is sent).
+    system: str | list[dict[str, Any]] | None = "" if saw_system else None
     if system_blocks:
         if all(set(block) == {"type", "text"} for block in system_blocks):
             system = "\n\n".join(block["text"] for block in system_blocks)
@@ -335,6 +338,7 @@ def to_gemini(messages: object, *, provider: str = "Gemini") -> tuple[list[Any],
     ``ValueError``.
     """
     system_texts: list[str] = []
+    saw_system = False
     # list[Any]: google-genai types contents as TypedDicts, which dicts don't match.
     contents: list[Any] = []
     for index, message in enumerate(_iter_messages(provider, messages)):
@@ -352,6 +356,7 @@ def to_gemini(messages: object, *, provider: str = "Gemini") -> tuple[list[Any],
                     "is a system message after a non-system one; Gemini takes a system "
                     "instruction only at the start",
                 )
+            saw_system = True
             system_texts.extend(part["text"] for part in parts)
         elif role in ("user", "assistant"):
             contents.append({"role": "model" if role == "assistant" else "user", "parts": parts})
@@ -361,4 +366,6 @@ def to_gemini(messages: object, *, provider: str = "Gemini") -> tuple[list[Any],
             )
     if not contents:
         raise _shape_error(provider, "$.messages", "needs at least one user or assistant message")
-    return contents, ("\n\n".join(system_texts) if system_texts else None)
+    # Presence is tracked apart from content: an empty system message ("" or [])
+    # still replaces the default, as "" (no system instruction is sent).
+    return contents, ("\n\n".join(system_texts) if saw_system else None)

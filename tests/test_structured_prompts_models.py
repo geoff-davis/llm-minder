@@ -367,3 +367,45 @@ class TestGemini:
         with pytest.raises(ValueError, match="system message cannot be sent with cached content"):
             await model.generate(MESSAGES)
         client.aio.models.generate_content.assert_not_awaited()
+
+
+# ── An empty system message still replaces the default (Codex #377 R3) ───────
+
+EMPTY_SYSTEMS = pytest.mark.parametrize("content", ["", []], ids=["string-empty", "parts-empty"])
+
+
+def _with_empty_system(content: object) -> list[dict[str, object]]:
+    return [{"role": "system", "content": content}, {"role": "user", "content": "q"}]
+
+
+class TestEmptySystemMessage:
+    @EMPTY_SYSTEMS
+    def test_mappers_report_presence_apart_from_content(self, content):
+        assert to_anthropic(_with_empty_system(content))[1] == ""
+        assert to_gemini(_with_empty_system(content))[1] == ""
+        assert to_anthropic([{"role": "user", "content": "q"}])[1] is None
+        assert to_gemini([{"role": "user", "content": "q"}])[1] is None
+
+    @EMPTY_SYSTEMS
+    async def test_gemini_sends_no_system_instruction_not_the_default(self, content):
+        client = _gemini_client()
+        model = GeminiModel("gemini-3.5-flash", client, system_instruction="DEFAULT")
+        await model.generate(_with_empty_system(content), system_instruction="PER-CALL")
+        config = client.aio.models.generate_content.await_args.kwargs["config"]
+        assert "system_instruction" not in config
+
+    @EMPTY_SYSTEMS
+    async def test_anthropic_sends_no_system_not_the_default(self, content):
+        from llm_minder import AnthropicModel
+
+        client = _anthropic_client()
+        model = AnthropicModel("claude-opus-5-5", client, system_instruction="DEFAULT")
+        await model.generate(_with_empty_system(content), system_instruction="PER-CALL")
+        assert "system" not in client.messages.create.await_args.kwargs
+
+    @EMPTY_SYSTEMS
+    async def test_cached_gemini_rejects_any_system_message(self, content):
+        model, client = TestGemini()._cached_model()
+        with pytest.raises(ValueError, match="system message cannot be sent with cached content"):
+            await model.generate(_with_empty_system(content))
+        client.aio.models.generate_content.assert_not_awaited()

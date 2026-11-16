@@ -191,6 +191,36 @@ class TestUnsupportedStrategy:
         with pytest.raises(TypeError, match="overrides execute\\(\\) but not execute_messages"):
             LLMWorkItem(item_id="i", strategy=CustomExecute(MagicMock()), messages=MESSAGES)
 
+    def test_mixin_overriding_only_execute_is_not_silently_bypassed(self):
+        """A mixin listed before the base wins execute() through the MRO, not subclassing."""
+
+        class ExecuteMixin:
+            async def execute(self, prompt, attempt, timeout, state=None):
+                return "custom-execute", TOKENS, None
+
+        class MessagesMixin:
+            async def execute_messages(self, messages, attempt, timeout, state=None):
+                return "custom-messages", TOKENS, None
+
+        class MixedFake(ExecuteMixin, FakeStrategy):  # type: ignore[misc]
+            pass
+
+        class MixedModel(ExecuteMixin, ModelStrategy):  # type: ignore[misc]
+            pass
+
+        class OptedIn(MessagesMixin, ExecuteMixin, FakeStrategy):  # type: ignore[misc]
+            pass
+
+        class BaseFirst(FakeStrategy, ExecuteMixin):  # type: ignore[misc]
+            pass  # FakeStrategy's own execute() wins; nothing is bypassed.
+
+        assert not supports_messages(MixedFake("x"))
+        assert not supports_messages(MixedModel(MagicMock()))
+        assert supports_messages(OptedIn("x"))
+        assert supports_messages(BaseFirst("x"))
+        with pytest.raises(TypeError, match="overrides execute\\(\\) but not execute_messages"):
+            LLMWorkItem(item_id="i", strategy=MixedFake("x"), messages=MESSAGES)
+
     def test_item_construction_raises_naming_the_strategy_and_fix(self):
         with pytest.raises(TypeError) as excinfo:
             LLMWorkItem(item_id="i", strategy=StrOnly(), messages=MESSAGES)
@@ -509,13 +539,23 @@ class TestFingerprint:
         prepared = self._prepared(LLMWorkItem(item_id="i", strategy=Recorder(), prompt="x"))
         assert prepared.prompt_fingerprint == hashlib.sha256(b"x").hexdigest()
 
-    def test_messages_fingerprint_is_prefixed_canonical_json(self):
+    def test_messages_fingerprint_is_tagged_canonical_json(self):
         item = LLMWorkItem(item_id="i", strategy=Recorder(), messages=MESSAGES)
         canonical = json.dumps(
             MESSAGES, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
-        expected = hashlib.sha256(b"llm-minder:messages:v1\0" + canonical).hexdigest()
+        expected = "messages:v1:" + hashlib.sha256(canonical).hexdigest()
         assert self._prepared(item).prompt_fingerprint == expected == fingerprint_messages(MESSAGES)
+
+    def test_no_string_prompt_can_produce_a_messages_fingerprint(self):
+        """The string with the messages' digest preimage still hashes into the string domain."""
+        canonical = json.dumps(MESSAGES, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        for crafted in (canonical, "llm-minder:messages:v1\0" + canonical):
+            as_string = self._prepared(
+                LLMWorkItem(item_id="i", strategy=Recorder(), prompt=crafted)
+            )
+            assert as_string.prompt_fingerprint != fingerprint_messages(MESSAGES)
+            assert len(as_string.prompt_fingerprint) == 64
 
     def test_key_order_does_not_matter_but_content_does(self):
         reordered = [{"content": m["content"], "role": m["role"]} for m in copy.deepcopy(MESSAGES)]
