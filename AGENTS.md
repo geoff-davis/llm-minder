@@ -54,7 +54,7 @@ Use the `make` targets; they pin the right paths. Run `make help` for the full l
 | Lint, and lint with fixes | `make lint`, `make lint-fix` |
 | Format `src/` and `tests/` | `make format` |
 | Type check (mypy, ty) | `make typecheck`, `make typecheck-ty` |
-| Tests, default selection | `make test-fast` |
+| Tests, default selection | `uv run pytest` (or `make test`) |
 | Markdown lint with fixes | `make markdown-lint-fix` |
 | Build and check the sdist/wheel | `make package-check` |
 | One test | `uv run pytest tests/test_retry_logic.py -k partial_name` |
@@ -62,6 +62,9 @@ Use the `make` targets; they pin the right paths. Run `make help` for the full l
 
 Without make, the equivalents are `uv run ruff check src/ tests/`, `uv run ruff format src/ tests/` and
 `uv run mypy src/llm_minder/ --ignore-missing-imports`. Do not add `examples/` to the ruff paths.
+
+Do not use `make test-fast` as the default run. Its `-m 'not slow'` replaces the configured marker expression, so
+it selects the `integration` tests, which make paid API calls when keys are set.
 
 ## Commits and pull requests
 
@@ -89,7 +92,8 @@ Without make, the equivalents are `uv run ruff check src/ tests/`, `uv run ruff 
 - `slow`, `integration` and `benchmark` tests are deselected by default. Real API calls carry `integration`.
 - Any test that triggers a retry uses the shared `fast_retry` / `fast_rate_limit` fixtures in `tests/conftest.py`;
   otherwise each retry costs a second or more against the library defaults.
-- `pytest-timeout` caps every test at 60 s so a deadlock fails instead of hanging CI.
+- The default test timeout is 60 s (`pytest-timeout`), so a deadlock fails instead of hanging CI. A test may
+  override it; the scale-soak and integration tests do.
 - `tests/test_doc_examples.py` parses every fenced Python block in `README.md`, this file, `examples/README.md`
   and `docs/`, resolves `llm_minder` imports and compares overridden hook signatures with the live base classes.
   It does not run the snippets. Opt a block out with `<!-- doc-snippet: skip -->` above the fence.
@@ -140,6 +144,9 @@ Read the named file before changing any of these.
   `models/_sdk.py`.
 - **The two artifact stores must agree.** `JsonlArtifactStore` and `SqliteArtifactStore` have drifted apart more
   than once; exercise both whenever replay, record eligibility or lookup changes.
+- **Post-processors must not mutate `result.output`.** Checkpointing happens before post-processing, so a
+  mutation changes the returned result while the persisted and replayed result keeps the original, on both stores.
+  Treat the result as read-only or build new objects.
 - **API details that are easy to get wrong.** `ParallelBatchProcessor.get_stats()` and
   `MetricsObserver.get_metrics()` are async. `LLMWorkItem.strategy` takes a strategy instance, not a raw agent or
   model. `LLMWorkItem.prompt` is a string; message lists go in `messages=`, and a custom strategy accepts them only
@@ -149,8 +156,9 @@ Read the named file before changing any of these.
 
 - `test.yml` runs on every push and PR: `test` (Python 3.11 to 3.15; all five legs are required checks),
   `test-macos`, `quality` (ruff, mypy, ty, `make package-check`), `sdk-compat` (each SDK's floor and the latest
-  release of every supported major), `scale-smoke`, `docs-build` and `security` (pip-audit on the locked runtime
-  dependencies, npm audit). Markdownlint runs only in the hook and `make ci`, not in CI.
+  release of every supported major), `scale-smoke`, `docs-build` and `security` (pip-audit on every locked
+  dependency: runtime, provider extras, and the dev and docs groups; plus npm audit). Markdownlint runs
+  only in the hook and `make ci`, not in CI.
 - `docs.yml` deploys the MkDocs site to GitHub Pages on push to `main`.
 - `publish.yml` is tag-triggered: version check, `make package-check`, PyPI upload. It does not create the GitHub
   release; `/release-tag` does, after PyPI confirms.
