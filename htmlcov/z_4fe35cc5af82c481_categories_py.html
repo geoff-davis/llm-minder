@@ -55,8 +55,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">96 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">96<span class="text"> run</span></button>
+            <span class="text">98 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">98<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">0<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
             <button type="button" class="par run show_par button_toggle_par" value="par" data-shortcut="p" title="Toggle lines partially run">0<span class="text"> partial</span></button>
@@ -67,7 +67,7 @@
             <a id="nextFileLink" class="nav" href="z_508bd45c8878e227___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-16 19:26 +0000
+            created at 2026-11-16 20:23 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -189,47 +189,50 @@
     <p class="run"><span class="n"><a id="t105" href="#t105">105</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The run stopped (fail-fast or an explicit abort) before this item finished.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t106" href="#t106">106</a></span><span class="t">    <span class="nam">BATCH_BUDGET_EXCEEDED</span> <span class="op">=</span> <span class="str">&quot;batch_budget_exceeded&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t107" href="#t107">107</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The run reached its token, cost or provider-call cap before this item finished.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t108" href="#t108">108</a></span><span class="t">    <span class="nam">CACHE_HIT_RATE_BELOW_FLOOR</span> <span class="op">=</span> <span class="str">&quot;cache_hit_rate_below_floor&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Termination only (provisional): a cache group&#x27;s hit rate fell below</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t"><span class="str">    ``GuardrailConfig.min_cache_hit_rate``. Items the stop ends are ``batch_aborted``.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">    <span class="com"># Configuration failures (never replayed from artifacts)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">    <span class="nam">TOKEN_ESTIMATOR_REQUIRED</span> <span class="op">=</span> <span class="str">&quot;token_estimator_required&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">    <span class="str">&quot;&quot;&quot;TPM admission is enabled but no token estimator applies to the item.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">    <span class="nam">TOKEN_ESTIMATION_ERROR</span> <span class="op">=</span> <span class="str">&quot;token_estimation_error&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The token estimator raised or returned an invalid estimate.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">    <span class="nam">TOKEN_ESTIMATE_EXCEEDS_LIMIT</span> <span class="op">=</span> <span class="str">&quot;token_estimate_exceeds_limit&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">    <span class="str">&quot;&quot;&quot;One attempt&#x27;s estimate can never fit in the TPM limit.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">    <span class="nam">QUOTA_SCOPE_ERROR</span> <span class="op">=</span> <span class="str">&quot;quota_scope_error&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">    <span class="str">&quot;&quot;&quot;A strategy&#x27;s ``quota_scope`` could not be resolved.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">    <span class="com"># Middleware</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">    <span class="nam">MIDDLEWARE_CONTRACT_ERROR</span> <span class="op">=</span> <span class="str">&quot;middleware_contract_error&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t124" href="#t124">124</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Middleware returned a value that breaks its contract.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t125" href="#t125">125</a></span><span class="t">    <span class="nam">MIDDLEWARE_FILTERED</span> <span class="op">=</span> <span class="str">&quot;middleware_filtered&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Middleware filtered the item out, so it was not executed. Never replayed.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t">    <span class="com"># Artifacts</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t">    <span class="nam">ARTIFACT_PREPARATION_ERROR</span> <span class="op">=</span> <span class="str">&quot;artifact_preparation_error&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t130" href="#t130">130</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The item&#x27;s input could not be prepared for the artifact store.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t131" href="#t131">131</a></span><span class="t">    <span class="nam">ARTIFACT_SERIALIZATION_ERROR</span> <span class="op">=</span> <span class="str">&quot;artifact_serialization_error&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t132" href="#t132">132</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The item&#x27;s result could not be serialized for the artifact store.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t133" href="#t133">133</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t134" href="#t134">134</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t135" href="#t135">135</a></span><span class="t"><span class="key">class</span> <span class="nam">TimeoutCategory</span><span class="op">(</span><span class="nam">_StrValueEnum</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t136" href="#t136">136</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Values of ``AttemptTiming.timeout_category`` and ``WorkItemTiming.timeout_category``.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t108" href="#t108">108</a></span><span class="t">    <span class="nam">BATCH_ADMISSION_REFUSED</span> <span class="op">=</span> <span class="str">&quot;batch_admission_refused&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Provisional: the ``GuardrailConfig.admission`` hook refused an attempt (or its</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t"><span class="str">    ``settle`` raised), and the run stopped before this item finished. Not retried.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t">    <span class="nam">CACHE_HIT_RATE_BELOW_FLOOR</span> <span class="op">=</span> <span class="str">&quot;cache_hit_rate_below_floor&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Termination only (provisional): a cache group&#x27;s hit rate fell below</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t"><span class="str">    ``GuardrailConfig.min_cache_hit_rate``. Items the stop ends are ``batch_aborted``.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">    <span class="com"># Configuration failures (never replayed from artifacts)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">    <span class="nam">TOKEN_ESTIMATOR_REQUIRED</span> <span class="op">=</span> <span class="str">&quot;token_estimator_required&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">    <span class="str">&quot;&quot;&quot;TPM admission is enabled but no token estimator applies to the item.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">    <span class="nam">TOKEN_ESTIMATION_ERROR</span> <span class="op">=</span> <span class="str">&quot;token_estimation_error&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The token estimator raised or returned an invalid estimate.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">    <span class="nam">TOKEN_ESTIMATE_EXCEEDS_LIMIT</span> <span class="op">=</span> <span class="str">&quot;token_estimate_exceeds_limit&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">    <span class="str">&quot;&quot;&quot;One attempt&#x27;s estimate can never fit in the TPM limit.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">    <span class="nam">QUOTA_SCOPE_ERROR</span> <span class="op">=</span> <span class="str">&quot;quota_scope_error&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">    <span class="str">&quot;&quot;&quot;A strategy&#x27;s ``quota_scope`` could not be resolved.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t124" href="#t124">124</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t125" href="#t125">125</a></span><span class="t">    <span class="com"># Middleware</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t">    <span class="nam">MIDDLEWARE_CONTRACT_ERROR</span> <span class="op">=</span> <span class="str">&quot;middleware_contract_error&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Middleware returned a value that breaks its contract.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t">    <span class="nam">MIDDLEWARE_FILTERED</span> <span class="op">=</span> <span class="str">&quot;middleware_filtered&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Middleware filtered the item out, so it was not executed. Never replayed.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t130" href="#t130">130</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t131" href="#t131">131</a></span><span class="t">    <span class="com"># Artifacts</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t132" href="#t132">132</a></span><span class="t">    <span class="nam">ARTIFACT_PREPARATION_ERROR</span> <span class="op">=</span> <span class="str">&quot;artifact_preparation_error&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t133" href="#t133">133</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The item&#x27;s input could not be prepared for the artifact store.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t134" href="#t134">134</a></span><span class="t">    <span class="nam">ARTIFACT_SERIALIZATION_ERROR</span> <span class="op">=</span> <span class="str">&quot;artifact_serialization_error&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t135" href="#t135">135</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The item&#x27;s result could not be serialized for the artifact store.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t136" href="#t136">136</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t137" href="#t137">137</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t138" href="#t138">138</a></span><span class="t">    <span class="nam">FRAMEWORK_EXECUTION_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;framework_execution_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t">    <span class="str">&quot;&quot;&quot;One provider attempt exceeded ``attempt_timeout``.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">    <span class="nam">FRAMEWORK_TOTAL_ITEM_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;framework_total_item_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The item deadline expired during a provider call.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t">    <span class="nam">PROVIDER_OR_TRANSPORT_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;provider_or_transport_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The provider SDK or transport raised its own timeout.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t">    <span class="nam">ADMISSION_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;admission_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t">    <span class="str">&quot;&quot;&quot;An item or batch deadline expired while the item waited for provider capacity.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t"><span class="nam">__all__</span> <span class="op">=</span> <span class="op">[</span><span class="str">&quot;ErrorCategory&quot;</span><span class="op">,</span> <span class="str">&quot;TimeoutCategory&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t138" href="#t138">138</a></span><span class="t"><span class="key">class</span> <span class="nam">TimeoutCategory</span><span class="op">(</span><span class="nam">_StrValueEnum</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t139" href="#t139">139</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Values of ``AttemptTiming.timeout_category`` and ``WorkItemTiming.timeout_category``.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t">    <span class="nam">FRAMEWORK_EXECUTION_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;framework_execution_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t">    <span class="str">&quot;&quot;&quot;One provider attempt exceeded ``attempt_timeout``.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t">    <span class="nam">FRAMEWORK_TOTAL_ITEM_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;framework_total_item_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The item deadline expired during a provider call.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t">    <span class="nam">PROVIDER_OR_TRANSPORT_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;provider_or_transport_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">    <span class="str">&quot;&quot;&quot;The provider SDK or transport raised its own timeout.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">    <span class="nam">ADMISSION_TIMEOUT</span> <span class="op">=</span> <span class="str">&quot;admission_timeout&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">    <span class="str">&quot;&quot;&quot;An item or batch deadline expired while the item waited for provider capacity.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t151" href="#t151">151</a></span><span class="t"><span class="nam">__all__</span> <span class="op">=</span> <span class="op">[</span><span class="str">&quot;ErrorCategory&quot;</span><span class="op">,</span> <span class="str">&quot;TimeoutCategory&quot;</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -239,7 +242,7 @@
             <a class="nav" href="z_508bd45c8878e227___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.3">coverage.py v7.17.3</a>,
-            created at 2026-11-16 19:26 +0000
+            created at 2026-11-16 20:23 +0000
         </p>
     </div>
 </footer>
