@@ -173,7 +173,7 @@ async def test_unstarted_call_is_refunded():
     controller = AbortController(AbortMode.DRAIN_ACTIVE, max_provider_calls=1)
     await controller.begin_provider_call("a")
     controller.refund_unstarted_provider_call()
-    await controller.end_provider_call()
+    controller.end_provider_call_now()
     assert controller.provider_calls_started == 0
     await controller.begin_provider_call("a")
     assert controller.provider_calls_started == 1

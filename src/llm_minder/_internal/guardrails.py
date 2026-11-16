@@ -262,9 +262,6 @@ class AbortController:
         # coroutine, and cannot be lost to a cancellation while queued for one.
         self._active_provider_calls = max(0, self._active_provider_calls - 1)
 
-    async def end_provider_call(self) -> None:
-        self.end_provider_call_now()
-
     def exception_for(self, item_id: str | None) -> Exception:
         cause = self.cause
         if cause is None:
@@ -431,13 +428,15 @@ async def await_with_guardrails(
             await task
         raise
     finally:
+        # Release the call before the first await: a cancellation while joining
+        # the controls must not leave it counted as active (#379).
+        if provider_registered and abort_controller is not None:
+            abort_controller.end_provider_call_now()
         for control in controls:
             if not control.done():
                 control.cancel()
         if controls:
             await asyncio.gather(*controls, return_exceptions=True)
-        if provider_registered and abort_controller is not None:
-            await abort_controller.end_provider_call()
 
 
 __all__ = [

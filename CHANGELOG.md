@@ -67,9 +67,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   roles are kept, but a list with message types the translation rejects now raises
   `ValueError` instead of reaching the API.
 
+### Fixed
+
+- A provider attempt cancelled while the guardrail was cleaning up its timeout and
+  abort watchers stayed counted as an active provider call. The call is now released
+  before that cleanup awaits anything ([#379]).
+
 [#314]: https://github.com/geoff-davis/llm-minder/issues/314
 [#315]: https://github.com/geoff-davis/llm-minder/issues/315
 [#331]: https://github.com/geoff-davis/llm-minder/issues/331
+[#379]: https://github.com/geoff-davis/llm-minder/issues/379
 
 ## [1.1.0] - 2026-11-15
 
