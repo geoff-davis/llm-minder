@@ -82,16 +82,21 @@ make pre-commit-install
 # Run hooks manually on all files
 make pre-commit-run
 
-# Update hooks to latest versions
+# Update the remote hook revs (pre-commit-hooks)
 make pre-commit-update
 ```
 
 prek will automatically run these checks before each commit:
 
 - Ruff linting and formatting
-- Mypy type checking
+- Mypy and ty type checking
+- `uv lock --check` when `pyproject.toml` or `uv.lock` changes
 - Markdown linting
 - General file checks (trailing whitespace, merge conflicts, etc.)
+
+Ruff, mypy and ty run as local hooks with the versions locked in `uv.lock`, and markdownlint runs the
+version pinned in `package-lock.json`, so hooks, `make ci` and CI use the same tools. The markdownlint hook
+skips with a message when `node_modules` is absent; run `npm ci` to enable it. CI lints Markdown either way.
 
 #### Manual Code Quality Checks
 

@@ -22,8 +22,28 @@ permissions:
 jobs:
   digest:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7.0.1
+      - name: Check out repository
+        id: checkout
+        uses: actions/checkout@v7.0.1
+        # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
+        # retries can run instead of hanging; the step cap bounds the rest, and two
+        # 2-minute attempts leave the job's own budget for its work.
+        timeout-minutes: 2
+        continue-on-error: true
+        env:
+          GIT_HTTP_LOW_SPEED_LIMIT: "1"
+          GIT_HTTP_LOW_SPEED_TIME: "60"
+
+      # One fresh attempt if the first checkout failed or timed out.
+      - name: Retry checkout
+        if: steps.checkout.outcome != 'success'
+        uses: actions/checkout@v7.0.1
+        timeout-minutes: 2
+        env:
+          GIT_HTTP_LOW_SPEED_LIMIT: "1"
+          GIT_HTTP_LOW_SPEED_TIME: "60"
 
       - name: Update the needs-response digest
         env:
