@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from typing import Literal
 
 import pytest
 
@@ -104,6 +105,65 @@ async def test_guardrail_join_waits_for_child_even_when_cancelled_twice(child) -
     child.release.set()
     with pytest.raises(asyncio.CancelledError):
         await asyncio.wait_for(task, GUARD)
+
+
+class _SlowToCancelEvent(asyncio.Event):
+    """An abort event whose ``wait()`` keeps running for a while after cancellation.
+
+    It stands in for the guardrail's abort-watch control task, so the cleanup
+    ``gather`` over the controls stays pending until the test releases it.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.cancelling = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def wait(self) -> Literal[True]:
+        try:
+            return await super().wait()
+        except asyncio.CancelledError:
+            self.cancelling.set()
+            await self.release.wait()
+            raise
+
+
+@pytest.mark.parametrize("outcome", ["success", "error"])
+async def test_cancel_during_control_cleanup_releases_provider_call(outcome: str) -> None:
+    # Issue #379: a cancellation while the finally block joins the control tasks
+    # must not leave the provider call counted as active.
+    controller = AbortController(AbortMode.CANCEL_ACTIVE)
+    slow_event = _SlowToCancelEvent()
+    controller.event = slow_event
+
+    async def provider() -> str:
+        if outcome == "error":
+            raise RuntimeError("provider failed")
+        return "ok"
+
+    async def caller() -> str:
+        return await await_with_guardrails(
+            provider(),
+            item_deadline=None,
+            item_id="x",
+            abort_controller=controller,
+            active_provider=True,
+        )
+
+    task = asyncio.create_task(caller())
+    try:
+        # The provider call finished; the guardrail is joining the abort watcher.
+        await asyncio.wait_for(slow_event.cancelling.wait(), GUARD)
+        assert controller.provider_calls_started == 1
+        task.cancel()
+        for _ in range(3):
+            await asyncio.sleep(0)
+    finally:
+        slow_event.release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, GUARD)
+    assert controller._active_provider_calls == 0
+    assert controller.provider_calls_started == 1
 
 
 # --------------------------------------------------------------------------- #
