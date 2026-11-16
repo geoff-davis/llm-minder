@@ -555,6 +555,16 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
         if prepared is not None:
             prepared.runtime_state.current_attempt.exception_usage = (target, observation)
 
+    def _observe_returned_usage(
+        self, raw_result: Any, strategy: LLMCallStrategy[Any]
+    ) -> TokenUsageObservation | None:
+        """Usage from a result the provider returned, or None if it can't be read."""
+        try:
+            _, token_usage, _ = _unpack_strategy_result(raw_result, strategy)
+            return self._token_extractor.observe_result(token_usage)
+        except Exception:
+            return None
+
     def _observe_exception_usage(self, exception: BaseException) -> TokenUsageObservation:
         """Observe once per physical attempt, including compatibility overrides."""
         prepared = self._current_prepared()
@@ -1655,6 +1665,8 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                             # One admission ticket per physical try (#331); a paused
                             # start settles it and the next pass asks again.
                             slot: AdmissionSlot | None = None
+                            returned_result: tuple[Any] | None = None
+                            settle_success = False
                             controller = self._abort_controller
                             if controller is not None and controller.admission is not None:
                                 warn_if_sdk_retries(strategy, controller.sdk_retry_warned)
@@ -1680,26 +1692,32 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                         # Guardrails join the provider child but may replace
                                         # its error with a deadline/abort/caller cancellation.
                                         # Capture reported usage before that replacement.
-                                        nonlocal interrupted_usage
+                                        # Likewise keep a returned result: the guardrail
+                                        # cleanup can still suspend, and a cancellation
+                                        # there must not lose the call's usage (#380).
+                                        nonlocal interrupted_usage, returned_result
                                         try:
                                             if work_item.messages is not None:
-                                                return await strategy.execute_messages(
+                                                result = await strategy.execute_messages(
                                                     messages_for_attempt(work_item),
                                                     attempt_number,
                                                     timeout,
                                                     retry_state,
                                                 )
-                                            return await strategy.execute(
-                                                work_item.prompt,
-                                                attempt_number,
-                                                timeout,
-                                                retry_state,
-                                            )
+                                            else:
+                                                result = await strategy.execute(
+                                                    work_item.prompt,
+                                                    attempt_number,
+                                                    timeout,
+                                                    retry_state,
+                                                )
                                         except BaseException as provider_failure:
                                             interrupted_usage = self._observe_exception_usage(
                                                 provider_failure
                                             )
                                             raise
+                                        returned_result = (result,)
+                                        return result
 
                                     raw_result = await await_with_guardrails(
                                         execute_observing_failure(),
@@ -1758,11 +1776,24 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                             except _AdmissionPaused:
                                 raise
                             except BaseException as provider_error:
-                                usage_observation = (
-                                    interrupted_usage
-                                    if interrupted_usage is not None
-                                    else self._observe_exception_usage(provider_error)
+                                returned_observation = (
+                                    self._observe_returned_usage(returned_result[0], strategy)
+                                    if returned_result is not None and usage_observation is None
+                                    else None
                                 )
+                                if returned_observation is not None:
+                                    # The provider returned but this caller was interrupted
+                                    # afterwards (guardrail cleanup): the call succeeded
+                                    # and its usage was billed. The attempt itself failed,
+                                    # so only the admission settle reports success.
+                                    usage_observation = returned_observation
+                                    settle_success = True
+                                elif usage_observation is None:
+                                    usage_observation = (
+                                        interrupted_usage
+                                        if interrupted_usage is not None
+                                        else self._observe_exception_usage(provider_error)
+                                    )
                                 if item_runtime is not None:
                                     item_runtime.current_attempt.exception_usage = (
                                         provider_error,
@@ -1788,7 +1819,7 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                             and usage_observation.known
                                             else None
                                         ),
-                                        provider_succeeded,
+                                        provider_succeeded or settle_success,
                                     )
                                 try:
                                     if reservation.provider_started:

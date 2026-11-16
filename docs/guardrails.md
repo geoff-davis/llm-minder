@@ -412,12 +412,17 @@ class HardSpendCap:
         return len(text.encode("utf-8")) + self.overhead_tokens
 
     def max_output(self, request: AttemptRequest) -> int:
+        # Providers differ in which alias wins when several are set, so take the
+        # largest. A bound that isn't a positive int can't be trusted to apply,
+        # so it brings back the default rather than shrinking the reservation.
         config = request.generation_config or {}
-        for key in ("max_tokens", "max_output_tokens", "max_completion_tokens"):
-            value = config.get(key)
-            if isinstance(value, int):
-                return value
-        return self.default_max_output
+        keys = ("max_tokens", "max_output_tokens", "max_completion_tokens")
+        bounds: list[int] = []
+        for key in (k for k in keys if k in config):
+            value = config[key]
+            valid = isinstance(value, int) and not isinstance(value, bool) and value > 0
+            bounds.append(value if valid else self.default_max_output)
+        return max(bounds, default=self.default_max_output)
 
     def admit(self, request: AttemptRequest) -> float:
         p = self.prices

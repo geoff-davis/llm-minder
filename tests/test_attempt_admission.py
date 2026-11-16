@@ -6,6 +6,7 @@ import asyncio
 import itertools
 import logging
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -417,6 +418,49 @@ async def test_cooldown_pause_at_start_settles_and_asks_again():
     hook.assert_settled_exactly_once()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel", [False, True])
+async def test_cancellation_during_guardrail_cleanup_keeps_returned_usage(monkeypatch, cancel):
+    """A caller cancelled after the provider returned, while the guardrail cleanup
+    awaits its control tasks, still settles the returned usage as a success (#380 R1)."""
+    hook = Recorder()
+    returned: list[bool] = []
+
+    class Returning(FakeStrategy):
+        async def execute(self, *args: Any, **kwargs: Any) -> Any:
+            result = await super().execute(*args, **kwargs)
+            returned.append(True)
+            return result
+
+    real_gather = asyncio.gather
+    intercepted: list[bool] = []
+
+    def gather(*args: Any, **kwargs: Any) -> Any:
+        future = real_gather(*args, **kwargs)
+        caller = sys._getframe(1).f_code.co_name
+        if returned and not intercepted and caller == "await_with_guardrails":
+            intercepted.append(True)
+            if cancel:
+                task = asyncio.current_task()
+                assert task is not None
+                asyncio.get_running_loop().call_soon(task.cancel)
+        return future
+
+    monkeypatch.setattr(asyncio, "gather", gather)
+    strategy = Returning("ok", token_usage=_USAGE)
+    # The cancelled task is the worker; the processor records the item and returns.
+    await process_prompts(
+        strategy,
+        ["x"],
+        config=ProcessorConfig(max_workers=1, guardrails=GuardrailConfig(admission=hook)),
+    )
+    monkeypatch.setattr(asyncio, "gather", real_gather)
+
+    assert intercepted, "the probe never reached the cleanup await"
+    assert [(t, _subset(u), ok) for t, u, ok in hook.settles] == [(("ticket", 0), _USAGE, True)]
+    hook.assert_settled_exactly_once()
+
+
 # --- Refusal -----------------------------------------------------------------
 
 
@@ -743,3 +787,68 @@ def test_documented_actual_cost_prices_anthropic_cache_reads_and_writes():
     again = cap.admit(request)
     cap.settle(again, {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}, False)
     assert cap.spent == pytest.approx(worst) and cap.reserved == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(
+    ("config", "expected"),
+    [
+        ({"max_tokens": 1, "max_output_tokens": 16_000}, 16_000),
+        ({"max_completion_tokens": 300, "max_tokens": 50}, 300),
+        ({"max_tokens": 500}, 500),
+        ({}, 9_000),
+        ({"max_tokens": True}, 9_000),
+        ({"max_tokens": 0}, 9_000),
+        ({"max_tokens": "16000"}, 9_000),
+        ({"max_tokens": 1, "max_output_tokens": False}, 9_000),
+        ({"max_tokens": 20_000, "max_output_tokens": None}, 20_000),
+    ],
+)
+def test_documented_cap_reserves_the_largest_output_bound(config, expected):
+    """Aliases can coexist and providers pick different ones; bools and invalid
+    bounds never shrink the reservation (#380 R2)."""
+    cap = _doc_example_namespace()["HardSpendCap"](
+        1.0,
+        _doc_example_namespace()["Prices"](input_per_mtok=0.0, output_per_mtok=1.0),
+        default_max_output=9_000,
+        overhead_tokens=0,
+    )
+    request = AttemptRequest(
+        item_id="x",
+        attempt=1,
+        try_number=1,
+        strategy=FakeStrategy("ok"),
+        prompt="",
+        messages=None,
+        generation_config=config,
+    )
+    assert cap.max_output(request) == expected
+
+
+def test_documented_cap_covers_the_bound_deepseek_responses_sends():
+    from unittest.mock import MagicMock
+
+    from llm_minder import DeepSeekModel, ModelStrategy
+
+    config = {"max_tokens": 1, "max_output_tokens": 16_000}
+    model = DeepSeekModel("model", MagicMock(), api_surface="responses")
+    wire = model._responses_request("p", temperature=None, system_instruction=None, config=config)
+    namespace = _doc_example_namespace()
+    cap = namespace["HardSpendCap"](
+        0.001,
+        namespace["Prices"](input_per_mtok=0.0, output_per_mtok=1.0),
+        default_max_output=100,
+        overhead_tokens=0,
+    )
+    request = AttemptRequest(
+        item_id="x",
+        attempt=1,
+        try_number=1,
+        strategy=ModelStrategy(model, lambda response: response.text),
+        prompt="p",
+        messages=None,
+        generation_config=config,
+    )
+    # The request may produce wire["max_output_tokens"] tokens: $0.016 against a $0.001 cap.
+    assert cap.max_output(request) >= wire["max_output_tokens"]
+    with pytest.raises(AdmissionRefused):
+        cap.admit(request)
