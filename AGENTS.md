@@ -168,8 +168,8 @@ Read the named file before changing any of these.
   `make markdown-lint` after `npm ci`.
 - Every `--cov` run, including the 3.12 coverage leg, enforces `fail_under` in `[tool.coverage.report]`. Raise it
   when coverage grows; never lower it to pass.
-- Every checkout has a 5-minute step timeout, a low-speed abort and one retry step. Keep that pattern in new
-  jobs.
+- Every checkout has a 2-minute step timeout, a low-speed abort and one retry step, and each job's timeout leaves
+  4 minutes for those two attempts on top of its own work. Keep that pattern in new jobs.
 - `docs.yml` deploys the MkDocs site to GitHub Pages on push to `main`.
 - `publish.yml` is tag-triggered: version check, `make package-check`, PyPI upload. It does not create the GitHub
   release; `/release-tag` does, after PyPI confirms.

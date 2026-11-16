@@ -21,8 +21,9 @@ jobs:
       id: checkout
       uses: actions/checkout@v7.0.1
       # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
-      # retries can run instead of hanging; the step cap bounds the rest.
-      timeout-minutes: 5
+      # retries can run instead of hanging; the step cap bounds the rest, and two
+        # 2-minute attempts leave the job's own budget for its work.
+      timeout-minutes: 2
       continue-on-error: true
       env:
         GIT_HTTP_LOW_SPEED_LIMIT: "1"
@@ -32,7 +33,7 @@ jobs:
     - name: Retry checkout
       if: steps.checkout.outcome != 'success'
       uses: actions/checkout@v7.0.1
-      timeout-minutes: 5
+      timeout-minutes: 2
       env:
         GIT_HTTP_LOW_SPEED_LIMIT: "1"
         GIT_HTTP_LOW_SPEED_TIME: "60"
@@ -77,8 +78,9 @@ jobs:
       id: checkout
       uses: actions/checkout@v7.0.1
       # A transfer below 1 byte/s for 60 s aborts, so checkout's own fetch
-      # retries can run instead of hanging; the step cap bounds the rest.
-      timeout-minutes: 5
+      # retries can run instead of hanging; the step cap bounds the rest, and two
+        # 2-minute attempts leave the job's own budget for its work.
+      timeout-minutes: 2
       continue-on-error: true
       env:
         GIT_HTTP_LOW_SPEED_LIMIT: "1"
@@ -88,7 +90,7 @@ jobs:
     - name: Retry checkout
       if: steps.checkout.outcome != 'success'
       uses: actions/checkout@v7.0.1
-      timeout-minutes: 5
+      timeout-minutes: 2
       env:
         GIT_HTTP_LOW_SPEED_LIMIT: "1"
         GIT_HTTP_LOW_SPEED_TIME: "60"
