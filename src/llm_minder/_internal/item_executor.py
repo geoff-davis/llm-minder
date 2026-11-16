@@ -89,6 +89,7 @@ from .guardrails import (
     remaining_seconds,
 )
 from .logical_item import PreparedLogicalItem
+from .messages import item_text, messages_for_attempt
 
 if TYPE_CHECKING:
     from ..base import ProcessingStats
@@ -1391,7 +1392,7 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
         estimate: TokenEstimate | None = None
         if admission_state.quota_gate.tpm_enabled:
             estimate = await self._resolve_token_estimate(
-                prompt=work_item.prompt,
+                prompt=item_text(work_item),
                 strategy=strategy,
                 attempt=attempt_number,
                 retry_state=retry_state,
@@ -1597,8 +1598,16 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                 llm_start_time = time.time()
                 execution_started = time.perf_counter()
                 try:
+                    if work_item.messages is None:
+                        dry_run_call = strategy.dry_run(work_item.prompt)
+                    else:
+                        # A messages item gets the base placeholder: an overridden
+                        # dry_run() is written for a str prompt.
+                        from ..llm_strategies import LLMCallStrategy as _BaseStrategy
+
+                        dry_run_call = _BaseStrategy.dry_run(strategy, item_text(work_item))
                     output, token_usage = await await_with_guardrails(
-                        strategy.dry_run(work_item.prompt),
+                        dry_run_call,
                         item_deadline=deadline,
                         item_id=work_item.item_id,
                         abort_controller=self._abort_controller,
@@ -1658,6 +1667,13 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                         # Capture reported usage before that replacement.
                                         nonlocal interrupted_usage
                                         try:
+                                            if work_item.messages is not None:
+                                                return await strategy.execute_messages(
+                                                    messages_for_attempt(work_item),
+                                                    attempt_number,
+                                                    timeout,
+                                                    retry_state,
+                                                )
                                             return await strategy.execute(
                                                 work_item.prompt,
                                                 attempt_number,

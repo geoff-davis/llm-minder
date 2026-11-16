@@ -235,6 +235,15 @@ so files written by earlier releases still load and resume.
 - **Empty-response reasons.** `EmptyResponseError.reason` and `.provider_reason`,
   `TruncatedResponseError` and `ErrorCategory.RESPONSE_TRUNCATED` are new in 1.0 and
   provisional.
+- **Structured message prompts.** `LLMWorkItem.messages`,
+  `LLMCallStrategy.execute_messages()` (and `ModelStrategy.execute_messages()`),
+  `FakeStrategy(messages_handler=)`, and message lists accepted by `call()`,
+  `call_result()`, `LLMCallPool.submit()`/`submit_result()`, `process_prompts()` and
+  `process_stream()` are new in 1.2 and provisional (see
+  [Structured message prompts](structured-prompts.md)). The message shape, the
+  per-provider mapping and the flattened rendering given to token estimators may
+  change; string prompts and their checkpoint fingerprints are stable and unchanged.
+  The `raw_messages` artifact field is provisional on the same terms.
 - **Log probabilities.** `.logprobs` and the `logprobs` metadata key pass through each
   provider's own structure and stay provisional; the other typed views are stable
   (see above).

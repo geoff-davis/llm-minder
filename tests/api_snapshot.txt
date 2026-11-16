@@ -20,6 +20,7 @@ class AnthropicStrategy(ModelStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -163,6 +164,7 @@ class CallableStrategy(LLMCallStrategy)
     async def dry_run(self, prompt: str) -> tuple[TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -198,6 +200,7 @@ class DeepSeekStrategy(ModelStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -304,6 +307,7 @@ class GeminiStrategy(ModelStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -356,8 +360,8 @@ class LLMCallPool(Generic)
     def describe_limits(self) -> EffectiveLimits
     def reset_cache_stats(self) -> None
     def resume(self) -> BatchTermination | None
-    async def submit(self, prompt: str, *, timeout: float | None = None) -> TOutput
-    async def submit_result(self, prompt: str, *, timeout: float | None = None) -> WorkItemResult[TOutput, Any]
+    async def submit(self, prompt: str | Sequence[Mapping[str, Any]], *, timeout: float | None = None) -> TOutput
+    async def submit_result(self, prompt: str | Sequence[Mapping[str, Any]], *, timeout: float | None = None) -> WorkItemResult[TOutput, Any]
     property termination -> BatchTermination | None
 class LLMCallStrategy(ABC, Generic)
     async def cleanup(self) -> None
@@ -365,6 +369,7 @@ class LLMCallStrategy(ABC, Generic)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -396,8 +401,9 @@ class LLMWorkItem(Generic)
     field strategy: LLMCallStrategy[TOutput]
     field prompt: str = ''
     field context: ~TContext | None = None
+    field messages: Sequence[Mapping[str, Any]] | None (kw_only) = None
     field submission_index: int | None = None
-    __init__(self, item_id: str, strategy: LLMCallStrategy[TOutput], prompt: str = '', context: ~TContext | None = None, submission_index: int | None = None) -> None
+    __init__(self, item_id: str, strategy: LLMCallStrategy[TOutput], prompt: str = '', context: ~TContext | None = None, submission_index: int | None = None, *, messages: Sequence[Mapping[str, Any]] | None = None) -> None
 class LimitRow
     field name: str
     field value: int | float | None
@@ -431,6 +437,7 @@ class ModelStrategy(LLMCallStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -465,6 +472,7 @@ class OpenAIStrategy(ModelStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -486,6 +494,7 @@ class OpenRouterStrategy(ModelStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -560,6 +569,7 @@ class PydanticAIStrategy(LLMCallStrategy)
     async def dry_run(self, prompt: str) -> tuple[~TOutput, TokenUsage]
     def estimate_tokens(self, prompt: str, attempt: int, state: RetryState | None) -> TokenEstimate | Awaitable[TokenEstimate] | None
     async def execute(self, prompt: str, attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
+    async def execute_messages(self, messages: Sequence[Mapping[str, Any]], attempt: int, timeout: float, state: RetryState | None = None) -> tuple[~TOutput, TokenUsage, dict[str, Any] | None]
     property max_concurrency -> int | None
     async def on_error(self, exception: Exception, attempt: int, state: RetryState | None = None) -> None
     async def prepare(self) -> None
@@ -700,8 +710,8 @@ class WorkItemTiming
     property retry_backoff_seconds -> float
     property startup_ramp_wait_seconds -> float
 def attach_token_usage(exception: BaseException, tokens: TokenUsage | Mapping[str, int]) -> None
-async def call(strategy: LLMCallStrategy[TOutput], prompt: str, *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> TOutput
-async def call_result(strategy: LLMCallStrategy[TOutput], prompt: str, *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> WorkItemResult[TOutput, Any]
+async def call(strategy: LLMCallStrategy[TOutput], prompt: str | Sequence[Mapping[str, Any]], *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> TOutput
+async def call_result(strategy: LLMCallStrategy[TOutput], prompt: str | Sequence[Mapping[str, Any]], *, config: ProcessorConfig | None = None, error_classifier: Any = None) -> WorkItemResult[TOutput, Any]
 def describe_limits(config: ProcessorConfig, *strategies: Any) -> EffectiveLimits
 def llm(spec: str, *, response_parser: Callable[[LLMResponse], Any] | None = None, temperature: float | None = None, generation_config: dict[str, Any] | None = None, **model_kwargs: Any) -> ModelStrategy[Any]
 async def process_prompts(strategy: LLMCallStrategy[TOutput], prompts: PromptSource, *, config: ProcessorConfig | None = None, concurrency: int | None = None, progress: bool | ProgressCallbackFunc = False, preserve_order: bool = False, artifact_store: ArtifactStore | None = None, resume: ResumePolicy = <ResumePolicy.NONE: 'none'>, **processor_kwargs: Any) -> BatchResult[TOutput, Any]

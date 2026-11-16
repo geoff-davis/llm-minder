@@ -1012,3 +1012,136 @@ async def test_read_results_needs_no_write_permission(
     finally:
         directory.chmod(0o755)
         path.chmod(0o644)
+
+
+# ── Structured message prompts (#315) ────────────────────────────────────────
+
+
+class _MessagesStrategy(_CountingStrategy):
+    """_CountingStrategy that also accepts message lists."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.message_calls: list[Any] = []
+
+    async def execute_messages(
+        self, messages: Any, attempt: int, timeout: float, state: Any = None
+    ) -> tuple[str, Any, None]:
+        self.message_calls.append(messages)
+        text = messages[-1]["content"]
+        return f"msgs:{text}", {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}, None
+
+
+_STRUCTURED = [
+    {"role": "system", "content": "Be terse."},
+    {"role": "user", "content": [{"type": "text", "text": "x", "cache_control": {"t": "e"}}]},
+]
+
+
+def _stored_raw_inputs(store_type: Any, path: Path) -> dict[str, Any]:
+    """item_id -> what the store persisted as the raw input."""
+    if store_type is JsonlArtifactStore:
+        return {
+            r["item_id"]: {k: r[k] for k in ("raw_prompt", "raw_messages") if k in r}
+            for r in _records(path)
+            if r.get("record_type") == "item"
+        }
+    with closing(sqlite3.connect(path)) as connection:
+        rows = connection.execute("SELECT item_id, raw_prompt_json FROM item_records").fetchall()
+    return {item_id: None if raw is None else json.loads(raw) for item_id, raw in rows}
+
+
+@pytest.mark.asyncio
+async def test_messages_round_trip_raw_input_and_replay(
+    tmp_path: Path, store_type: Any, suffix: str
+) -> None:
+    path = tmp_path / f"messages{suffix}"
+    entries: list[Any] = [("text", "x"), ("structured", _STRUCTURED)]
+    first = _MessagesStrategy()
+    batch = await process_prompts(
+        first,
+        entries,
+        artifact_store=store_type(path, identity=_identity(), include_prompt=True),
+    )
+    assert all(r.success for r in batch.results)
+    assert first.calls == ["x"] and first.message_calls == [_STRUCTURED]
+
+    stored = _stored_raw_inputs(store_type, path)
+    if store_type is JsonlArtifactStore:
+        # raw_prompt stays on every item record (null for messages items, as for
+        # private records); raw_messages appears only on messages items.
+        assert stored == {
+            "text": {"raw_prompt": "x"},
+            "structured": {"raw_prompt": None, "raw_messages": _STRUCTURED},
+        }
+    else:
+        # No schema change: the existing column holds a JSON string or a JSON array.
+        assert stored == {"text": "x", "structured": _STRUCTURED}
+
+    # Both forms load in inspection.
+    if store_type is JsonlArtifactStore:
+        inspected = store_type.read_results(path)
+    else:
+        inspected = await store_type.read_results(path)
+    assert sorted(r.item_id for r in inspected.results) == ["structured", "text"]
+
+    replay = _MessagesStrategy()
+    resumed = await process_prompts(
+        replay,
+        entries,
+        artifact_store=store_type(path, identity=_identity(), include_prompt=True),
+        resume=ResumePolicy.REUSE_SUCCESSES,
+    )
+    assert replay.calls == [] and replay.message_calls == []
+    assert all(r.success for r in resumed.results)
+
+
+@pytest.mark.asyncio
+async def test_messages_are_not_stored_without_include_prompt(
+    tmp_path: Path, store_type: Any, suffix: str
+) -> None:
+    path = tmp_path / f"private{suffix}"
+    await process_prompts(
+        _MessagesStrategy(),
+        [("structured", _STRUCTURED)],
+        artifact_store=store_type(path, identity=_identity()),
+    )
+    stored = _stored_raw_inputs(store_type, path)
+    if store_type is JsonlArtifactStore:
+        assert stored == {"structured": {"raw_prompt": None, "raw_messages": None}}
+    else:
+        assert stored == {"structured": None}
+
+
+@pytest.mark.asyncio
+async def test_string_and_messages_items_never_replay_against_each_other(
+    tmp_path: Path, store_type: Any, suffix: str
+) -> None:
+    path = tmp_path / f"cross{suffix}"
+    # Same item ids, same visible text: a string item, and a one-message item.
+    await process_prompts(
+        _MessagesStrategy(),
+        [("a", "x"), ("b", [{"role": "user", "content": "x"}])],
+        artifact_store=store_type(path, identity=_identity()),
+    )
+
+    swapped = _MessagesStrategy()
+    await process_prompts(
+        swapped,
+        [("a", [{"role": "user", "content": "x"}]), ("b", "x")],
+        artifact_store=store_type(path, identity=_identity()),
+        resume=ResumePolicy.REUSE_ALL,
+    )
+    # Neither replays: both are re-executed against the provider.
+    assert swapped.calls == ["x"]
+    assert swapped.message_calls == [[{"role": "user", "content": "x"}]]
+
+    # A changed message (here, only cache_control) is a different input too.
+    changed = _MessagesStrategy()
+    await process_prompts(
+        changed,
+        [("a", [{"role": "user", "content": [{"type": "text", "text": "x"}]}])],
+        artifact_store=store_type(path, identity=_identity()),
+        resume=ResumePolicy.REUSE_ALL,
+    )
+    assert len(changed.message_calls) == 1

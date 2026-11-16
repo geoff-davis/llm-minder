@@ -7,6 +7,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any, TypeVar
 
+from .._internal.messages import anthropic_system_text, to_anthropic
 from ..base import LLMResponse
 from ..strategies.errors import EmptyResponseReason
 from . import _sdk
@@ -110,7 +111,9 @@ class AnthropicModel:
     ``AsyncAnthropicFoundry``). Calls are non-streaming.
 
     A string prompt becomes one user message and ``system_instruction`` the
-    top-level ``system`` field. ``temperature`` is sent only when set; current
+    top-level ``system`` field. A list prompt is Chat-shaped messages (#315):
+    leading ``system`` messages become ``system``, and ``user``/``assistant``
+    messages pass through with their text parts (``cache_control`` included). ``temperature`` is sent only when set; current
     Claude models reject sampling parameters, and the API's 400 fails fast as a
     non-retryable ``client_error``. Thinking and effort have no defaults here:
     pass them through ``extra_body`` or per-call ``config`` (for example
@@ -220,8 +223,12 @@ class AnthropicModel:
         """Call ``client.messages.create`` and normalize the response.
 
         Args:
-            prompt: A string, sent as one user message. Structured message
-                lists are not supported yet (#315).
+            prompt: A string, sent as one user message, or a list of
+                Chat-shaped messages. Leading ``system`` messages become the
+                top-level ``system`` (a string, or text blocks when a part
+                carries extras such as ``cache_control``) and replace both the
+                per-call and the default ``system_instruction``; ``user`` and
+                ``assistant`` messages pass through. Text parts only.
             temperature: Sampling temperature, sent only when not ``None``.
             system_instruction: Per-call override for the ``system`` prompt.
             config: Per-call request fields merged over ``extra_body``, e.g.
@@ -232,16 +239,18 @@ class AnthropicModel:
             Normalized LLMResponse.
 
         Raises:
-            TypeError: ``prompt`` is not a string.
+            ValueError: A message list Anthropic can't express (a ``system``
+                message after a non-system one, another role, a non-text part,
+                or message keys other than ``role`` and ``content``).
             EmptyResponseError: The response had no text (a
                 ``TruncatedResponseError`` when it stopped at ``max_tokens``).
         """
-        if not isinstance(prompt, str):
-            raise TypeError(
-                f"{type(self).__name__} takes a string prompt; structured message lists "
-                "(and per-block cache_control) are not supported yet. See "
-                "https://github.com/geoff-davis/llm-minder/issues/315."
-            )
+        list_system: str | list[dict[str, Any]] | None = None
+        if isinstance(prompt, str):
+            messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
+        else:
+            # Before prepare(): an unsupported shape fails before any client work.
+            messages, list_system = to_anthropic(prompt)
         await self.prepare()
         self._client_used = True
 
@@ -255,9 +264,15 @@ class AnthropicModel:
         request: dict[str, Any] = {
             "model": self._model,
             "max_tokens": self._max_tokens,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
         }
-        system = system_instruction or self._default_system_instruction
+        # Precedence: system messages in the list, then the per-call
+        # system_instruction, then the model default.
+        system = (
+            list_system
+            if list_system is not None
+            else system_instruction or self._default_system_instruction
+        )
         if system is not None:
             request["system"] = system
         # Omitted when None: current Claude models reject sampling parameters.
@@ -321,7 +336,7 @@ class AnthropicModel:
                 raw=response,
                 cache_write_input_tokens=cache_writes,
             ),
-            label or _cache_group(None, effective_system),
+            label or _cache_group(None, anthropic_system_text(effective_system)),
         )
 
     @staticmethod

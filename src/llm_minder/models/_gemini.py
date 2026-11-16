@@ -8,6 +8,7 @@ import logging
 import time
 from typing import Any
 
+from .._internal.messages import is_chat_message_list, to_gemini
 from ..base import LLMResponse
 from . import _sdk
 
@@ -142,7 +143,14 @@ class GeminiModel:
         """Generate a response from Gemini.
 
         Args:
-            prompt: Text prompt or list of content parts (multimodal).
+            prompt: Text prompt, a list of content parts (multimodal) passed to
+                google-genai as ``contents``, or a list of Chat-shaped messages
+                (#315). A list is messages when any element is a mapping with a
+                ``content`` key, which google-genai contents never use. Messages
+                map to Gemini contents: ``system`` (only at the start) becomes
+                ``system_instruction`` and replaces the per-call and default
+                ones, ``assistant`` becomes role ``model``, and text parts become
+                ``{"text": ...}``. Another role or part type raises ``ValueError``.
             temperature: Sampling temperature. Pass ``None`` to omit it and
                 use the model default.
             system_instruction: Override default system instruction.
@@ -151,6 +159,10 @@ class GeminiModel:
         Returns:
             Normalized LLMResponse.
         """
+        list_si: str | None = None
+        contents: Any = prompt
+        if is_chat_message_list(prompt):
+            contents, list_si = to_gemini(prompt)
         await self.prepare()
 
         # Build config dict
@@ -158,7 +170,9 @@ class GeminiModel:
         if temperature is not None:
             call_config["temperature"] = temperature
 
-        si = system_instruction or self._default_system_instruction
+        # Precedence: system messages in the list, then the per-call
+        # system_instruction, then the model default.
+        si = list_si or system_instruction or self._default_system_instruction
         if si is not None:
             call_config["system_instruction"] = si
 
@@ -173,7 +187,7 @@ class GeminiModel:
         # even though the type stubs say GenerateContentConfig)
         response = await self._client.aio.models.generate_content(
             model=self._model,
-            contents=prompt,
+            contents=contents,
             config=call_config,  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
         )
 
@@ -441,7 +455,10 @@ class GeminiCachedModel:
         """Generate a response using the cached context.
 
         Args:
-            prompt: Text prompt or multimodal content parts.
+            prompt: Text prompt, multimodal content parts, or Chat-shaped
+                messages (mapped as for :meth:`GeminiModel.generate`, sent after
+                the cached content). A ``system`` message raises ``ValueError``:
+                the system instruction is part of the cache.
             temperature: Sampling temperature. Pass ``None`` to omit it and
                 use the model default.
             system_instruction: Not supported with caching — raises ValueError.
@@ -455,6 +472,15 @@ class GeminiCachedModel:
                 "system_instruction cannot be overridden per-call with cached models. "
                 "The system instruction is baked into the cache at creation time."
             )
+        contents: Any = prompt
+        if is_chat_message_list(prompt):
+            contents, list_si = to_gemini(prompt, provider=type(self).__name__)
+            if list_si is not None:
+                raise ValueError(
+                    f"{type(self).__name__} messages: a system message cannot be sent with "
+                    "cached content. Put system instructions in the model's cached_content, "
+                    "which is fixed when the cache is created."
+                )
 
         # Auto-renew if expired
         if self._auto_renew and self._is_cache_expired():
@@ -499,7 +525,7 @@ class GeminiCachedModel:
         try:
             response = await self._client.aio.models.generate_content(
                 model=self._model,
-                contents=prompt,
+                contents=contents,
                 config=call_config,  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
             )
         except Exception as exc:
@@ -526,7 +552,7 @@ class GeminiCachedModel:
             call_config["cached_content"] = self._cache.name
             response = await self._client.aio.models.generate_content(
                 model=self._model,
-                contents=prompt,
+                contents=contents,
                 config=call_config,  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
             )
 

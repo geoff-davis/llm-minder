@@ -1187,11 +1187,7 @@ class SqliteArtifactStore:
                         record["error_category"],
                         int(bool(record["replay_eligible"])),
                         record["calculated_cost"],
-                        (
-                            None
-                            if record["raw_prompt"] is None
-                            else canonical_json(record["raw_prompt"])
-                        ),
+                        _raw_prompt_json(record),
                         (
                             None
                             if record["raw_context"] is None
@@ -1383,6 +1379,20 @@ class SqliteArtifactStore:
             self._connection = None
         if error is not None:
             raise error
+
+
+def _raw_prompt_json(record: dict[str, Any]) -> str | None:
+    """The ``raw_prompt_json`` column: a JSON string prompt, or a JSON array of messages.
+
+    A messages record (#315) stores its ``raw_messages`` in the same column rather
+    than a new one, so the SQLite schema version is unchanged. The two never mix:
+    a record has at most one of them, and a JSON string is distinguishable from an
+    array. No reader decodes this column for replay.
+    """
+    if record["raw_prompt"] is not None:
+        return canonical_json(record["raw_prompt"])
+    raw_messages = record.get("raw_messages")
+    return None if raw_messages is None else canonical_json(raw_messages)
 
 
 __all__ = [

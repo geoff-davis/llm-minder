@@ -114,7 +114,7 @@ this section.**
 | OpenAI                          | Automatic for long prefixes (minimum varies by model)    | None                    |
 | Gemini (implicit caching)       | Automatic for repeated long prefixes                     | None                    |
 | DeepSeek                        | Automatic, on-disk context cache                         | None                    |
-| Anthropic                       | **Opt-in** via `cache_control` markers on message blocks | Build structured prompt |
+| Anthropic                       | **Opt-in** via `cache_control` markers on message blocks | Pass `messages=`        |
 | Gemini explicit `CachedContent` | Not exposed via OpenRouter                               | Use `GeminiCachedModel` |
 
 `cached_input_tokens` is populated when the upstream cache hits;
@@ -233,42 +233,40 @@ for shapes and boundaries (stable from 1.0, except the provisional
 
 Anthropic requires you to mark the message blocks you want cached with
 `cache_control: {"type": "ephemeral"}`. OpenRouter passes the markers
-through. The cleanest way to do this through the framework is a small custom
-strategy that builds the message list inside `execute()`:
+through. Give the work item a message list with `messages=` instead of a
+`prompt` (see [Structured message prompts](structured-prompts.md)); the
+built-in strategy sends it as written, with no custom strategy:
 
 ```python
-from llm_minder.base import LLMResponse, RetryState, TokenUsage
-from llm_minder.llm_strategies import LLMCallStrategy
+from llm_minder import LLMWorkItem, OpenRouterModel, OpenRouterStrategy
 
+model = OpenRouterModel.from_api_key("anthropic/claude-haiku-4-5")
+strategy = OpenRouterStrategy(model)
 
-class CachedAnthropicStrategy(LLMCallStrategy[str]):
-    def __init__(self, model: OpenRouterModel, system_text: str) -> None:
-        self.model = model
-        self.system_text = system_text
+SYSTEM = [
+    {
+        "type": "text",
+        "text": shared_reference_text,  # the long, repeated prefix
+        "cache_control": {"type": "ephemeral"},
+    }
+]
 
-    async def execute(
-        self,
-        prompt: str,
-        attempt: int,
-        timeout: float,
-        state: RetryState | None = None,
-    ) -> tuple[str, TokenUsage, None]:
-        messages = [
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": self.system_text,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-            },
-            {"role": "user", "content": prompt},
-        ]
-        response: LLMResponse = await self.model.generate(messages)
-        return response.text, response.token_usage, None
+items = [
+    LLMWorkItem(
+        item_id=f"q{i}",
+        strategy=strategy,
+        messages=[
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": question},
+        ],
+    )
+    for i, question in enumerate(questions)
+]
 ```
+
+`process_prompts(strategy, [messages, ...])` and `call(strategy, messages)`
+accept the same lists. A system message in the list replaces the model's
+`system_instruction`.
 
 The first call writes the cache (paid at 1.25× normal input rate). Calls
 within ~5 minutes (default ephemeral TTL) hit the cache (paid at 0.1× normal
