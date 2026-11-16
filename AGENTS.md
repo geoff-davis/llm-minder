@@ -185,21 +185,24 @@ commit, push, merge, tag or publication.
 
 ### When review is required
 
-Review is required before pushing unless every changed file (`git diff --name-only <base>..<head>`) is on this
-list:
+Review is required before pushing unless every changed file (`git diff --name-only <base>..<head>`) is on the
+exempt list below. These paths are always reviewed and take precedence over it: `AGENTS.md` and `CLAUDE.md` at any
+depth, everything under `.claude/` and `.github/`, `.pre-commit-config.yaml`, `pyproject.toml`, `Makefile` and
+`scripts/`. Exempt:
 
-- `docs/**` (including `docs/internal/`), `CHANGELOG.md`, and `*.md` other than `AGENTS.md` and `CLAUDE.md`;
+- `docs/**` (including `docs/internal/`), `CHANGELOG.md` and other `*.md` files;
 - `uv.lock`, and Dependabot pull requests with green CI;
 - a whole-tree format commit that contains nothing else.
 
-Decide by the paths, not by whether the change feels behavioral. Agent instruction files, `.claude/`, hooks, CI
-and `pyproject.toml` are reviewed. Public-API, shared-policy (category lists, swallow-or-re-raise rules, replay
-predicates), artifact-schema and security changes also get the API or design agreed first. A release gets a review
-of the range since the last release before `/release-prep`.
+Decide by the paths, not by whether the change feels behavioral. Public-API, shared-policy (category lists,
+swallow-or-re-raise rules, replay predicates), artifact-schema and security changes also get the API or design
+agreed first. A release gets a review of the range since the last release before `/release-prep`.
 
 Every pull request description has a `Review:` line: either
-`docs/internal/reviews/<PR>_review.md, approved at <head SHA>` or `exempt: <which rule>`. The person merging checks
-it.
+`docs/internal/reviews/<branch>_review.md, approved at <head SHA>` or `exempt: <which rule>`. The person merging
+checks it. The handoff file is named for the branch, with `/` replaced by `-`
+(`feat-331-attempt-admission_review.md`), because the first review happens before the push and so before a PR
+number exists.
 
 ### Tiers
 
@@ -207,27 +210,30 @@ The implementer declares the tier in the handoff; the reviewer may raise it with
 
 | Tier | Applies to | Evidence | Rounds |
 | --- | --- | --- | --- |
+| Docs | A reviewed path whose change is prose only: agent instructions, `.claude/` commands and review context | Lint and the doc tests; the handoff states what the text now requires. No regression tests or probes | One, plus one to verify blocking fixes |
 | Small | A local fix that adds, removes or loosens no guard | Regression test failing on the pre-fix code; focused tests; lint and types | One |
 | Standard | New or changed logic, contracts, or the scope of a guard | As Small, plus a probe of each new or changed condition | One, plus one to verify blocking fixes |
 | Critical | Replay and record eligibility, store schemas, checkpoint and data-loss guards, cancellation and lock ordering, public API, security | Probes of every condition in the changed acceptance or refusal logic | Up to three |
 
 A condition probe mutates one conjunct, threshold or budget term in an isolated copy and counts as caught only when
-the intended assertion fails. An import error, a harness failure or removing a whole guard does not count.
+the intended assertion fails. An import error, a harness failure or removing a whole guard does not count. Exempt
+paths need no review at all; "Review Fixes & Handoffs" below applies to the code tiers.
 
 ### When implementing
 
 - Commit the slice locally with normal hooks; that commit is the review target. Do not amend or rebase it during
   the review; answer findings with new commits.
-- Write the handoff to `docs/internal/reviews/<PR>_review.md` before prompting (that directory is gitignored and
+- Write the handoff to `docs/internal/reviews/<branch>_review.md` before prompting (that directory is gitignored and
   local to the main checkout, which Codex also reads). Include base and head SHAs, tier, acceptance criteria,
-  evidence (each fix with its regression test shown failing on the base), the policy sweep where one applies,
+  evidence as the tier requires, the policy sweep where one applies,
   settled decisions from `.claude/review-context.md`, known limitations and out-of-scope items.
 - Prompt only an idle or done reviewer, without `--wait`, with the handoff path, the target and the round:
   `herdr agent prompt abl-reviewer "<request>"`. Keep the prompt short; the file holds the detail.
-- After sending, poll the handoff file in the background about once a minute until it holds a verdict naming this
-  round and the exact target, or until 60 minutes pass. An older verdict does not count, and an `idle` or `done`
-  state may predate the request. If the reviewer is blocked or settles without a matching verdict, inspect it with
-  `herdr agent read abl-reviewer`; do not resend. At the time limit, stop and tell the user.
+- After sending, poll the handoff file in the background about once a minute until it holds a
+  `## Reviewer verdict, round <n>` heading whose verdict names the exact target, or until 60 minutes pass. An older
+  verdict does not count, and an `idle` or `done` state may predate the request. If the reviewer is blocked or settles
+  without a matching verdict, inspect it with `herdr agent read abl-reviewer`; do not resend. At the time limit, stop
+  and tell the user.
 - Fix blocking findings. Record each non-blocking one with its home: a follow-up commit, an issue number, or
   deliberately unchanged with the reason.
 
@@ -240,7 +246,8 @@ the intended assertion fails. An import error, a harness failure or removing a w
 - Give each finding a stable ID (`R1`, `R2`, ...), severity, blocking or not, location, trigger and evidence. A
   finding blocks only if it defeats the acceptance criteria or introduces a regression. Separate confirmed defects
   from hypotheses.
-- Append the round and a verdict naming the exact target to the handoff file, then send one prompt to
+- Append the round under a `## Reviewer verdict, round <n>` heading, with a verdict naming the exact target, and
+  update the finding ledger. Then send one prompt to
   `abl-implementer` with the verdict.
 - Delete the round directory once the verdict is sent. Probe code and output that can't be regenerated go into the
   verdict or a committed regression test first.
