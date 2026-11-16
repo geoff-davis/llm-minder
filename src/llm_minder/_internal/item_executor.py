@@ -61,6 +61,7 @@ from .admission import (
     QuotaReservation,
     ScopeAdmissionState,
 )
+from .attempt_admission import admission_slot, warn_if_sdk_retries
 from .backoff import apply_jitter, capped_backoff
 from .budget import BudgetTracker
 from .cache_groups import CacheHitTracker
@@ -84,6 +85,7 @@ from .execution_state import (
 from .guardrails import (
     AbortCause,
     AbortController,
+    AdmissionSlot,
     _OperationTimerExpired,
     await_with_guardrails,
     remaining_seconds,
@@ -1650,6 +1652,19 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                             # Captured before any await: retries replace the
                             # current attempt on the shared runtime state.
                             budget_try_number = current_try_number(retry_state) or attempt_number
+                            # One admission ticket per physical try (#331); a paused
+                            # start settles it and the next pass asks again.
+                            slot: AdmissionSlot | None = None
+                            controller = self._abort_controller
+                            if controller is not None and controller.admission is not None:
+                                warn_if_sdk_retries(strategy, controller.sdk_retry_warned)
+                                slot = admission_slot(
+                                    work_item,
+                                    strategy,
+                                    attempt=attempt_number,
+                                    try_number=budget_try_number,
+                                    retry_state=retry_state,
+                                )
                             try:
                                 try:
                                     remaining = remaining_seconds(
@@ -1694,6 +1709,7 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                         operation_timeout=attempt_timeout,
                                         active_provider=True,
                                         on_start=mark_provider_started,
+                                        admission=slot,
                                     )
                                 except ItemDeadlineExceeded:
                                     if item_runtime is not None:
@@ -1703,7 +1719,7 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                     raise
                                 except (BatchDeadlineExceeded, BatchAbortedError):
                                     if self._abort_controller is not None:
-                                        await self._abort_controller.announce_call_cap()
+                                        await self._abort_controller.announce_pending()
                                     raise
                                 except _OperationTimerExpired as timeout_exc:
                                     elapsed = time.time() - llm_start_time
@@ -1760,6 +1776,20 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                 # if pricing raised; the abort is announced last.
                                 budget_cause: AbortCause | None = None
                                 cache_cause: AbortCause | None = None
+                                if slot is not None and controller is not None:
+                                    # Exactly once per admitted ticket, before any
+                                    # await (a no-op if a pre-start path settled it).
+                                    # It never raises: a failing settle stops the run.
+                                    controller.settle_attempt(
+                                        slot,
+                                        (
+                                            usage_observation.usage
+                                            if usage_observation is not None
+                                            and usage_observation.known
+                                            else None
+                                        ),
+                                        provider_succeeded,
+                                    )
                                 try:
                                     if reservation.provider_started:
                                         budget_cause = self._record_budget_usage(
@@ -1834,6 +1864,9 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                         cache_tracker = self._cache_tracker
                                         if cache_cause is not None and cache_tracker is not None:
                                             await cache_tracker.announce(cache_cause)
+                                        if slot is not None and controller is not None:
+                                            # A refusal or failed settle in this attempt.
+                                            await controller.announce_pending()
                     except _AdmissionPaused:
                         # Capacity has been released and the unstarted quota refunded.
                         # Rejoin FIFO at the tail; this is still the same physical try.

@@ -59,6 +59,7 @@ from .artifacts import (
     JsonlArtifactStore,
     ResumePolicy,
 )
+from .attempt_admission import AttemptAdmission, AttemptRequest
 
 # Core classes
 from .base import (
@@ -168,6 +169,7 @@ from .sqlite_artifacts import SqliteArtifactStore, SqliteDurability
 
 # Error classification and rate limit strategies
 from .strategies import (
+    AdmissionRefused,
     AsyncBatchLLMError,
     BatchAbortedError,
     BatchAdmissionClosedError,
@@ -273,6 +275,8 @@ __all__ = [
     "ProcessorConfig",
     "AbortMode",
     "AttemptUsage",
+    "AttemptAdmission",
+    "AttemptRequest",
     "GuardrailConfig",
     "RateLimitConfig",
     "RetryConfig",
@@ -330,6 +334,7 @@ __all__ = [
     "ItemDeadlineExceeded",
     "MiddlewareContractError",
     "BatchBudgetExceeded",
+    "AdmissionRefused",
     "BatchDeadlineExceeded",
     "AsyncBatchLLMError",
     "LLMMinderError",

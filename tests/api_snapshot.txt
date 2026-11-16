@@ -4,6 +4,7 @@
 class AbortMode(str, Enum)
     DRAIN_ACTIVE = 'drain_active'
     CANCEL_ACTIVE = 'cancel_active'
+class AdmissionRefused(BatchAbortedError)
 class AnthropicErrorClassifier(ErrorClassifier)
     def classify(self, exception: Exception) -> ErrorInfo
 class AnthropicModel
@@ -47,6 +48,18 @@ class ArtifactStore(Protocol)
     async def lookup(self, work_item: LLMWorkItem[Any, Any, Any], prepared_item: Any, policy: ResumePolicy) -> WorkItemResult[Any, Any] | None
     async def prepare_item(self, work_item: LLMWorkItem[Any, Any, Any]) -> Any
 AsyncBatchLLMError = LLMMinderError
+class AttemptAdmission(Protocol)
+    def admit(self, request: AttemptRequest) -> object
+    def settle(self, ticket: object, usage: TokenUsage | None, success: bool) -> None
+class AttemptRequest
+    field item_id: str
+    field attempt: int
+    field try_number: int
+    field strategy: LLMCallStrategy[Any]
+    field prompt: str
+    field messages: Sequence[Mapping[str, Any]] | None
+    field generation_config: Mapping[str, Any] | None
+    __init__(self, item_id: str, attempt: int, try_number: int, strategy: LLMCallStrategy[Any], prompt: str, messages: Sequence[Mapping[str, Any]] | None, generation_config: Mapping[str, Any] | None) -> None
 class AttemptTiming
     field attempt: int
     field try_number: int
@@ -119,11 +132,11 @@ class BatchResult(Generic)
     def to_json(self, *, encoder: ValueEncoder | None = None, indent: int | None = 2) -> str
     def to_jsonl(self, path: str | Path, *, encoder: ValueEncoder | None = None) -> None
 class BatchTermination
-    field kind: Literal['completed', 'batch_timeout', 'fail_fast', 'budget_exceeded', 'artifact_error'] = 'completed'
+    field kind: Literal['completed', 'batch_timeout', 'fail_fast', 'budget_exceeded', 'admission_refused', 'artifact_error'] = 'completed'
     field reason: str | None = None
     field error_category: str | None = None
     field triggering_item_id: str | None = None
-    __init__(self, kind: Literal['completed', 'batch_timeout', 'fail_fast', 'budget_exceeded', 'artifact_error'] = 'completed', reason: str | None = None, error_category: str | None = None, triggering_item_id: str | None = None) -> None
+    __init__(self, kind: Literal['completed', 'batch_timeout', 'fail_fast', 'budget_exceeded', 'admission_refused', 'artifact_error'] = 'completed', reason: str | None = None, error_category: str | None = None, triggering_item_id: str | None = None) -> None
 class CacheFloorBreach
     field group: str | None
     field window_hit_rate: float | None
@@ -246,6 +259,7 @@ class ErrorCategory(_StrValueEnum)
     BATCH_DEADLINE_EXCEEDED = 'batch_deadline_exceeded'
     BATCH_ABORTED = 'batch_aborted'
     BATCH_BUDGET_EXCEEDED = 'batch_budget_exceeded'
+    BATCH_ADMISSION_REFUSED = 'batch_admission_refused'
     CACHE_HIT_RATE_BELOW_FLOOR = 'cache_hit_rate_below_floor'
     TOKEN_ESTIMATOR_REQUIRED = 'token_estimator_required'
     TOKEN_ESTIMATION_ERROR = 'token_estimation_error'
@@ -337,7 +351,8 @@ class GuardrailConfig
     field max_provider_calls: int | None (kw_only) = None
     field min_cache_hit_rate: float | None (kw_only) = None
     field cache_hit_window: int (kw_only) = 50
-    __init__(self, *, total_timeout_per_item: float | None = None, batch_timeout: float | None = None, abort_on_error_categories: frozenset[str] = <factory>, abort_mode: AbortMode = <AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens: int | None = None, max_total_cost: float | None = None, cost_function: Callable[[AttemptUsage], float] | None = None, max_provider_calls: int | None = None, min_cache_hit_rate: float | None = None, cache_hit_window: int = 50) -> None
+    field admission: AttemptAdmission | None (kw_only) = None
+    __init__(self, *, total_timeout_per_item: float | None = None, batch_timeout: float | None = None, abort_on_error_categories: frozenset[str] = <factory>, abort_mode: AbortMode = <AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens: int | None = None, max_total_cost: float | None = None, cost_function: Callable[[AttemptUsage], float] | None = None, max_provider_calls: int | None = None, min_cache_hit_rate: float | None = None, cache_hit_window: int = 50, admission: AttemptAdmission | None = None) -> None
     property budget_configured -> bool
     def validate(self) -> None
 class ItemDeadlineExceeded(TimeoutError, LLMMinderError)
@@ -545,7 +560,7 @@ class ProcessorConfig
     field dry_run: bool (kw_only) = False
     field max_provider_concurrency: int | None (kw_only) = None
     field startup_ramp: StartupRampConfig | None (kw_only) = None
-    field guardrails: GuardrailConfig (kw_only) = <factory: GuardrailConfig(total_timeout_per_item=None, batch_timeout=None, abort_on_error_categories=frozenset(), abort_mode=<AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens=None, max_total_cost=None, cost_function=None, max_provider_calls=None, min_cache_hit_rate=None, cache_hit_window=50)>
+    field guardrails: GuardrailConfig (kw_only) = <factory: GuardrailConfig(total_timeout_per_item=None, batch_timeout=None, abort_on_error_categories=frozenset(), abort_mode=<AbortMode.DRAIN_ACTIVE: 'drain_active'>, max_total_tokens=None, max_total_cost=None, cost_function=None, max_provider_calls=None, min_cache_hit_rate=None, cache_hit_window=50, admission=None)>
     field attempt_timeout: float | None (kw_only) = None
     field concurrency: int | None (kw_only) = None
     field max_result_queue_size: int (kw_only) = 0

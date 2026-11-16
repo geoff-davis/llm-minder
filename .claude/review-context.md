@@ -22,6 +22,12 @@ settled decisions below. Prune at each release.
   cooldown.
 - Optional SDK handles live in `llm_minder.models._sdk`; tests patch them there.
 - `dev` and `docs` are dependency groups, not published extras.
+- `GuardrailConfig.admission` (#331, agreed API on the issue): `admit`/`settle` are synchronous and run
+  outside the controller lock; a refusal, or any exception from `admit` or `settle`, stops the run as
+  `admission_refused` with items `batch_admission_refused` (fail closed). `AdmissionRefused` subclasses
+  `BatchAbortedError`. `max_provider_calls` is unchanged and checked before `admit`. An attempt that never
+  reached the provider settles with zero usage; `None` means a started call with unknown usage.
+  Processor-only. `attempt_generation_config()` runs twice per attempt when a hook is set (documented).
 
 ## Out of scope unless the PR says otherwise
 

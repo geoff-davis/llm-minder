@@ -129,11 +129,13 @@ bump in `ArtifactIdentity`. Middleware functions are not automatically hashed.
 
 Filtered items produce a current-run `middleware_filtered` result. Preprocessing
 filtering and invalid middleware requests do not open the store or append records.
-Aborts, [budget stops](guardrails.md#token-and-cost-budgets), and total-item/batch
+Aborts, [budget stops](guardrails.md#token-and-cost-budgets),
+[admission refusals](guardrails.md#attempt-admission-hook), and total-item/batch
 deadlines are checkpointed for audit when an artifact
 key can be prepared, with `replay_eligible=False`. Interrupted artifact preparation
 is not restarted solely for audit, and unrepresentable inputs cannot be checkpointed.
-Artifact errors during batch-abort, batch-budget, or batch-deadline audit preparation or append
+Artifact errors during batch-abort, batch-budget, admission-refusal, or batch-deadline audit
+preparation or append
 are logged, preserving the controlled stop and its results even when that audit
 record cannot be persisted. A per-item deadline is an ordinary failed result in
 an otherwise running batch: its checkpoint errors still propagate, although its

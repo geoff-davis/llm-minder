@@ -557,13 +557,13 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
             [dict(message) for message in messages], attempt, state
         )
 
-    async def _generate_and_parse(
-        self, prompt: str | list[Any], attempt: int, state: RetryState | None
-    ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
-        # Only pass `config` when set, so a custom LLMModel whose generate()
-        # doesn't accept the kwarg keeps working — the default path is identical
-        # to before generation_config existed.
-        gen_kwargs: dict[str, Any] = {"temperature": self.temperature}
+    def _effective_generation_config(
+        self, attempt: int, state: RetryState | None
+    ) -> dict[str, Any] | None:
+        """``generation_config`` with ``attempt_generation_config()`` merged over it.
+
+        What this attempt sends; also what an ``AttemptAdmission`` hook sees.
+        """
         config = self.generation_config
         attempt_config = self.attempt_generation_config(attempt, state)
         if attempt_config is not None:
@@ -575,6 +575,16 @@ class ModelStrategy(LLMCallStrategy[TOutput]):
                 config = merge(self.model, config, attempt_config)
             else:
                 config = {**(config or {}), **attempt_config}
+        return config
+
+    async def _generate_and_parse(
+        self, prompt: str | list[Any], attempt: int, state: RetryState | None
+    ) -> tuple[TOutput, TokenUsage, dict[str, Any] | None]:
+        # Only pass `config` when set, so a custom LLMModel whose generate()
+        # doesn't accept the kwarg keeps working — the default path is identical
+        # to before generation_config existed.
+        gen_kwargs: dict[str, Any] = {"temperature": self.temperature}
+        config = self._effective_generation_config(attempt, state)
         if config is not None:
             gen_kwargs["config"] = config
         async with provider_call(state):

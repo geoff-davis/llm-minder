@@ -475,12 +475,24 @@ class BatchBudgetExceeded(BatchAbortedError):
     """The run's token, cost or provider-call cap stopped an accepted item before completion."""
 
 
+class AdmissionRefused(BatchAbortedError):
+    """An ``AttemptAdmission`` hook refused a provider attempt (provisional, new in 1.2).
+
+    Raise it from ``AttemptAdmission.admit()`` to refuse an attempt; the message
+    becomes the run's termination reason. The run then stops as
+    ``admission_refused``, and the refused item and every accepted item that
+    hadn't finished end with this exception and the category
+    ``batch_admission_refused``.
+    """
+
+
 # Terminal categories of items stopped by a controlled batch abort. The single
 # source for stats, metrics, and artifact audit policy.
 ABORT_RESULT_CATEGORIES = (
     "batch_aborted",
     "batch_deadline_exceeded",
     "batch_budget_exceeded",
+    "batch_admission_refused",
 )
 
 
@@ -587,6 +599,13 @@ def _framework_owned_error_info(exception: Exception) -> ErrorInfo | None:
             is_rate_limit=False,
             is_timeout=False,
             error_category="batch_budget_exceeded",
+        )
+    if isinstance(exception, AdmissionRefused):
+        return ErrorInfo(
+            is_retryable=False,
+            is_rate_limit=False,
+            is_timeout=False,
+            error_category="batch_admission_refused",
         )
     if isinstance(exception, BatchAbortedError):
         return ErrorInfo(

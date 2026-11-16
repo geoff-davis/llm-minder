@@ -211,6 +211,7 @@ class ParallelBatchProcessor(
         self._abort_controller: AbortController | None = AbortController(
             config.guardrails.abort_mode,
             max_provider_calls=config.guardrails.max_provider_calls,
+            admission=config.guardrails.admission,
             trip_hook=self._trip_abort_now,
             announce=self._announce_abort,
         )

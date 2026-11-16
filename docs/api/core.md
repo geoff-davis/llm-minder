@@ -58,6 +58,18 @@
 
 ::: llm_minder.BatchBudgetExceeded
 
+## AttemptAdmission
+
+::: llm_minder.AttemptAdmission
+
+## AttemptRequest
+
+::: llm_minder.AttemptRequest
+
+## AdmissionRefused
+
+::: llm_minder.AdmissionRefused
+
 ## StartupRampConfig
 
 ::: llm_minder.StartupRampConfig

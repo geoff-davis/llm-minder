@@ -6,7 +6,8 @@ Every exception type the library exports subclasses
 still match. `AsyncBatchLLMError`, the base's name before the 1.0 rename, is an
 alias of `LLMMinderError` (the same class), so `except AsyncBatchLLMError` still
 works. `BatchBudgetExceeded` is documented with the budget settings on the
-[core page](core.md#batchbudgetexceeded), `LLMCallError` with
+[core page](core.md#batchbudgetexceeded), `AdmissionRefused` with the
+[attempt admission hook](core.md#admissionrefused), `LLMCallError` with
 [single calls](single-call-pool.md#llmcallerror), and the artifact errors on the
 [artifacts page](artifacts.md#artifact-errors).
 
@@ -17,7 +18,7 @@ For which category each built-in classifier assigns, see
 
 The failures the library raises itself never reach your classifier:
 `ItemDeadlineExceeded`, `BatchDeadlineExceeded`, `BatchBudgetExceeded`,
-`BatchAbortedError`, `RateLimitRetriesExceeded`, middleware-contract and
+`AdmissionRefused`, `BatchAbortedError`, `RateLimitRetriesExceeded`, middleware-contract and
 quota-scope errors, token-estimation errors, and artifact preparation errors
 always get their built-in category, so replay, deadline events, abort metrics and
 fail-fast behave the same with any classifier. Attempt timeouts

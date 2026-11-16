@@ -105,6 +105,9 @@ class ErrorCategory(_StrValueEnum):
     """The run stopped (fail-fast or an explicit abort) before this item finished."""
     BATCH_BUDGET_EXCEEDED = "batch_budget_exceeded"
     """The run reached its token, cost or provider-call cap before this item finished."""
+    BATCH_ADMISSION_REFUSED = "batch_admission_refused"
+    """Provisional: the ``GuardrailConfig.admission`` hook refused an attempt (or its
+    ``settle`` raised), and the run stopped before this item finished. Not retried."""
     CACHE_HIT_RATE_BELOW_FLOOR = "cache_hit_rate_below_floor"
     """Termination only (provisional): a cache group's hit rate fell below
     ``GuardrailConfig.min_cache_hit_rate``. Items the stop ends are ``batch_aborted``."""
