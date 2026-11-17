@@ -696,7 +696,8 @@ PLACEHOLDER = '"__PAYLOAD__"'
 DECODER_LIMITS = {
     # Longer than sys.get_int_max_str_digits() (4300 by default): ValueError.
     "digits": "9" * 5000,
-    # Deep enough to raise RecursionError on every supported interpreter.
+    # Whether this depth raises RecursionError depends on the interpreter and, from
+    # Python 3.14, on the machine's stack size; see the test's handling below.
     "nesting": "[" * 100_000 + "]" * 100_000,
 }
 
@@ -751,6 +752,29 @@ def test_decoder_limits_are_format_errors(tmp_path: Path, limit: str, site: str)
                     (_with_payload(json.loads(text), ("output",), payload),),
                 )
         connection.close()
-    with pytest.raises(ArtifactFormatError):
+    try:
+        with open_snapshot(path) as snapshot:
+            list(snapshot.records())
+    except ArtifactFormatError:
+        return
+    # Only deep nesting may decode, where the stack allows it; it must never
+    # escape as a raw exception. The RecursionError mapping itself is pinned by
+    # test_decoder_recursion_error_is_a_format_error.
+    assert limit == "nesting"
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_decoder_recursion_error_is_a_format_error(
+    tmp_path: Path, kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """R2: RecursionError from the decoder maps to ArtifactFormatError on any stack size."""
+    path = write(_store_path(tmp_path, kind), kind, HISTORY[:1])
+    from llm_minder._internal import store_reader
+
+    def too_deep(data: Any) -> Any:
+        raise RecursionError("maximum recursion depth exceeded while decoding a JSON array")
+
+    monkeypatch.setattr(store_reader.json, "loads", too_deep)
+    with pytest.raises(ArtifactFormatError, match="nesting is too deep"):
         with open_snapshot(path) as snapshot:
             list(snapshot.records())
