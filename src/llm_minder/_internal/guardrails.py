@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import inspect
 import logging
 import time
@@ -250,12 +251,25 @@ class AbortController:
         """Undo the count for a registered attempt that never reached the provider."""
         self.provider_calls_started = max(0, self.provider_calls_started - 1)
 
+    def take_pending_announcement(self) -> Callable[[], Awaitable[None]] | None:
+        """Claim the synchronous stop still to be announced; ``None`` if there is none.
+
+        Never awaits: the cause is claimed here, so exactly one caller announces
+        it, and the returned callable emits it. The caller should run that
+        callable where a cancellation cannot cut the emit short (#384).
+        """
+        cause = self._unannounced
+        announce = self._announce
+        if cause is None or announce is None:
+            return None
+        self._unannounced = None
+        return functools.partial(announce, cause)
+
     async def announce_pending(self) -> None:
         """Emit the abort event for a synchronous stop, once, after it happened."""
-        cause = self._unannounced
-        self._unannounced = None
-        if cause is not None and self._announce is not None:
-            await self._announce(cause)
+        pending = self.take_pending_announcement()
+        if pending is not None:
+            await pending()
 
     def end_provider_call_now(self) -> None:
         # No lock: a synchronous decrement cannot interleave with another
