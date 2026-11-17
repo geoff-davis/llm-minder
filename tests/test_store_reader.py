@@ -688,3 +688,69 @@ def test_recorded_cost_sum_overflow_is_an_error(tmp_path: Path, kind: str) -> No
         assert all(r.calculated_cost == 1e308 for r in snapshot.records())
         with pytest.raises(ArtifactFormatError, match="floating-point range"):
             summarize(snapshot)
+
+
+# --- Round-2 review regressions (R2: decoder representation limits) ----------------
+
+PLACEHOLDER = '"__PAYLOAD__"'
+DECODER_LIMITS = {
+    # Longer than sys.get_int_max_str_digits() (4300 by default): ValueError.
+    "digits": "9" * 5000,
+    # Deep enough to raise RecursionError on every supported interpreter.
+    "nesting": "[" * 100_000 + "]" * 100_000,
+}
+
+
+def _with_payload(value: dict[str, Any], path: tuple[str, ...], payload: str) -> str:
+    target = value
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = "__PAYLOAD__"
+    return json.dumps(value).replace(PLACEHOLDER, payload)
+
+
+@pytest.mark.parametrize("limit", sorted(DECODER_LIMITS))
+@pytest.mark.parametrize(
+    "site",
+    ["jsonl_manifest", "jsonl_record", "sqlite_manifest", "sqlite_result", "sqlite_prompt"],
+)
+def test_decoder_limits_are_format_errors(tmp_path: Path, limit: str, site: str) -> None:
+    """R2: the decoder's digit and nesting limits stay on and map to ArtifactFormatError."""
+    payload = DECODER_LIMITS[limit]
+    kind = site.split("_")[0]
+    path = write(_store_path(tmp_path, kind), kind, HISTORY[:2], include_prompt=True)
+    if kind == "jsonl":
+        lines = path.read_bytes().splitlines(keepends=True)
+        index, key_path = (
+            (0, ("user_metadata", "x"))
+            if site == "jsonl_manifest"
+            else (
+                2,
+                ("result", "token_usage", "input_tokens"),
+            )
+        )
+        lines[index] = _with_payload(json.loads(lines[index]), key_path, payload).encode() + b"\n"
+        path.write_bytes(b"".join(lines))
+    else:
+        with sqlite3.connect(path) as connection:
+            if site == "sqlite_manifest":
+                connection.execute(
+                    "UPDATE manifest SET user_metadata_json = ?",
+                    (_with_payload({}, ("x",), payload),),
+                )
+            elif site == "sqlite_prompt":
+                connection.execute(
+                    "UPDATE item_records SET raw_prompt_json = ? WHERE item_id = 'b'", (payload,)
+                )
+            else:
+                (text,) = connection.execute(
+                    "SELECT result_json FROM item_records WHERE item_id = 'b'"
+                ).fetchone()
+                connection.execute(
+                    "UPDATE item_records SET result_json = ? WHERE item_id = 'b'",
+                    (_with_payload(json.loads(text), ("output",), payload),),
+                )
+        connection.close()
+    with pytest.raises(ArtifactFormatError):
+        with open_snapshot(path) as snapshot:
+            list(snapshot.records())

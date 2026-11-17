@@ -110,6 +110,23 @@ def _format_error(where: str, message: str) -> ArtifactFormatError:
     return ArtifactFormatError(f"Malformed artifact record at {where}: {message}")
 
 
+def _loads(data: str | bytes, context: str) -> Any:
+    """Parse stored JSON, mapping every decoder failure to ``ArtifactFormatError``.
+
+    Besides syntax errors this covers the decoder's representation limits, which
+    stay enabled: an integer literal longer than ``sys.get_int_max_str_digits()``
+    raises ``ValueError`` and deep nesting raises ``RecursionError``. Every JSON
+    value the reader parses (JSONL lines, SQLite manifest, prompt and result
+    columns) goes through here.
+    """
+    try:
+        return json.loads(data)
+    except RecursionError as exc:
+        raise ArtifactFormatError(f"{context}: JSON nesting is too deep to decode") from exc
+    except ValueError as exc:  # JSONDecodeError, UnicodeDecodeError, integer-digit limit
+        raise ArtifactFormatError(f"{context}: {exc}") from exc
+
+
 def _finite_cost(value: Any, where: str) -> float | None:
     """Return a stored cost as a finite float; a huge JSON integer is malformed too."""
     if value is None:
@@ -265,13 +282,10 @@ class _JsonlSnapshot(StoreSnapshot):
 
     def _parsed(self) -> Generator[tuple[int, Any], None, None]:
         for line_number, line in self._lines():
-            try:
-                value = json.loads(line)
-            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise ArtifactFormatError(
-                    f"Malformed artifact JSON at non-final line {line_number}: {exc}"
-                ) from exc
-            yield line_number, value
+            yield (
+                line_number,
+                _loads(line, f"Malformed artifact JSON at non-final line {line_number}"),
+            )
 
     def _read_manifest(self) -> StoreManifest:
         with closing(self._parsed()) as lines:
@@ -404,10 +418,7 @@ class _SqliteSnapshot(StoreSnapshot):
     def _json(self, text: Any, *, column: str, where: str) -> Any:
         if not isinstance(text, str):
             raise _format_error(where, f"{column} must be JSON text")
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise _format_error(where, f"{column} is not valid JSON: {exc}") from exc
+        return _loads(text, f"Malformed artifact record at {where}: {column} is not valid JSON")
 
     def _read_manifest(self) -> StoreManifest:
         row = (
