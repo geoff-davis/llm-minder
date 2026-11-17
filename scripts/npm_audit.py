@@ -26,7 +26,14 @@ from typing import Any
 SEVERITIES = ("info", "low", "moderate", "high", "critical")
 
 # Advisory ID -> why it's accepted. Removing an entry is the normal way to retire it.
-ALLOWED: dict[str, str] = {}
+ALLOWED: dict[str, str] = {
+    "GHSA-fc5q-39xc-vjpf": (
+        "picomatch ReDoS in extglob patterns, reached through markdownlint-cli2 -> globby/micromatch. "
+        "No patched release exists (every version through 4.0.7 is affected; added 2026-11-17). "
+        "Dev-only Markdown lint; the globs come from our own config and file paths, not untrusted "
+        "input. Remove this entry and update package-lock.json once a fixed picomatch ships (#388)."
+    ),
+}
 
 
 @dataclass(frozen=True)
