@@ -15,8 +15,10 @@ rebound by ``start()`` and admission/classifier ownership lives on the host.
 from __future__ import annotations
 
 import asyncio
+import functools
 import inspect
 import logging
+import sys
 import time
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
@@ -67,6 +69,7 @@ from .budget import BudgetTracker
 from .cache_groups import CacheHitTracker
 from .capacity import CapacityLimiter
 from .classifier_resolver import StrategyClassifierResolver
+from .cleanup import CleanupStep, run_cleanup_steps
 from .error_logging import (
     TerminalFailureLogs,
     log_retryable_error,
@@ -660,6 +663,50 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
         if cause is None or not tracker.stop_now(cause):
             return None
         return cause
+
+    async def _announce_stops(
+        self,
+        *,
+        budget_cause: AbortCause | None = None,
+        cache_cause: AbortCause | None = None,
+        controller: AbortController | None = None,
+        primary_exception: BaseException | None,
+    ) -> None:
+        """Emit the abort events this attempt owes, so a cancellation can't cut one short.
+
+        The stops themselves were recorded synchronously; this only announces
+        them (#384). The emits run in order under the cleanup contract
+        (``run_cleanup_steps``): a first cancellation of this task, including
+        one already propagating (``primary_exception``), waits for them to
+        finish and is then re-raised; a second one abandons them. An emit's own
+        failure is raised afterwards, as an awaited emit's was. With nothing to
+        announce, the common case, this creates no task.
+        """
+        steps: list[CleanupStep] = []
+        tracker = self._budget_tracker
+        if budget_cause is not None and tracker is not None:
+            steps.append(
+                CleanupStep("budget abort event", functools.partial(tracker.announce, budget_cause))
+            )
+        cache_tracker = self._cache_tracker
+        if cache_cause is not None and cache_tracker is not None:
+            steps.append(
+                CleanupStep(
+                    "cache floor abort event",
+                    functools.partial(cache_tracker.announce, cache_cause),
+                )
+            )
+        if controller is not None:
+            # Claimed synchronously, so no other attempt announces it too.
+            pending = controller.take_pending_announcement()
+            if pending is not None:
+                steps.append(CleanupStep("abort event", pending))
+        if not steps:
+            return
+        report = await run_cleanup_steps(
+            steps, name="abort announcement", logger=logger, primary_exception=primary_exception
+        )
+        report.raise_first()
 
     async def _record_quota_admitted(
         self,
@@ -1735,9 +1782,13 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                             "framework_total_item_timeout"
                                         )
                                     raise
-                                except (BatchDeadlineExceeded, BatchAbortedError):
-                                    if self._abort_controller is not None:
-                                        await self._abort_controller.announce_pending()
+                                except (BatchDeadlineExceeded, BatchAbortedError) as stop:
+                                    # Claims a call-cap stop (no admission slot, so the
+                                    # finally can't) or an admission refusal.
+                                    await self._announce_stops(
+                                        controller=self._abort_controller,
+                                        primary_exception=stop,
+                                    )
                                     raise
                                 except _OperationTimerExpired as timeout_exc:
                                     elapsed = time.time() - llm_start_time
@@ -1889,15 +1940,13 @@ class ItemExecutor(Generic[TInput, TOutput, TContext]):
                                                     )
                                                 )
                                     finally:
-                                        tracker = self._budget_tracker
-                                        if budget_cause is not None and tracker is not None:
-                                            await tracker.announce(budget_cause)
-                                        cache_tracker = self._cache_tracker
-                                        if cache_cause is not None and cache_tracker is not None:
-                                            await cache_tracker.announce(cache_cause)
-                                        if slot is not None and controller is not None:
-                                            # A refusal or failed settle in this attempt.
-                                            await controller.announce_pending()
+                                        await self._announce_stops(
+                                            budget_cause=budget_cause,
+                                            cache_cause=cache_cause,
+                                            # A failed settle in this attempt.
+                                            controller=controller if slot is not None else None,
+                                            primary_exception=sys.exc_info()[1],
+                                        )
                     except _AdmissionPaused:
                         # Capacity has been released and the unstarted quota refunded.
                         # Rejoin FIFO at the tail; this is still the same physical try.

@@ -72,11 +72,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A provider attempt cancelled while the guardrail was cleaning up its timeout and
   abort watchers stayed counted as an active provider call. The call is now released
   before that cleanup awaits anything ([#379]).
+- A cancellation that landed while a guardrail stop (budget, cache hit-rate floor,
+  `max_provider_calls` or admission hook) was emitting `BATCH_ABORTED` cut the emit
+  short, so later observers never received the event. The emit now runs under the
+  cleanup contract: a first cancellation waits for it to finish and is then re-raised,
+  and a second one abandons it ([#384]).
 
 [#314]: https://github.com/geoff-davis/llm-minder/issues/314
 [#315]: https://github.com/geoff-davis/llm-minder/issues/315
 [#331]: https://github.com/geoff-davis/llm-minder/issues/331
 [#379]: https://github.com/geoff-davis/llm-minder/issues/379
+[#384]: https://github.com/geoff-davis/llm-minder/issues/384
 
 ## [1.1.0] - 2026-11-15
 
