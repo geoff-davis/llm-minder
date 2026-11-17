@@ -30,8 +30,10 @@ ALLOWED: dict[str, str] = {
     "GHSA-fc5q-39xc-vjpf": (
         "picomatch ReDoS in extglob patterns, reached through markdownlint-cli2 -> globby/micromatch. "
         "No patched release exists (every version through 4.0.7 is affected; added 2026-11-17). "
-        "Dev-only Markdown lint; the globs come from our own config and file paths, not untrusted "
-        "input. Remove this entry and update package-lock.json once a fixed picomatch ships (#388)."
+        "Dev-only Markdown lint, but `make markdown-lint` passes tracked filenames to it as globs, so "
+        "a pull request can choose a pattern; the accepted exposure is a CI denial of service, with "
+        "nothing shipped. Remove this entry and update package-lock.json once a fixed picomatch "
+        "ships (#388)."
     ),
 }
 
