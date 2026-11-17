@@ -110,6 +110,33 @@ def _format_error(where: str, message: str) -> ArtifactFormatError:
     return ArtifactFormatError(f"Malformed artifact record at {where}: {message}")
 
 
+def _finite_cost(value: Any, where: str) -> float | None:
+    """Return a stored cost as a finite float; a huge JSON integer is malformed too."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise _format_error(where, "calculated_cost must be a finite number or null")
+    try:
+        cost = float(value)
+    except OverflowError:
+        cost = math.inf
+    if not math.isfinite(cost):
+        raise _format_error(where, "calculated_cost must be a finite number or null")
+    return cost
+
+
+def _check_schema_version(version: Any, where: str) -> None:
+    """Apply the stores' per-record logical schema version policy."""
+    if isinstance(version, bool) or not isinstance(version, int):
+        raise ArtifactFormatError(f"Unsupported artifact schema version {version!r} at {where}")
+    if version > ARTIFACT_SCHEMA_VERSION:
+        raise ArtifactFormatError(
+            f"Unsupported future artifact schema version {version} at {where}"
+        )
+    if version != ARTIFACT_SCHEMA_VERSION:
+        raise ArtifactFormatError(f"Unsupported artifact schema version {version!r} at {where}")
+
+
 def _validated_record(
     *,
     sequence: int,
@@ -144,12 +171,7 @@ def _validated_record(
     error = result.get("error")
     if error is not None and not isinstance(error, str):
         raise _format_error(where, "result.error must be a string or null")
-    if calculated_cost is not None and (
-        isinstance(calculated_cost, bool)
-        or not isinstance(calculated_cost, (int, float))
-        or not math.isfinite(calculated_cost)
-    ):
-        raise _format_error(where, "calculated_cost must be a finite number or null")
+    cost = _finite_cost(calculated_cost, where)
     fields = {
         "recorded_at": recorded_at,
         "error_category": error_category,
@@ -171,7 +193,7 @@ def _validated_record(
         provider=provider,
         model=model,
         prompt_version=prompt_version,
-        calculated_cost=None if calculated_cost is None else float(calculated_cost),
+        calculated_cost=cost,
         token_usage=raw_usage,
         result=result,
         prompt=prompt,
@@ -314,7 +336,7 @@ class _JsonlSnapshot(StoreSnapshot):
 # --- SQLite --------------------------------------------------------------------
 
 _SQLITE_RECORDS = f"""
-    SELECT r.record_sequence, r.item_id, r.recorded_at, r.success, r.error_category,
+    SELECT r.record_sequence, r.logical_schema_version, r.item_id, r.recorded_at, r.success, r.error_category,
            r.identity_fingerprint, i.provider, i.model, i.prompt_version,
            r.calculated_cost, r.raw_prompt_json, r.result_json
       FROM item_records AS r
@@ -369,6 +391,9 @@ class _SqliteSnapshot(StoreSnapshot):
             return ArtifactFormatError(f"Invalid SQLite artifact {self.path}: {exc}")
         if isinstance(exc, OSError):
             return ArtifactIOError(f"Could not read SQLite artifact {self.path}: {exc}")
+        if isinstance(exc, (ValueError, TypeError, OverflowError)):
+            # The schema checks convert stored header and manifest values with int().
+            return ArtifactFormatError(f"Malformed SQLite artifact metadata in {self.path}: {exc}")
         return exc
 
     def _require_connection(self) -> sqlite3.Connection:
@@ -431,6 +456,7 @@ class _SqliteSnapshot(StoreSnapshot):
             for row in page:
                 (
                     sequence,
+                    logical_schema_version,
                     item_id,
                     recorded_at,
                     success,
@@ -445,6 +471,7 @@ class _SqliteSnapshot(StoreSnapshot):
                 ) = row
                 after = int(sequence)
                 where = f"SQLite sequence {after}"
+                _check_schema_version(logical_schema_version, f"{where} for item {item_id!r}")
                 if success not in (0, 1) or isinstance(success, float):
                     raise _format_error(where, "success must be 0 or 1")
                 prompt = (
@@ -553,7 +580,13 @@ class StoreSummary:
         self.identities[(record.provider, record.model, record.prompt_version)] += 1
         self.token_totals.update(record.token_usage)
         if record.calculated_cost is not None:
-            self.recorded_cost += record.calculated_cost
+            total = self.recorded_cost + record.calculated_cost
+            if not math.isfinite(total):
+                raise ArtifactFormatError(
+                    "Recorded costs sum beyond the floating-point range at record "
+                    f"sequence {record.sequence} (item {record.item_id!r})"
+                )
+            self.recorded_cost = total
             self.recorded_cost_records += 1
         if category is not None and category in _GUARDRAIL_CATEGORIES:
             stops = self.guardrail_stops.setdefault(category, GuardrailStops())

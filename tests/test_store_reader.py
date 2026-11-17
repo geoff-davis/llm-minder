@@ -615,3 +615,76 @@ def test_read_only_store_file_opens(tmp_path: Path, kind: str) -> None:
         assert [r.item_id for r in records(path)] == ["a", "b"]
     finally:
         path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+# --- Round-1 review regressions (R1-R3) -------------------------------------------
+
+
+@pytest.mark.parametrize("kind", KINDS)
+@pytest.mark.parametrize(
+    ("version", "message"),
+    [
+        (2, "Unsupported future artifact schema version 2"),
+        ("x", "Unsupported artifact schema"),
+        (0, "Unsupported artifact schema version 0"),
+    ],
+)
+def test_newest_record_with_unsupported_schema_is_rejected(
+    tmp_path: Path, kind: str, version: Any, message: str
+) -> None:
+    """R1: each record's own version is checked, not only the manifest's."""
+    path = write(_store_path(tmp_path, kind), kind, HISTORY[:3])
+    if kind == "jsonl":
+        lines = path.read_bytes().splitlines(keepends=True)
+        record = json.loads(lines[-1])
+        record["artifact_schema_version"] = version
+        lines[-1] = json.dumps(record).encode() + b"\n"
+        path.write_bytes(b"".join(lines))
+    else:
+        with sqlite3.connect(path) as connection:
+            connection.execute(
+                "UPDATE item_records SET logical_schema_version = ? WHERE record_sequence = "
+                "(SELECT MAX(record_sequence) FROM item_records)",
+                (version,),
+            )
+        connection.close()
+    with open_snapshot(path) as snapshot, pytest.raises(ArtifactFormatError, match=message):
+        list(snapshot.records())
+
+
+def test_jsonl_huge_integer_cost_is_malformed(tmp_path: Path) -> None:
+    """R2: a JSON integer too large for a float is a format error, not OverflowError."""
+    path = write(_store_path(tmp_path, "jsonl"), "jsonl", HISTORY[:2])
+    lines = path.read_bytes().splitlines(keepends=True)
+    record = json.loads(lines[-1])
+    record["calculated_cost"] = 10**400
+    lines[-1] = json.dumps(record).encode() + b"\n"
+    path.write_bytes(b"".join(lines))
+    with (
+        open_snapshot(path) as snapshot,
+        pytest.raises(ArtifactFormatError, match="calculated_cost"),
+    ):
+        list(snapshot.records())
+
+
+@pytest.mark.parametrize("column", ["logical_schema_version", "sqlite_schema_version"])
+def test_sqlite_non_integer_manifest_version_is_malformed(tmp_path: Path, column: str) -> None:
+    """R2: the shared validator's int() conversion failure maps to a format error."""
+    path = write(_store_path(tmp_path, "sqlite"), "sqlite", HISTORY[:1])
+    with sqlite3.connect(path) as connection:
+        connection.execute(f"UPDATE manifest SET {column} = 'bad'")
+    connection.close()
+    with pytest.raises(ArtifactFormatError, match="Malformed SQLite artifact"):
+        open_snapshot(path)
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_recorded_cost_sum_overflow_is_an_error(tmp_path: Path, kind: str) -> None:
+    """R3: individually finite costs whose sum overflows are refused, not reported as inf."""
+    path = write(
+        _store_path(tmp_path, kind), kind, HISTORY[:3], cost_calculator=lambda result: 1e308
+    )
+    with open_snapshot(path) as snapshot:
+        assert all(r.calculated_cost == 1e308 for r in snapshot.records())
+        with pytest.raises(ArtifactFormatError, match="floating-point range"):
+            summarize(snapshot)
