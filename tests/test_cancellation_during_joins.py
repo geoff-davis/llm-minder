@@ -504,6 +504,14 @@ class _RefuseAll:
         pass
 
 
+class _CacheGroupStrategy(FakeStrategy):
+    """Reports a cache group, so a cache-hit-rate floor applies to its calls."""
+
+    async def execute(self, *args, **kwargs):
+        output, usage, _metadata = await super().execute(*args, **kwargs)
+        return output, usage, {"cache_group": "announce-cache-group"}
+
+
 class _BlockingStrategy(LLMCallStrategy[str]):
     def __init__(self) -> None:
         self.started = asyncio.Event()
@@ -514,21 +522,25 @@ class _BlockingStrategy(LLMCallStrategy[str]):
         raise AssertionError("unreachable")
 
 
-@pytest.mark.parametrize("stop", ["budget", "call_cap", "admission_refused", "settle_failed"])
+@pytest.mark.parametrize(
+    "stop", ["budget", "cache_floor", "call_cap", "admission_refused", "settle_failed"]
+)
 async def test_cancel_during_abort_announcement_still_emits_it(stop: str) -> None:
     # One cause per run (the first stop wins), announced from three places:
-    # the budget step of the attempt's finally, the BatchAbortedError handler
+    # the budget or cache-floor step of the attempt's finally, the BatchAbortedError handler
     # (call cap, admission refusal) and the controller step of the finally
     # (settle failure). A cancellation while an observer handles the event
     # must not stop the remaining observers from receiving it.
     guardrails = {
         "budget": GuardrailConfig(max_total_tokens=1),
+        "cache_floor": GuardrailConfig(min_cache_hit_rate=0.5, cache_hit_window=1),
         "call_cap": GuardrailConfig(max_provider_calls=1),
         "admission_refused": GuardrailConfig(admission=_RefuseAll()),
         "settle_failed": GuardrailConfig(admission=_SettleFails()),
     }[stop]
     blocker, recorder = _BlockOnAbort(), _RecordAborts()
-    strategy = FakeStrategy("ok", token_usage=_USAGE)
+    strategy_class = _CacheGroupStrategy if stop == "cache_floor" else FakeStrategy
+    strategy = strategy_class("ok", token_usage=_USAGE)
     async with ParallelBatchProcessor[None, str, None](
         config=ProcessorConfig(max_workers=1, guardrails=guardrails),
         observers=[blocker, recorder],
