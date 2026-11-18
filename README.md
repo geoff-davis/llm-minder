@@ -333,6 +333,9 @@ What to know before relying on it:
   always re-execute.
 - **Privacy.** Raw prompts and contexts are not stored by default. Outputs and
   metadata are, and may contain sensitive application data.
+- **Inspect from the shell.** `llm-minder inspect run.sqlite` summarizes a store, and
+  `llm-minder failures run.sqlite --ids-only` lists what to rerun; both are read-only (see
+  [Inspecting a store from the command line](https://geoff-davis.github.io/llm-minder/results-and-artifacts/#inspecting-a-store-from-the-command-line)).
 - **Large runs.** `process_prompts()` keeps every result in memory. For bounded
   memory, use `process_stream()` with a lazy source and bounded queues. For 100k+
   items, also use the indexed SQLite backend: same records, same replay rules, no

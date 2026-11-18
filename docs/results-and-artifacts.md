@@ -614,6 +614,328 @@ schema before its result or persisted context JSON is decoded; unsupported or
 malformed row versions fail loudly instead of falling back to an older
 compatible row.
 
+## Inspecting a store from the command line
+
+The `llm-minder` command reads a JSONL or SQLite artifact store without running a batch, so you can answer "how
+did that run go?" and "what should I rerun?" from a shell. It is also available as `python -m llm_minder`. It uses
+only the standard library, and it is **provisional** (see [API stability](stability.md)): commands, flags, exit codes
+and JSON fields may still change in a minor release.
+
+```text
+llm-minder inspect  STORE [--input-price P --output-price P --cached-token-rate R [--cache-write-rate R]] [--json]
+llm-minder failures STORE [--category C]... [--limit N] [--ids-only | --json] [--full]
+llm-minder show     STORE ITEM_ID [--output] [--prompt] [--metadata] [--full] [prices] [--json]
+llm-minder --version
+```
+
+- **`inspect`** summarizes the store:
+  - the manifest;
+  - the identities seen, with record counts;
+  - the record and item counts;
+  - an inventory of items **by their newest record**: succeeded, failed by category, and stopped by a guardrail by
+    category;
+  - token totals and recorded cost, summed over **every** record, because earlier attempts were billed too;
+  - an optional cost estimate;
+  - the recorded guardrail stops.
+
+  The inventory says nothing about whether a given identity or prompt would replay.
+- **`failures`** lists items whose newest record is a failure, in store order. Each line has the item id, the
+  category and the error text.
+  - `--category` repeats and filters.
+  - `--limit` caps the list; the total is still reported.
+  - `--ids-only` prints one id per line, for feeding a rerun.
+  - Items stopped by a guardrail (`batch_aborted`, `batch_deadline_exceeded`, `batch_budget_exceeded`,
+    `batch_admission_refused`, `framework_total_item_timeout`) are left out unless you name their category, so a
+    rerun list isn't padded with stopped work. Stopped items can include attempts that ran and were billed (timed
+    out or aborted), not only work that never started.
+- **`show`** prints every record for one item, oldest first. For each record you get:
+  - the error text;
+  - token usage, the recorded cost and an optional estimate;
+  - per-attempt timing.
+
+  The output, prompt and metadata appear only with `--output`, `--prompt` and `--metadata`.
+
+**Cost.** The recorded cost is the sum of each record's `calculated_cost`, with a count of how many records have
+one. An **estimate** needs `--input-price` and `--output-price`, per million tokens in any currency, and
+`--cached-token-rate`.
+
+| Flag | Accepts |
+| --- | --- |
+| `--input-price`, `--output-price` | a finite number, 0 or more |
+| `--cached-token-rate` | a finite number in [0, 1], or `gemini`, `openai`, `anthropic-read` or `deepseek` |
+| `--cache-write-rate` (optional) | a finite number, 0 or more, or `openai-write`, `anthropic-write` or `anthropic-write-1h` |
+
+- Names resolve to the [`CachedTokenRates`](api/core.md) constants.
+- `inspect` applies the `BatchResult.estimated_cost` arithmetic once, to the token totals. `show` applies it to each
+  record. A sum of `show`'s estimates can differ from `inspect`'s figure in the last digits, because
+  `effective_input_tokens` rounds up.
+- An invalid price or rate is a usage error, reported before the store is opened. So is an estimate too large to
+  represent, which finite prices can still produce for large token counts. That error is reported before anything
+  is printed.
+
+**Privacy.**
+
+- Output and context are never decoded, and no output, context or custom decoder ever runs.
+- Output, prompts and item metadata are hidden unless their flag is given.
+- The manifest's user metadata and its identity's `extra` mapping appear only as their keys.
+- **Error text is shown by default**, because it is the point of `failures`. It is truncated to 200 characters
+  unless `--full` is given, and that is not redaction: error and stop-reason text can contain fragments of a prompt
+  or an output. The library already redacted framework-controlled text and credential-like keys when it wrote the
+  record.
+
+**Item ids.**
+
+- Ids are printed exactly. Human-readable output escapes backslashes and control characters (`\n`, `\r`, `\x1b`, NUL
+  and so on), so a stored string can't forge lines or terminal escapes.
+- `--ids-only` refuses to print an id containing a line break, NUL or another control character. It prints nothing,
+  names how many ids are affected, and exits 5; `failures --json` carries every id exactly.
+
+**Exit codes.**
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Success, including "no failures" |
+| 2 | Usage error, including an invalid price or rate, or an estimate that can't be represented |
+| 3 | The store is missing, unreadable, foreign (text or SQLite), from a newer release, or corrupt |
+| 4 | `show`: the item isn't in the store |
+| 5 | `failures --ids-only`: an id can't be printed one per line |
+
+On every non-zero exit, stdout is empty and the error is on stderr. The one exception is a store rewritten in place
+during the command; see the next paragraph.
+
+**Read-only, one snapshot, two passes.**
+
+- The CLI never creates, repairs, migrates or truncates a store.
+- **JSONL:** the store is read as bytes and nothing is created beside it. Each command captures the file size when
+  it starts and reads only up to that point. A partial last line is treated like a truncated tail.
+- **SQLite:**
+  - A store is opened with SQLite's native read-only mode inside one read transaction. That mode takes part in WAL
+    locking, so reading a store while a run is writing to it is safe.
+  - Like `SqliteArtifactStore.read_results`, the open may create the standard `-wal` (empty) and `-shm`
+    coordination files beside any SQLite-format file, including one it then rejects. The CLI never deletes them,
+    because a live writer may own them.
+  - A store that was closed cleanly in a directory you can't write to may fail with exit 3 and a message to copy it
+    somewhere writable.
+- **Passes:** each command reads its snapshot twice.
+  - Pass 1 validates every record and builds only counts. Corruption anywhere is found there, before any output.
+  - Pass 2 re-reads the same snapshot and streams the output record by record.
+  - Records appended during the command aren't reported.
+  - The store only appends, so don't edit a JSONL store in place. If its bytes are rewritten during a command, pass
+    2 can still hit a decode error. The command then exits 3 with a message, and any lines already printed stay
+    printed.
+
+**Memory.**
+
+- Peak memory is the grouping state plus the records in flight.
+- **Grouping state:** one entry per distinct item id (the id plus a sequence number, a success flag and a
+  category), plus a counter per identity and per category.
+- **Records in flight:** one JSONL line, or one page of 100 SQLite rows. A single huge output, prompt or error costs
+  roughly its own size while it is parsed.
+- Nothing else is held across records. Output text is streamed in pass 2, so memory doesn't grow with the size of
+  the history or the number of records printed.
+
+`benchmarks/scale_soak/cli_memory.py` measures both axes:
+
+| Store | Axis | Command | Python heap peak | RSS over baseline |
+| --- | --- | --- | --- | --- |
+| JSONL | 100,000 items | `inspect`, `failures` | 18.8 MiB | 51 MiB |
+| JSONL | 100,000 items | `show` (one item) | 0.2 MiB | 0.3 MiB |
+| JSONL | one 8 MiB output, 2 MiB error | every command | 26.2 MiB | 26 to 36 MiB |
+| SQLite | 100,000 items | `inspect`, `failures` | 18.8 MiB | 51 to 53 MiB |
+| SQLite | 100,000 items | `show` (one item) | 0.2 MiB | 2.4 MiB |
+| SQLite | one 8 MiB output, 2 MiB error | `inspect`, `failures --full` | 20.1 MiB | 19 to 20 MiB |
+| SQLite | one 8 MiB output, 2 MiB error | `show --output --full` | 28.1 MiB | 27 MiB |
+
+These numbers are from Python 3.15 on Linux (2026-11-18).
+
+- The grouping state costs about 190 bytes of Python heap per distinct item id.
+- A single large payload costs about three times its size while it is parsed: the raw line or row, the decoded
+  string, and the output being written.
+- The RSS figures were measured with `tracemalloc` running, which adds its own overhead, and exclude the
+  interpreter and package import baseline.
+- Run `uv run python -m benchmarks.scale_soak.cli_memory` to measure your own stores' shape.
+
+### JSON output
+
+`--json` prints one JSON document followed by a newline.
+
+- **Envelope.** Every document starts with `"schema_version": 1`, then `"command"` (`"inspect"`, `"failures"` or
+  `"show"`), then `"store": {"path": ..., "kind": "jsonl" | "sqlite"}`. The path is printed as given.
+- **Compatibility within version 1:** keys may be added, and consumers must ignore keys they don't know. Renaming
+  or removing a key, or changing its type, bumps `schema_version`.
+- **Field names** follow the stored names: `item_id`, `error_category`, `recorded_at`, `calculated_cost`, the
+  `TokenUsage` keys and the `AttemptTiming` keys.
+- **Nullability.** A field a store may lack (for example an old record's `recorded_at`) is present as `null`. A
+  field controlled by a flag is **absent** unless the flag is given.
+- **Units:**
+  - token counts are integers;
+  - seconds are floats;
+  - costs are floats in the prices' currency;
+  - prices are per million tokens.
+- **Numbers are always finite**; no document contains `NaN` or `Infinity`.
+- **Error text** (`error`, `first_reason`, `exception.message`) is truncated to 200 characters unless `--full` is
+  given. A matching `*_truncated` boolean says whether it was cut. `inspect` has no `--full` flag, so its
+  `first_reason` is always truncated. JSON escaping protects control characters, so the text is otherwise as
+  stored.
+- **Streaming.** `failures` and `show` stream their arrays, so the document is never built in memory.
+
+#### `inspect --json`
+
+```json
+{
+  "schema_version": 1,
+  "command": "inspect",
+  "store": {"path": "run.sqlite", "kind": "sqlite"},
+  "manifest": {
+    "artifact_schema_version": 1,
+    "sqlite_schema_version": 1,
+    "created_at": "2026-11-17T10:00:00Z",
+    "package_version": "1.2.0",
+    "identity_fingerprint": "ab12...",
+    "identity": {
+      "provider": "openai",
+      "model": "gpt-5",
+      "prompt_version": "v2",
+      "parser_version": null,
+      "application_version": null,
+      "extra_keys": ["temperature"]
+    },
+    "user_metadata_keys": ["experiment", "owner"]
+  },
+  "record_count": 1250,
+  "item_count": 1000,
+  "identities": [
+    {"provider": "openai", "model": "gpt-5", "prompt_version": "v2", "records": 1250}
+  ],
+  "items_by_newest_record": {
+    "succeeded": 950,
+    "failed": [{"error_category": "rate_limit", "items": 30}, {"error_category": null, "items": 2}],
+    "stopped_by_guardrail": [{"error_category": "batch_deadline_exceeded", "items": 18}]
+  },
+  "token_totals": {
+    "input_tokens": 1000000,
+    "output_tokens": 200000,
+    "cached_input_tokens": 400000,
+    "cache_write_input_tokens": 0,
+    "total_tokens": 1200000
+  },
+  "recorded_cost": {"amount": 12.5, "records_with_cost": 1200, "records": 1250},
+  "estimated_cost": {
+    "amount": 3.0,
+    "input_price": 1.25,
+    "output_price": 10.0,
+    "cached_token_rate": 0.5,
+    "cache_write_rate": null
+  },
+  "guardrail_stops": [
+    {"error_category": "batch_deadline_exceeded", "count": 18, "first_reason": "...", "first_reason_truncated": false}
+  ]
+}
+```
+
+- **`manifest`:**
+  - `sqlite_schema_version` is `null` for JSONL.
+  - `identity` has the five named `ArtifactIdentity` fields, each a string or `null`, plus `extra_keys`, the sorted
+    keys of `identity.extra`. The `extra` values are never printed.
+  - `user_metadata_keys` lists the keys of the store's user metadata.
+- **`identities`** has one entry per distinct provider, model and prompt version over all records. It is sorted by
+  `records` (most first), then by the three fields, with `null` first.
+- **`items_by_newest_record`** counts each item once, by its newest record.
+  - `failed` and `stopped_by_guardrail` are lists, because a category can be `null`. Both are sorted by `items`
+    (most first), then by category.
+  - A guardrail-stopped item appears only under `stopped_by_guardrail`.
+- **`token_totals`** are sums over all records. All five keys are always present. `total_tokens` is the sum of the
+  stored totals, not a recomputed value.
+- **`recorded_cost.amount`** is `null` when no record has a cost. When only some records do, it is their partial
+  sum.
+- **`estimated_cost`** is `null` unless prices are given. The rates are shown resolved, as numbers.
+- **`guardrail_stops`** lists only categories with at least one recorded stop, in the order above. It reports what
+  was recorded, not how the run ended: a run can trip a limit without a stopped-item record, and a resumed run can
+  finish cleanly after an earlier stop.
+
+#### `failures --json`
+
+```json
+{
+  "schema_version": 1,
+  "command": "failures",
+  "store": {"path": "run.jsonl", "kind": "jsonl"},
+  "categories": null,
+  "total": 32,
+  "shown": 32,
+  "excluded_guardrail_stops": 18,
+  "failures": [
+    {
+      "item_id": "doc-17",
+      "sequence": 412,
+      "recorded_at": "2026-11-17T10:04:11Z",
+      "error_category": "rate_limit",
+      "error": "429 Too Many Requests ...",
+      "error_truncated": false,
+      "provider": "openai",
+      "model": "gpt-5",
+      "prompt_version": "v2"
+    }
+  ]
+}
+```
+
+- **`categories`** lists the `--category` values in the order given, or is `null` without a filter.
+- **`total`** is the number of matching items before `--limit`; `shown` is the smaller of `total` and the limit.
+- **`excluded_guardrail_stops`** counts items whose newest record is a guardrail stop that was left out because no
+  `--category` named its category.
+- **`failures`** is ordered by `sequence`, the store's own ordering: the SQLite `record_sequence`, or the record's
+  position in the JSONL file. It is stable for an unchanged store, but can't be compared across stores.
+
+#### `show --json`
+
+```json
+{
+  "schema_version": 1,
+  "command": "show",
+  "store": {"path": "run.sqlite", "kind": "sqlite"},
+  "item_id": "doc-17",
+  "record_count": 2,
+  "records": [
+    {
+      "sequence": 101,
+      "is_newest": false,
+      "recorded_at": "2026-11-17T10:01:00Z",
+      "success": false,
+      "error_category": "rate_limit",
+      "error": "429 ...",
+      "error_truncated": false,
+      "exception": {"module": "openai", "class_name": "RateLimitError", "message": "...", "message_truncated": false},
+      "identity": {"provider": "openai", "model": "gpt-5", "prompt_version": "v2", "identity_fingerprint": "ab12..."},
+      "token_usage": {"input_tokens": 1200, "output_tokens": 0},
+      "calculated_cost": 0.0015,
+      "estimated_cost": null,
+      "submission_index": 17,
+      "replayed_from_artifact": false,
+      "timing": {
+        "total_seconds": 4.2,
+        "timeout_category": null,
+        "attempts": [{"attempt": 1, "try_number": 1, "total_seconds": 4.2, "...": "every AttemptTiming key"}]
+      }
+    }
+  ]
+}
+```
+
+- **`records`** lists the item's records oldest first. `is_newest` marks the record `inspect` and `failures`
+  classify by.
+- **`token_usage`** is as stored: only the keys the record has.
+- **`estimated_cost`** is `null` unless prices are given.
+- **`exception`** is the stored descriptor (module, class name and redacted message), or `null`.
+- **`timing.attempts`:** each attempt carries every current `AttemptTiming` key. A key an older release didn't
+  record is `null`.
+- **Flag-gated keys:**
+  - `--output` adds `output_included` and `output`: the stored JSON value, never decoded, or `null` when it wasn't
+    stored.
+  - `--prompt` adds `prompt_stored` and `prompt`: the stored string or message list, or `null` when the store was
+    written without `include_prompt`.
+  - `--metadata` adds `metadata_included` and `metadata`.
+
 ## Process-safety boundary
 
 Both stores are single-process, single-writer designs. `JsonlArtifactStore`
