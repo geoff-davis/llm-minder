@@ -231,6 +231,21 @@ def test_recorded_cost_partial(tmp_path: Path, kind: str, monkeypatch: pytest.Mo
     assert doc["recorded_cost"] == {"amount": 0.25, "records_with_cost": 1, "records": 3}
 
 
+def test_recorded_cost_of_zero_is_not_null(
+    tmp_path: Path, kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = write(tmp_path / f"s.{kind}", kind, HISTORY[:2])
+    real = store_reader._validated_record
+
+    def zero_cost(**fields: Any) -> Any:
+        fields["calculated_cost"] = 0.0 if fields["item_id"] == "b" else None
+        return real(**fields)
+
+    monkeypatch.setattr(store_reader, "_validated_record", zero_cost)
+    doc = run_json("inspect", path)
+    assert doc["recorded_cost"] == {"amount": 0.0, "records_with_cost": 1, "records": 2}
+
+
 def test_identity_extra_values_never_printed(tmp_path: Path, kind: str) -> None:
     identity = ArtifactIdentity(
         provider="p", model="m", extra={"system_prompt": "PRIVATE PROMPT", "temperature": 0.2}
@@ -357,6 +372,24 @@ def test_failures_truncation(tmp_path: Path, kind: str) -> None:
     assert entry["error"] == long and entry["error_truncated"] is False
     code, out, _ = run("failures", path)
     assert "e" * 201 not in out and "truncated" in out
+
+
+def test_failures_lists_only_the_newest_record(tmp_path: Path, kind: str) -> None:
+    entries = [
+        _result("x", success=False, category="server_error", error="first"),
+        _result("x", success=False, category="server_error", error="second"),
+    ]
+    path = write(tmp_path / f"s.{kind}", kind, entries)
+    doc = run_json("failures", path)
+    assert [e["error"] for e in doc["failures"]] == ["second"]
+    assert run("failures", path, "--ids-only")[:2] == (0, "x\n")
+
+
+def test_truncation_boundary() -> None:
+    assert cli.truncate("e" * 200, False) == ("e" * 200, False)
+    assert cli.truncate("e" * 201, False) == ("e" * 200, True)
+    assert cli.truncate("e" * 201, True) == ("e" * 201, False)
+    assert cli.truncate(None, False) == (None, False)
 
 
 def test_failures_human_output(store: Path) -> None:

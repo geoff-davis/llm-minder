@@ -484,7 +484,7 @@ def _run_failures(args: argparse.Namespace, out: TextIO) -> int:
         for _sequence, success, category in summary.newest.values():
             if selected(success, category):
                 total += 1
-            elif category in _GUARDRAIL and category not in named:
+            elif category in _GUARDRAIL:  # a stop no --category named
                 excluded += 1
         limit = args.limit if args.limit is not None else total
         shown = min(total, limit)
