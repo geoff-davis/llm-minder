@@ -614,6 +614,15 @@ def test_invalid_prices_are_usage_errors_before_opening(
     assert "error" in capsys.readouterr().err
 
 
+def test_write_rate_name_as_read_rate_names_the_mistake(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    flags = ["--input-price", "1", "--output-price", "1", "--cached-token-rate", "openai-write"]
+    code, out, _ = run("inspect", tmp_path / "missing.jsonl", *flags)
+    assert (code, out) == (cli.EXIT_USAGE, "")
+    assert "is a cache-write rate" in capsys.readouterr().err
+
+
 def test_boundary_rates_accepted(store: Path) -> None:
     for rate in ("0", "1"):
         doc = run_json(
