@@ -68,6 +68,9 @@ dependencies = [
     "typing-extensions>=4.4.0",  # PEP 696 TypeVar defaults on Python < 3.13
 ]
 
+[project.scripts]
+llm-minder = "llm_minder.cli:main"
+
 [project.optional-dependencies]
 pydantic-ai = [
     "pydantic-ai>=1.32.0",

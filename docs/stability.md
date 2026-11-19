@@ -234,6 +234,10 @@ so files written by earlier releases still load and resume.
 - **Custom `execute()` support.** `provider_call`, `attach_token_usage` and
   `ModelStrategy.attempt_generation_config()` are new in 0.32 and provisional. The
   `_failed_token_usage` exception attribute they rely on is stable.
+- **Store-inspection CLI.** The `llm-minder` command and `python -m llm_minder` (`inspect`, `failures`,
+  `show`), with their flags, exit codes, human-readable text and `--json` documents (`"schema_version": 1`), are
+  new in 1.2 and provisional. Within JSON schema version 1, keys may be added; see
+  [Inspecting a store from the command line](results-and-artifacts.md#inspecting-a-store-from-the-command-line).
 - **Empty-response reasons.** `EmptyResponseError.reason` and `.provider_reason`,
   `TruncatedResponseError` and `ErrorCategory.RESPONSE_TRUNCATED` are new in 1.0 and
   provisional.

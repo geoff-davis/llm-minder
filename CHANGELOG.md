@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A read-only store-inspection CLI, `llm-minder` (also `python -m llm_minder`), for JSONL and SQLite
+  artifact stores ([#318]). `inspect` summarizes the manifest, identities, items by newest record, token totals,
+  recorded cost, an optional cost estimate and recorded guardrail stops; `failures` lists items whose newest
+  record failed (`--ids-only` for a rerun list; guardrail stops only when their category is named); `show`
+  prints one item's records with per-attempt timing. Every command reads one snapshot in two passes, so
+  corruption fails before any output, and `--json` prints a versioned document (`"schema_version": 1`).
+  Output, prompts and metadata are shown only on request. Provisional.
 - A native Anthropic provider: `AnthropicModel`, `AnthropicStrategy`,
   `AnthropicErrorClassifier`, `llm("anthropic:<model>")` and the `[anthropic]` extra
   (`anthropic>=1.0.0`; CI tests the floor and the 1.x and 2.x lines). It calls the
@@ -78,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cleanup contract: a first cancellation waits for it to finish and is then re-raised,
   and a second one abandons it ([#384]).
 
+[#318]: https://github.com/geoff-davis/llm-minder/issues/318
 [#314]: https://github.com/geoff-davis/llm-minder/issues/314
 [#315]: https://github.com/geoff-davis/llm-minder/issues/315
 [#331]: https://github.com/geoff-davis/llm-minder/issues/331

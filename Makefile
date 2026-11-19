@@ -105,6 +105,8 @@ package-check:  ## Build the sdist/wheel and check metadata and wheel contents
 	uv build
 	uvx twine@$(TWINE_VERSION) check --strict dist/*
 	uvx check-wheel-contents@$(CHECK_WHEEL_CONTENTS_VERSION) dist/*.whl
+	# The console script must install and run from the built wheel (#318).
+	uv run --isolated --no-project --with dist/*.whl llm-minder --help > /dev/null
 
 shim-package-check:  ## Build and check the async-batch-llm compatibility package (shim/)
 	rm -rf shim/dist
