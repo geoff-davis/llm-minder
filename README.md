@@ -5,6 +5,7 @@
 | Name                                                   |    Stmts |     Miss |   Branch |   BrPart |      Cover |   Missing |
 |------------------------------------------------------- | -------: | -------: | -------: | -------: | ---------: | --------: |
 | src/llm\_minder/\_\_init\_\_.py                        |       48 |        2 |        2 |        0 |     96.00% |   390-392 |
+| src/llm\_minder/\_\_main\_\_.py                        |        3 |        3 |        0 |        0 |      0.00% |       3-7 |
 | src/llm\_minder/\_internal/\_\_init\_\_.py             |        0 |        0 |        0 |        0 |    100.00% |           |
 | src/llm\_minder/\_internal/admission.py                |      421 |       16 |      118 |       14 |     94.43% |106, 114, 131, 133, 135, 155, 171, 173, 267, 299-300, 389, 403, 408-409, 523-\>521, 605 |
 | src/llm\_minder/\_internal/artifact\_codec.py          |      207 |       14 |       66 |        7 |     92.31% |69, 73, 77, 124, 153, 213, 324-\>323, 411, 437, 445, 490, 506-509 |
@@ -43,6 +44,7 @@
 | src/llm\_minder/classifiers/openai.py                  |       71 |        5 |       40 |        1 |     94.59% |114, 146-147, 181-182 |
 | src/llm\_minder/classifiers/openrouter.py              |       37 |        2 |       16 |        0 |     96.23% |     85-86 |
 | src/llm\_minder/classifiers/pydantic\_ai.py            |       16 |        2 |        6 |        0 |     90.91% |     16-17 |
+| src/llm\_minder/cli.py                                 |      440 |       19 |      158 |       12 |     94.82% |138, 189-190, 233, 294, 298, 300, 425, 430-431, 440, 594, 601, 604, 635, 912-916 |
 | src/llm\_minder/core/\_\_init\_\_.py                   |        3 |        0 |        0 |        0 |    100.00% |           |
 | src/llm\_minder/core/config.py                         |      252 |        4 |      150 |        4 |     98.01% |161, 163, 315, 677 |
 | src/llm\_minder/core/protocols.py                      |        2 |        0 |        0 |        0 |    100.00% |           |
@@ -78,7 +80,7 @@
 | src/llm\_minder/streaming.py                           |      219 |        1 |       76 |        3 |     98.64% |93-\>exit, 236-\>238, 292-\>295, 401 |
 | src/llm\_minder/token\_estimation.py                   |       35 |        0 |        4 |        0 |    100.00% |           |
 | src/llm\_minder/token\_extractor.py                    |      136 |        3 |       56 |        4 |     96.35% |88-\>98, 103-\>107, 146-147, 154, 206-\>208 |
-| **TOTAL**                                              | **11249** |  **590** | **3820** |  **371** | **93.24%** |           |
+| **TOTAL**                                              | **11692** |  **612** | **3978** |  **383** | **93.28%** |           |
 
 
 ## Setup coverage badge
