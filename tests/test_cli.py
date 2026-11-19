@@ -246,6 +246,31 @@ def test_recorded_cost_of_zero_is_not_null(
     assert doc["recorded_cost"] == {"amount": 0.0, "records_with_cost": 1, "records": 2}
 
 
+@pytest.mark.parametrize("as_json", [False, True])
+def test_token_total_beyond_int_digit_limit_is_a_store_error(
+    tmp_path: Path, kind: str, as_json: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # R2 (round 1): each stored count is within the interpreter's int-to-str digit limit,
+    # but their sum is not. Derived from the configured limit, which is left unchanged.
+    limit = sys.get_int_max_str_digits()
+    if limit == 0:
+        pytest.skip("int-to-str digit limit disabled in this interpreter")
+    big = 9 * 10 ** (limit - 1)  # exactly `limit` digits
+    tokens = {"input_tokens": big, "output_tokens": 1, "total_tokens": 1}
+    path = write(
+        tmp_path / f"s.{kind}", kind, [_result("a", tokens=tokens), _result("b", tokens=tokens)]
+    )
+    code, out, _ = run("inspect", path, *(["--json"] if as_json else []))
+    assert (code, out) == (cli.EXIT_STORE, "")
+    err = capsys.readouterr().err
+    assert "input_tokens" in err and "digit" in err
+    assert sys.get_int_max_str_digits() == limit
+    # Per-record values render; nothing else sums stored integers.
+    assert run("show", path, "a", "--json")[0] == 0
+    assert run("show", path, "a")[0] == 0
+    assert run("failures", path, "--json")[0] == 0
+
+
 def test_identity_extra_values_never_printed(tmp_path: Path, kind: str) -> None:
     identity = ArtifactIdentity(
         provider="p", model="m", extra={"system_prompt": "PRIVATE PROMPT", "temperature": 0.2}
@@ -337,6 +362,41 @@ def test_failures_category_names_guardrail_items(store: Path) -> None:
     assert doc["categories"] == ["framework_total_item_timeout", "batch_deadline_exceeded"]
     assert [e["item_id"] for e in doc["failures"]] == ["d", "e", "f"]
     assert doc["excluded_guardrail_stops"] == 0
+
+
+def _human_ids(out: str) -> list[str]:
+    return [line.split("\t")[0] for line in out.splitlines()[1:] if "\t" in line]
+
+
+def test_category_filter_never_selects_successes(tmp_path: Path, kind: str) -> None:
+    # R1 (round 1): a newest record may be success=True with an error_category. --category
+    # narrows the failures; it doesn't widen them to successes. A guardrail category is a
+    # stopped item whatever its success flag says (as in StoreSummary.inventory()).
+    entries = [
+        _result("ok-tagged", category="rate_limit"),
+        _result("failed", success=False, category="rate_limit", error="429"),
+        _result("stopped", category="batch_deadline_exceeded"),
+    ]
+    path = write(tmp_path / f"s.{kind}", kind, entries)
+
+    doc = run_json("failures", path, "--category", "rate_limit")
+    assert (doc["total"], doc["shown"], doc["excluded_guardrail_stops"]) == (1, 1, 1)
+    assert [e["item_id"] for e in doc["failures"]] == ["failed"]
+    assert run("failures", path, "--category", "rate_limit", "--ids-only")[:2] == (0, "failed\n")
+    code, out, _ = run("failures", path, "--category", "rate_limit")
+    assert code == 0 and out.startswith("1 matching items")
+    assert _human_ids(out) == ["failed"]
+
+    doc = run_json("failures", path)
+    assert [e["item_id"] for e in doc["failures"]] == ["failed"]
+    assert (doc["total"], doc["excluded_guardrail_stops"]) == (1, 1)
+
+    doc = run_json("failures", path, "--category", "batch_deadline_exceeded")
+    assert (doc["total"], doc["shown"], doc["excluded_guardrail_stops"]) == (1, 1, 0)
+    assert [e["item_id"] for e in doc["failures"]] == ["stopped"]
+    flags = ("--category", "batch_deadline_exceeded")
+    assert run("failures", path, *flags, "--ids-only")[:2] == (0, "stopped\n")
+    assert _human_ids(run("failures", path, *flags)[1]) == ["stopped"]
 
 
 def test_failures_newest_record_classifies(store: Path) -> None:

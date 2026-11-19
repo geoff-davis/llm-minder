@@ -442,9 +442,30 @@ def _inspect_text(doc: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _check_token_totals_render(summary: StoreSummary) -> None:
+    """Refuse token totals the interpreter can't print, before anything is written.
+
+    Each stored count decoded within ``sys.get_int_max_str_digits()``, but a sum can exceed it.
+    Like a recorded-cost sum beyond the float range, that is a store error (exit 3). The
+    interpreter's limit is left as configured. Token totals are the only summed integers the
+    CLI prints; other counts are record or item tallies.
+    """
+    for key in TOKEN_KEYS:
+        value = int(summary.token_totals.get(key, 0))
+        try:
+            str(value)
+        except ValueError:
+            raise ArtifactFormatError(
+                f"The stored {key} sum to a number with more digits than this interpreter "
+                f"prints (sys.get_int_max_str_digits() is {sys.get_int_max_str_digits()}); "
+                "the store's token counts are not plausible"
+            ) from None
+
+
 def _run_inspect(args: argparse.Namespace, prices: Prices | None, out: TextIO) -> int:
     with open_snapshot(args.store) as snapshot:
         summary = summarize(snapshot)
+        _check_token_totals_render(summary)
         doc = _inspect_document(args.store, snapshot, summary, prices)
     text = _dumps(doc) + "\n" if args.json else _inspect_text(doc)
     out.write(text)
@@ -473,9 +494,12 @@ def _run_failures(args: argparse.Namespace, out: TextIO) -> int:
     named = set(args.category or ())
 
     def selected(success: bool, category: str | None) -> bool:
-        if named:
+        # A guardrail category is a stopped item whatever `success` says (as in
+        # StoreSummary.inventory()); it is listed only when --category names it.
+        if category in _GUARDRAIL:
             return category in named
-        return not success and category not in _GUARDRAIL
+        # Otherwise only failures; --category narrows them and never selects a success.
+        return not success and (not named or category in named)
 
     with open_snapshot(args.store) as snapshot:
         summary = summarize(snapshot)  # pass 1: validate everything, group only
