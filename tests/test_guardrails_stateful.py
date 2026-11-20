@@ -55,6 +55,7 @@ from llm_minder._internal.guardrails import (
     AdmissionSlot,
     await_with_guardrails,
 )
+from tests._loop_quiescence import run_until_quiescent
 
 _ZERO: TokenUsage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
 
@@ -95,10 +96,9 @@ class _OnStartFailed(Exception):
 
 
 async def _drain() -> None:
-    """Enough loop turns for an attempt to register, start, and reach its provider
-    await, or to unwind through the guardrail join."""
-    for _ in range(12):
-        await asyncio.sleep(0)
+    """Run the loop until nothing on it can make progress, so an invariant
+    checked next sees settled state rather than a cascade still in flight."""
+    await run_until_quiescent()
 
 
 class GuardrailsMachine(RuleBasedStateMachine):

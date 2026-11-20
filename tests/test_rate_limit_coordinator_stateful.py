@@ -41,6 +41,7 @@ from llm_minder._internal.cleanup import CleanupInterruptedError
 from llm_minder._internal.event_dispatcher import EventDispatcher
 from llm_minder._internal.rate_limit_coordinator import RateLimitCoordinator
 from llm_minder.strategies.rate_limit import FixedDelayStrategy
+from tests._loop_quiescence import run_until_quiescent
 
 
 @dataclass
@@ -81,10 +82,9 @@ class _Events(BaseObserver):
 
 
 async def _drain() -> None:
-    """Enough loop turns for a report, its owned cooldown task, the strategy call,
-    the events and a finalization to reach their next await."""
-    for _ in range(16):
-        await asyncio.sleep(0)
+    """Run the loop until nothing on it can make progress, so an invariant
+    checked next sees settled state rather than a cascade still in flight."""
+    await run_until_quiescent()
 
 
 class RateLimitCoordinatorMachine(RuleBasedStateMachine):

@@ -39,6 +39,7 @@ from hypothesis.stateful import (
 
 from llm_minder import TokenEstimate
 from llm_minder._internal.admission import QuotaGate, QuotaReservation
+from tests._loop_quiescence import run_until_quiescent
 
 _TOLERANCE = 1e-6
 T = TypeVar("T")
@@ -81,10 +82,9 @@ class _ManualClock:
 
 
 async def _drain() -> None:
-    """Enough loop turns for reserves, the wake task and its sleep sub-task to
-    reach their next await."""
-    for _ in range(12):
-        await asyncio.sleep(0)
+    """Run the loop until nothing on it can make progress, so an invariant
+    checked next sees settled state rather than a cascade still in flight."""
+    await run_until_quiescent()
 
 
 class QuotaGateMachine(RuleBasedStateMachine):

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from typing import cast
 
 import pytest
 from hypothesis import settings
@@ -39,6 +40,7 @@ from hypothesis.stateful import (
 
 from llm_minder import StartupRampConfig
 from llm_minder._internal.capacity import CapacityLimiter, _CapacityGate
+from tests._loop_quiescence import run_until_quiescent
 
 
 @dataclass
@@ -64,10 +66,9 @@ class _JitterLog:
 
 
 async def _drain() -> None:
-    """Enough loop turns for a release's notify, the woken waiter's child task and
-    the condition re-acquire to reach their next await."""
-    for _ in range(12):
-        await asyncio.sleep(0)
+    """Run the loop until nothing on it can make progress, so an invariant
+    checked next sees settled state rather than a cascade still in flight."""
+    await run_until_quiescent()
 
 
 async def _finish(tasks: list[asyncio.Task[None]]) -> None:
@@ -140,6 +141,9 @@ class CapacityLimiterMachine(RuleBasedStateMachine):
 
     def _settle(self) -> None:
         self.loop.run_until_complete(_drain())
+        self._reap()
+
+    def _reap(self) -> None:
         for holder_id, holder in tuple(self.holders.items()):
             if not holder.task.done():
                 continue
@@ -292,3 +296,110 @@ TestCapacityLimiterStateful = CapacityLimiterMachine.TestCase
 @pytest.mark.slow
 class TestCapacityLimiterStatefulThorough(CapacityLimiterMachine.TestCase):  # type: ignore[misc,valid-type]
     settings = settings.get_profile("thorough")
+
+
+class _ReplayMachine(CapacityLimiterMachine):
+    """Replays a trace recorded under the round-1 harness, which drained a fixed
+    twelve loop turns after each rule, until ``fixed_drain`` is cleared."""
+
+    fixed_drain = True
+
+    def _settle(self) -> None:
+        if not self.fixed_drain:
+            super()._settle()
+            return
+
+        async def twelve_turns() -> None:
+            for _ in range(12):
+                await asyncio.sleep(0)
+
+        self.loop.run_until_complete(twelve_turns())
+        self._reap()
+
+
+class _Draws:
+    """Stands in for ``st.data()``: returns pinned values in order, and checks each
+    one is a legal choice for the strategy it answers."""
+
+    def __init__(self, *values: object) -> None:
+        self._values = list(values)
+
+    def draw(self, strategy: st.SearchStrategy[object]) -> object:
+        value = self._values.pop(0)
+        elements = getattr(strategy, "elements", None)
+        if elements is not None:
+            assert value in elements, f"pinned draw {value!r} not in {elements!r}"
+        return value
+
+
+def test_long_cancellation_cascade_is_not_a_stranded_waiter() -> None:
+    """Codex's round-1 counterexample (Hypothesis 6.170.16). Six waiters queue
+    behind a ramp-limited scope; after a burst of cancellations, the final release
+    needs more than twelve loop turns to hand its slot on. The round-1 harness
+    checked the invariants after twelve turns and reported a stranded waiter
+    (active 0, six waiting); the unchanged limiter admits the next one a few turns
+    later.
+
+    The trace is replayed under the round-1 drain, because settling fully after
+    every rule changes which holder holds a slot and the recorded holder ids no
+    longer apply. Only the final release settles with the machine's own drain,
+    which must wait for the cascade before checking the invariants."""
+    machine = _ReplayMachine()
+
+    def step(rule: str, *args: object) -> None:
+        getattr(machine, rule)(*args)
+        machine.active_counts_match_the_holders()
+        machine.no_waiter_is_stranded()
+
+    def data(*values: object) -> st.DataObject:
+        return cast(st.DataObject, _Draws(*values))
+
+    try:
+        step("setup", [2, 1], 1)
+        for _ in range(4):
+            step("admit", 0)
+        for holder_id in range(4):
+            step("cancel", data(holder_id))
+        step("admit", 0)
+        step("admit", 0)
+        step("cancel", data(4))
+        step("cancel", data(5))
+        step("admit", 0)
+        step("cancel", data(6))
+        step("admit", 0)
+        step("cancel", data(7))
+        step("admit", 0)
+        step("burst", data("release", 8, 0, "cancel", 8, 0), 2)
+        step("admit", 0)
+        step("burst", data("release", 9, 0, "cancel", 9, 0), 2)
+        step("admit", 0)
+        step("admit", 0)
+        step("cancel", data(10))
+        step("cancel", data(11))
+        step("admit", 0)
+        step("cancel", data(12))
+        step("admit", 0)
+        step("cancel", data(13))
+        for _ in range(4):
+            step("admit", 0)
+        step("burst", data("release", 14, 0, "cancel", 14, 0), 2)
+        step("admit", 0)
+        step("release", data(15))
+        for _ in range(6):
+            step("admit", 0)
+        step("cancel", data(16))
+        step("cancel", data(17))
+        for _ in range(3):
+            step("admit", 0)
+        step("release", data(19))
+        step(
+            "burst",
+            data("cancel", 18, 0, "release", 20, 0, "cancel", 18, 0, "cancel", 18, 0),
+            4,
+        )
+        machine.fixed_drain = False
+        step("release", data(23))
+        gate = machine._gate(0)
+        assert gate is not None and gate._active == 1
+    finally:
+        machine.teardown()
