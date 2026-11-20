@@ -9,7 +9,6 @@ don't specifically assert timing behavior should use these.
 import os
 
 import pytest
-from hypothesis import HealthCheck, settings
 
 from llm_minder.core import RateLimitConfig, RetryConfig
 
@@ -18,26 +17,34 @@ from llm_minder.core import RateLimitConfig, RetryConfig
 # database, so a failure is pinned as an explicit ``@example`` or regression
 # test rather than replayed from local state. Tests marked ``slow`` apply the
 # ``thorough`` profile explicitly. HYPOTHESIS_PROFILE overrides the default.
-settings.register_profile(
-    "ci",
-    derandomize=True,
-    deadline=None,
-    database=None,
-    max_examples=150,
-    stateful_step_count=30,
-    suppress_health_check=[HealthCheck.too_slow],
-    print_blob=True,
-)
-settings.register_profile(
-    "thorough",
-    deadline=None,
-    database=None,
-    max_examples=600,
-    stateful_step_count=80,
-    suppress_health_check=[HealthCheck.too_slow],
-    print_blob=True,
-)
-settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "ci"))
+# Hypothesis is a dev-group dependency. Jobs that install only selected packages (the
+# sdk-compat matrix) don't collect the property tests, so the profiles are registered only
+# when it is importable.
+try:
+    from hypothesis import HealthCheck, settings
+except ImportError:  # pragma: no cover - isolated SDK jobs
+    pass
+else:
+    settings.register_profile(
+        "ci",
+        derandomize=True,
+        deadline=None,
+        database=None,
+        max_examples=150,
+        stateful_step_count=30,
+        suppress_health_check=[HealthCheck.too_slow],
+        print_blob=True,
+    )
+    settings.register_profile(
+        "thorough",
+        deadline=None,
+        database=None,
+        max_examples=600,
+        stateful_step_count=80,
+        suppress_health_check=[HealthCheck.too_slow],
+        print_blob=True,
+    )
+    settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "ci"))
 
 
 @pytest.fixture
