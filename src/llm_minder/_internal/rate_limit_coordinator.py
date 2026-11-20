@@ -22,6 +22,7 @@ import functools
 import logging
 import math
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from ..observers import ProcessingEvent
@@ -54,7 +55,15 @@ class RateLimitCoordinator:
         quota_scope_id: int | None = None,
         max_cooldown_seconds: float = 600.0,
         fallback_cooldown_seconds: float = 300.0,
+        *,
+        clock: Callable[[], float] | None = None,
+        sleep: Callable[[float], Awaitable[None]] | None = None,
     ) -> None:
+        # Injected for deterministic tests: the wall clock behind COOLDOWN_ENDED
+        # durations and the cooldown sleep. None looks up time.time and
+        # asyncio.sleep at call time, so patching those still takes effect.
+        self._clock = clock
+        self._sleep = sleep
         self._max_cooldown_seconds = max_cooldown_seconds
         self._fallback_cooldown_seconds = fallback_cooldown_seconds
         self._strategy = rate_limit_strategy
@@ -93,6 +102,9 @@ class RateLimitCoordinator:
         self._cooldown_context: tuple[float, str | None] | None = None
 
         self._lock = asyncio.Lock()
+
+    def _now(self) -> float:
+        return self._clock() if self._clock is not None else time.time()
 
     # ── Worker-side hooks ────────────────────────────────────────
 
@@ -201,7 +213,7 @@ class RateLimitCoordinator:
                 # that caller. Shutdown signals the stop event; external
                 # cancellation of the owned task releases waiting workers
                 # and remains an interruption reported at close.
-                self._cooldown_context = (time.time(), strategy_type)
+                self._cooldown_context = (self._now(), strategy_type)
                 stop = asyncio.Event()
                 task = asyncio.create_task(
                     self._run_cooldown(
@@ -247,7 +259,7 @@ class RateLimitCoordinator:
         finalization itself is never retried here or in the reporting close.
         """
         self._started_cooldown_generation = generation
-        pause_started_at = time.time()
+        pause_started_at = self._now()
         try:
             cooldown_error = await self._wait_cooldown(
                 worker_id, generation, consecutive, suggested_wait, strategy_type, stop
@@ -364,7 +376,11 @@ class RateLimitCoordinator:
 
         try:
             if cooldown > 0 and not stop.is_set():
-                await sleep_unless_stopped(asyncio.sleep(cooldown), stop, name="cooldown sleep")
+                await sleep_unless_stopped(
+                    (self._sleep if self._sleep is not None else asyncio.sleep)(cooldown),
+                    stop,
+                    name="cooldown sleep",
+                )
         except (asyncio.CancelledError, CleanupInterruptedError):
             raise
         except Exception as exc:
@@ -403,7 +419,7 @@ class RateLimitCoordinator:
             # third party cancelled it, reported by an earlier call): finalize
             # from here. A failure keeps the paused state for a later call.
             context = self._cooldown_context
-            started_at, strategy_type = context if context is not None else (time.time(), None)
+            started_at, strategy_type = context if context is not None else (self._now(), None)
             await self._finalize_cooldown(started_at, None, strategy_type)
         self._cooldown_context = None
 
@@ -414,7 +430,7 @@ class RateLimitCoordinator:
         strategy_type: str | None = None,
     ) -> None:
         """Resume workers and emit COOLDOWN_ENDED."""
-        actual_duration = max(0.0, time.time() - start_time)
+        actual_duration = max(0.0, self._now() - start_time)
 
         async with self._lock:
             self._items_since_resume = 0

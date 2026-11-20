@@ -144,3 +144,94 @@ async def test_ramp_composes_with_lower_advertised_capacity() -> None:
 def test_startup_ramp_validation(kwargs: dict[str, Any], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         StartupRampConfig(**kwargs)
+
+
+# ── Injected clock and jitter sleep (#327) ──────────────────────────────
+
+
+class _FrozenClock:
+    def __init__(self, now: float = 0.0) -> None:
+        self.now = now
+
+    def __call__(self) -> float:
+        return self.now
+
+
+async def test_injected_clock_sets_the_ramp_limit() -> None:
+    """The ramp limit follows the injected clock, not ``time.perf_counter``: after
+    one interval of injected time, a second slot is free at once even though no
+    real time has passed (the real clock would keep the limit at 1 for 60 s)."""
+    from llm_minder._internal.capacity import _CapacityGate
+
+    clock = _FrozenClock()
+    gate = _CapacityGate(
+        3, StartupRampConfig(initial_concurrency=1, ramp_interval_seconds=60.0), clock=clock
+    )
+    await gate.acquire()
+    clock.now = 60.0
+    wait_seconds, _ = await asyncio.wait_for(gate.acquire(), timeout=1.0)
+    assert gate._active == 2
+    assert wait_seconds == 0.0
+
+
+async def test_default_clock_is_looked_up_at_call_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without an injected clock the gate reads the module's ``time.perf_counter``
+    when it runs, so replacing it after construction still takes effect."""
+    from types import SimpleNamespace
+
+    from llm_minder._internal import capacity as capacity_module
+
+    gate = capacity_module._CapacityGate(
+        3, StartupRampConfig(initial_concurrency=1, ramp_interval_seconds=60.0)
+    )
+    clock = _FrozenClock(gate._started)
+    monkeypatch.setattr(capacity_module, "time", SimpleNamespace(perf_counter=clock))
+    await gate.acquire()
+    clock.now += 60.0
+    await asyncio.wait_for(gate.acquire(), timeout=1.0)
+    assert gate._active == 2
+
+
+async def test_injected_sleep_serves_the_ramp_jitter() -> None:
+    from llm_minder._internal.capacity import CapacityLimiter
+
+    slept: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        slept.append(delay)
+
+    limiter = CapacityLimiter(
+        None,
+        max_workers=3,
+        startup_ramp=StartupRampConfig(
+            initial_concurrency=1, ramp_interval_seconds=60.0, jitter_seconds=30.0
+        ),
+        clock=_FrozenClock(),
+        sleep=fake_sleep,
+    )
+
+    class _Strategy:
+        max_concurrency = 3
+
+    async with asyncio.timeout(1.0), limiter.admit(_Strategy()) as admission:
+        assert len(slept) == 1 and 0.0 <= slept[0] <= 30.0
+        assert admission.startup_ramp_wait_seconds == slept[0]
+
+
+async def test_default_jitter_sleep_is_looked_up_at_call_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from llm_minder._internal import capacity as capacity_module
+
+    slept: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        slept.append(delay)
+
+    gate = capacity_module._CapacityGate(
+        3,
+        StartupRampConfig(initial_concurrency=1, ramp_interval_seconds=60.0, jitter_seconds=30.0),
+    )
+    monkeypatch.setattr(capacity_module.asyncio, "sleep", fake_sleep)
+    _, ramp_wait = await asyncio.wait_for(gate.acquire(), timeout=1.0)
+    assert len(slept) == 1 and ramp_wait == slept[0]

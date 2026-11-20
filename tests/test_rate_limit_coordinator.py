@@ -11,6 +11,7 @@ import asyncio
 
 import pytest
 
+from llm_minder import BaseObserver, ProcessingEvent
 from llm_minder._internal.event_dispatcher import EventDispatcher
 from llm_minder._internal.rate_limit_coordinator import RateLimitCoordinator
 from llm_minder.strategies.rate_limit import FixedDelayStrategy
@@ -253,3 +254,66 @@ async def test_c4_d5_hint_clamp_and_fallback_across_hosts(
         assert duration == max(30 if strategy_result == "valid" else 5, clamped)
     finally:
         await close()
+
+
+# ── Injected clock and cooldown sleep (#327) ────────────────────────────
+
+
+class _CooldownEvents(BaseObserver):
+    _abl_fast_observer = True
+
+    def __init__(self) -> None:
+        self.events: list[tuple[ProcessingEvent, dict]] = []
+
+    async def on_event(self, event: ProcessingEvent, data: dict) -> None:
+        if event in (ProcessingEvent.COOLDOWN_STARTED, ProcessingEvent.COOLDOWN_ENDED):
+            self.events.append((event, data))
+
+
+async def test_injected_sleep_and_clock_drive_the_cooldown() -> None:
+    """The cooldown sleeps through the injected sleep (a 30 s cooldown finishes at
+    once) and COOLDOWN_ENDED reports the injected clock's duration."""
+    now = [100.0]
+    slept: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        slept.append(delay)
+        now[0] += delay
+
+    observer = _CooldownEvents()
+    coord = RateLimitCoordinator(
+        FixedDelayStrategy(cooldown=30.0),
+        EventDispatcher(observers=[observer], middlewares=[]),
+        clock=lambda: now[0],
+        sleep=fake_sleep,
+    )
+    await asyncio.wait_for(coord.handle_rate_limit(worker_id=0, observed_generation=0), 1.0)
+    await coord.shutdown()
+    assert slept == [30.0]
+    ended = [data for event, data in observer.events if event is ProcessingEvent.COOLDOWN_ENDED]
+    assert ended == [{"duration": 30.0}]
+
+
+async def test_default_clock_is_looked_up_at_call_time(monkeypatch) -> None:
+    """Without an injected clock, COOLDOWN_ENDED's duration comes from the module's
+    ``time.time`` read when the cooldown runs (the default sleep is covered by the
+    tests above, which replace ``asyncio.sleep`` after construction)."""
+    from types import SimpleNamespace
+
+    from llm_minder._internal import rate_limit_coordinator as rlc_module
+
+    now = [500.0]
+
+    async def fake_sleep(delay: float, *args, **kwargs) -> None:
+        now[0] += delay
+
+    observer = _CooldownEvents()
+    coord = RateLimitCoordinator(
+        FixedDelayStrategy(cooldown=7.0), EventDispatcher(observers=[observer], middlewares=[])
+    )
+    monkeypatch.setattr(rlc_module, "time", SimpleNamespace(time=lambda: now[0]))
+    monkeypatch.setattr(rlc_module.asyncio, "sleep", fake_sleep)
+    await asyncio.wait_for(coord.handle_rate_limit(worker_id=0, observed_generation=0), 1.0)
+    await coord.shutdown()
+    ended = [data for event, data in observer.events if event is ProcessingEvent.COOLDOWN_ENDED]
+    assert ended == [{"duration": 7.0}]
