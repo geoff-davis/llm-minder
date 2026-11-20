@@ -8,7 +8,7 @@ import random
 import sys
 import time
 import warnings
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -50,13 +50,27 @@ def strategy_max_concurrency(strategy: Any) -> int | None:
 class _CapacityGate:
     """Condition-based gate whose allowed concurrency can rise over time."""
 
-    def __init__(self, capacity: int, ramp: StartupRampConfig | None) -> None:
+    def __init__(
+        self,
+        capacity: int,
+        ramp: StartupRampConfig | None,
+        *,
+        clock: Callable[[], float] | None = None,
+        sleep: Callable[[float], Awaitable[None]] | None = None,
+    ) -> None:
         self.capacity = capacity
         self._ramp = ramp
+        # Injected for deterministic tests; None looks up time.perf_counter and
+        # asyncio.sleep at call time, so patching those still takes effect.
+        self._clock = clock
+        self._sleep = sleep
         self._active = 0
-        self._started = time.perf_counter()
+        self._started = self._now()
         self._condition = asyncio.Condition()
         self._notifiers: set[asyncio.Task[None]] = set()
+
+    def _now(self) -> float:
+        return self._clock() if self._clock is not None else time.perf_counter()
 
     def _current_limit(self, now: float) -> tuple[int, float | None]:
         if self._ramp is None:
@@ -79,14 +93,14 @@ class _CapacityGate:
         abort_controller: AbortController | None = None,
         item_id: str | None = None,
     ) -> tuple[float, float]:
-        started = time.perf_counter()
+        started = self._now()
         ramp_wait = 0.0
         if self._ramp is not None and self._ramp.jitter_seconds > 0:
             limit, _ = self._current_limit(started)
             if limit < self.capacity:
                 jitter = random.uniform(0.0, self._ramp.jitter_seconds)
                 await await_with_guardrails(
-                    asyncio.sleep(jitter),
+                    (self._sleep if self._sleep is not None else asyncio.sleep)(jitter),
                     item_deadline=deadline,
                     item_id=item_id,
                     abort_controller=abort_controller,
@@ -95,13 +109,13 @@ class _CapacityGate:
 
         async with self._condition:
             while True:
-                now = time.perf_counter()
+                now = self._now()
                 limit, until_next_ramp = self._current_limit(now)
                 if self._active < limit:
                     self._active += 1
                     return max(0.0, now - started), ramp_wait
 
-                segment_started = time.perf_counter()
+                segment_started = self._now()
                 if until_next_ramp is None:
                     await await_with_guardrails(
                         self._condition.wait(),
@@ -121,7 +135,7 @@ class _CapacityGate:
                     except TimeoutError:
                         pass
                 if limit < self.capacity:
-                    ramp_wait += max(0.0, time.perf_counter() - segment_started)
+                    ramp_wait += max(0.0, self._now() - segment_started)
 
     async def release(self) -> None:
         # Free the slot before any await. The Condition lock can be held across
@@ -152,10 +166,15 @@ class CapacityLimiter:
         *,
         max_workers: int = 1,
         startup_ramp: StartupRampConfig | None = None,
+        clock: Callable[[], float] | None = None,
+        sleep: Callable[[float], Awaitable[None]] | None = None,
     ) -> None:
         self._configured_capacity = configured_capacity
         self._max_workers = max_workers
         self._startup_ramp = startup_ramp
+        # Passed to each scope's gate: the ramp clock and the jitter sleep.
+        self._clock = clock
+        self._sleep = sleep
         self._entries: dict[int, tuple[object, int, _CapacityGate]] = {}
 
     def effective_capacity(self, strategy: Any) -> int | None:
@@ -194,7 +213,7 @@ class CapacityLimiter:
         scope_id = id(scope)
         entry = self._entries.get(scope_id)
         if entry is None or entry[0] is not scope:
-            gate = _CapacityGate(capacity, self._startup_ramp)
+            gate = _CapacityGate(capacity, self._startup_ramp, clock=self._clock, sleep=self._sleep)
             self._entries[scope_id] = (scope, capacity, gate)
         else:
             _, registered_capacity, gate = entry
