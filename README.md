@@ -7,15 +7,15 @@
 | src/llm\_minder/\_\_init\_\_.py                        |       48 |        2 |        2 |        0 |     96.00% |   390-392 |
 | src/llm\_minder/\_\_main\_\_.py                        |        3 |        3 |        0 |        0 |      0.00% |       3-7 |
 | src/llm\_minder/\_internal/\_\_init\_\_.py             |        0 |        0 |        0 |        0 |    100.00% |           |
-| src/llm\_minder/\_internal/admission.py                |      421 |       16 |      118 |       14 |     94.43% |106, 114, 131, 133, 135, 155, 171, 173, 267, 299-300, 389, 403, 408-409, 523-\>521, 605 |
+| src/llm\_minder/\_internal/admission.py                |      421 |       12 |      118 |       11 |     95.73% |106, 114, 131, 133, 135, 173, 267, 389, 403, 408-409, 523-\>521, 605 |
 | src/llm\_minder/\_internal/artifact\_codec.py          |      207 |       14 |       66 |        7 |     92.31% |69, 73, 77, 124, 153, 213, 324-\>323, 411, 437, 445, 490, 506-509 |
 | src/llm\_minder/\_internal/attempt\_admission.py       |       47 |        3 |       18 |        2 |     92.31% |36-\>38, 62, 86-87 |
 | src/llm\_minder/\_internal/backoff.py                  |       21 |        2 |       12 |        0 |     93.94% |     20-21 |
 | src/llm\_minder/\_internal/budget.py                   |       74 |        0 |       24 |        0 |    100.00% |           |
 | src/llm\_minder/\_internal/cache\_groups.py            |       40 |        0 |        6 |        0 |    100.00% |           |
-| src/llm\_minder/\_internal/capacity.py                 |      140 |        9 |       32 |        2 |     92.44% |43-44, 85-94, 202-208 |
+| src/llm\_minder/\_internal/capacity.py                 |      146 |        4 |       32 |        1 |     97.19% |43-44, 221-227 |
 | src/llm\_minder/\_internal/classifier\_resolver.py     |       38 |        0 |        4 |        0 |    100.00% |           |
-| src/llm\_minder/\_internal/cleanup.py                  |      291 |       17 |      106 |        8 |     91.69% |144-\>exit, 150, 157-158, 163-166, 207-209, 213, 242, 362-\>364, 368-\>exit, 449, 482-\>495, 536-540 |
+| src/llm\_minder/\_internal/cleanup.py                  |      291 |       17 |      106 |        7 |     91.94% |144-\>exit, 150, 157-158, 163-166, 207-209, 213, 242, 362-\>364, 368-\>exit, 449, 536-540 |
 | src/llm\_minder/\_internal/error\_logging.py           |      107 |       16 |       40 |        8 |     82.31% |42-\>45, 93, 107-\>117, 115-116, 118, 121-132, 149-\>170, 151, 153-156, 167-168 |
 | src/llm\_minder/\_internal/event\_dispatcher.py        |       90 |        3 |       30 |        1 |     96.67% |83, 122-\>124, 147, 163 |
 | src/llm\_minder/\_internal/execution\_state.py         |       59 |        1 |        6 |        1 |     96.92% |       125 |
@@ -25,7 +25,7 @@
 | src/llm\_minder/\_internal/item\_executor.py           |      840 |       20 |      260 |       33 |     95.18% |215, 258-\>exit, 260-\>exit, 264-\>exit, 273-\>exit, 281-\>exit, 315-\>exit, 332, 348, 438, 498, 558-\>exit, 577-\>579, 580-\>582, 596-599, 757, 783-\>791, 861-\>exit, 905, 907, 1061, 1136, 1258, 1478-1479, 1482-\>1487, 1500, 1589-\>exit, 1651, 1675-\>1679, 1696-\>1700, 1780-\>1784, 1795-\>1799, 1842-\>1848, 1848-\>1853, 1921-\>1932, 2022-\>2029, 2078, 2080-\>2082 |
 | src/llm\_minder/\_internal/logical\_item.py            |       17 |        0 |        0 |        0 |    100.00% |           |
 | src/llm\_minder/\_internal/messages.py                 |      188 |       10 |      100 |       10 |     93.06% |104, 126, 202, 207, 221, 226, 234, 266, 349, 368 |
-| src/llm\_minder/\_internal/rate\_limit\_coordinator.py |      168 |        5 |       42 |        1 |     97.14% |122, 293, 370-376 |
+| src/llm\_minder/\_internal/rate\_limit\_coordinator.py |      173 |        5 |       42 |        1 |     97.21% |134, 305, 386-392 |
 | src/llm\_minder/\_internal/removed\_names.py           |       14 |        2 |        2 |        0 |     87.50% |     32-33 |
 | src/llm\_minder/\_internal/responses\_translation.py   |      191 |       13 |      118 |       16 |     90.61% |113-\>115, 124, 153, 181, 190, 203, 205-\>207, 223, 228, 241, 252, 254-\>256, 273, 292, 296, 306 |
 | src/llm\_minder/\_internal/store\_reader.py            |      336 |       25 |      114 |       11 |     92.00% |106, 182, 256-257, 273, 281, 393-395, 403, 407, 411, 415, 420, 440, 443, 458-459, 514, 517-518, 537-538, 551-552, 589-\>591 |
@@ -80,7 +80,7 @@
 | src/llm\_minder/streaming.py                           |      219 |        1 |       76 |        3 |     98.64% |93-\>exit, 236-\>238, 292-\>295, 401 |
 | src/llm\_minder/token\_estimation.py                   |       35 |        0 |        4 |        0 |    100.00% |           |
 | src/llm\_minder/token\_extractor.py                    |      136 |        3 |       56 |        4 |     96.35% |88-\>98, 103-\>107, 146-147, 154, 206-\>208 |
-| **TOTAL**                                              | **11692** |  **612** | **3978** |  **383** | **93.28%** |           |
+| **TOTAL**                                              | **11703** |  **603** | **3978** |  **378** | **93.39%** |           |
 
 
 ## Setup coverage badge
