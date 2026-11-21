@@ -27,11 +27,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import queue
 import random
 import signal
 import sqlite3
 import subprocess
 import sys
+import threading
 import time
 from collections import Counter
 from pathlib import Path
@@ -174,6 +176,8 @@ async def test_crash_sweep_recovers(
     point = POINTS[point_id]
     params = _case_params(point, case)
     label = f"point {point_id}, case {case}, CRASH_SEED={SEED}, params {params}"
+    # Captured output is shown with any failure, including the shared invariants' bare assertions.
+    print(f"reproduce: {label}")
     await _check_point(point, params, tmp_path, caplog, label)
 
 
@@ -355,11 +359,76 @@ async def _recover_and_resume(
 # ── Timed external kill ────────────────────────────────────────────────────
 
 
-def _start_timed_child(kind: str, path: Path, workdir: Path) -> subprocess.Popen[str]:
+#: Upper bound on waiting for one protocol line (READY or DONE) or for the child to exit.
+PROTOCOL_TIMEOUT = 30.0
+
+
+class _TimedChild:
+    """A timed child whose pipes are drained by threads, so every wait has a deadline.
+
+    Use it as a context manager: on any exit, normal or not (a failed assertion, a timeout, an
+    interrupt), a child that is still alive is killed and reaped.
+    """
+
+    def __init__(self, popen: subprocess.Popen[str]) -> None:
+        self.popen = popen
+        self.stdout_lines: list[str] = []
+        self.stderr = ""
+        self._lines: queue.Queue[str | None] = queue.Queue()
+        self._stderr_parts: list[str] = []
+        self._readers = [
+            threading.Thread(target=self._read_stdout, daemon=True),
+            threading.Thread(target=self._read_stderr, daemon=True),
+        ]
+        for reader in self._readers:
+            reader.start()
+
+    def _read_stdout(self) -> None:
+        assert self.popen.stdout is not None
+        for line in self.popen.stdout:
+            self._lines.put(line)
+        self._lines.put(None)
+
+    def _read_stderr(self) -> None:
+        assert self.popen.stderr is not None
+        self._stderr_parts.append(self.popen.stderr.read())
+
+    def next_line(self, timeout: float) -> str | None:
+        """The next stdout line, or None at end of output; fails after ``timeout`` seconds."""
+        try:
+            line = self._lines.get(timeout=timeout)
+        except queue.Empty:
+            pytest.fail(f"timed child printed no protocol line within {timeout}s")
+        if line is not None:
+            self.stdout_lines.append(line)
+        return line
+
+    def finish(self) -> int:
+        """Wait (bounded) for exit and drain both pipes; returns the exit code."""
+        returncode = self.popen.wait(timeout=PROTOCOL_TIMEOUT)
+        for reader in self._readers:
+            reader.join(timeout=PROTOCOL_TIMEOUT)
+        while self.next_line(PROTOCOL_TIMEOUT) is not None:
+            pass
+        self.stderr = "".join(self._stderr_parts)
+        return returncode
+
+    def __enter__(self) -> _TimedChild:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        if self.popen.poll() is None:
+            self.popen.kill()
+        self.popen.wait(timeout=PROTOCOL_TIMEOUT)
+        for reader in self._readers:
+            reader.join(timeout=PROTOCOL_TIMEOUT)
+
+
+def _start_timed_child(kind: str, path: Path, workdir: Path) -> _TimedChild:
     workdir.mkdir()
     args = [sys.executable, "-m", "tests._crash_child", "timed", kind, os.fspath(path)]
     args.append(os.fspath(workdir))
-    return subprocess.Popen(
+    popen = subprocess.Popen(
         args,
         cwd=workdir,
         env=_child_env(),
@@ -367,27 +436,39 @@ def _start_timed_child(kind: str, path: Path, workdir: Path) -> subprocess.Popen
         stderr=subprocess.PIPE,
         text=True,
     )
+    return _TimedChild(popen)
 
 
-def _await_ready(child: subprocess.Popen[str]) -> None:
-    """Block until the child prints READY; fail with its stderr if it exits first."""
-    assert child.stdout is not None
-    line = child.stdout.readline()
+def _await_ready(child: _TimedChild) -> None:
+    """Wait (bounded) until the child prints READY; fail with its stderr if it exits first."""
+    line = child.next_line(PROTOCOL_TIMEOUT)
     if line != "READY\n":
-        _, stderr = child.communicate(timeout=30)
-        pytest.fail(f"timed child exited before READY ({child.returncode}): {stderr}")
+        returncode = child.finish()
+        pytest.fail(f"timed child exited before READY ({returncode}): {child.stderr}")
+
+
+def _classify_attempt(returncode: int, stdout_lines: list[str]) -> str:
+    """``crash`` for a SIGKILL that landed before DONE, ``retry`` for a run that reached DONE.
+
+    A child that printed DONE has finished its work and closed the store; killing it during
+    interpreter teardown still returns -SIGKILL, but that is not a crash state, so it is retried.
+    """
+    if "DONE\n" in stdout_lines:
+        assert returncode in (0, -signal.SIGKILL), (returncode, stdout_lines)
+        return "retry"
+    assert returncode == -signal.SIGKILL, (returncode, stdout_lines)
+    return "crash"
 
 
 def _calibrate(kind: str, root: Path) -> float:
     """The READY-to-DONE time of one unkilled run of the timed workload: the delay range D."""
-    child = _start_timed_child(kind, _store_path(root, kind), root / "work")
-    _await_ready(child)
-    ready = time.monotonic()
-    assert child.stdout is not None
-    done = child.stdout.readline()  # timed at DONE, not at exit: interpreter teardown is no work
-    elapsed = time.monotonic() - ready
-    stdout, stderr = child.communicate(timeout=30)
-    assert child.returncode == 0 and done == "DONE\n", (child.returncode, done, stdout, stderr)
+    with _start_timed_child(kind, _store_path(root, kind), root / "work") as child:
+        _await_ready(child)
+        ready = time.monotonic()
+        done = child.next_line(PROTOCOL_TIMEOUT)  # timed at DONE: interpreter teardown is no work
+        elapsed = time.monotonic() - ready
+        returncode = child.finish()
+        assert returncode == 0 and done == "DONE\n", (returncode, done, child.stderr)
     return elapsed
 
 
@@ -399,29 +480,31 @@ async def test_timed_kill_recovers(
     kind: str, case: int, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     rng = random.Random(f"{SEED}:timed:{kind}:{case}")
+    print(f"reproduce: timed {kind} case {case}, CRASH_SEED={SEED}")
     calibration = tmp_path / "calibration"
     calibration.mkdir()
     span = _calibrate(kind, calibration)
 
-    # Kill after a random delay measured from READY. A delay that outlasts the work (exit 0 with
-    # DONE) is never a crash case; retry it with a fresh delay from the first half of the range.
+    # Kill after a random delay measured from READY. A run that reached DONE is never a crash case,
+    # whatever its exit code; retry it with a fresh delay (and store) from the first half of the range.
     for attempt in range(1 + TIMED_RETRIES):
         delay = rng.uniform(0, span if attempt == 0 else span / 2)
         root = tmp_path / f"attempt-{attempt}"
         root.mkdir()
         path = _store_path(root, kind)
-        child = _start_timed_child(kind, path, root / "work")
-        _await_ready(child)
-        time.sleep(delay)
-        child.send_signal(signal.SIGKILL)
-        stdout, stderr = child.communicate(timeout=30)
-        if child.returncode == -signal.SIGKILL:
+        with _start_timed_child(kind, path, root / "work") as child:
+            _await_ready(child)
+            time.sleep(delay)
+            child.popen.send_signal(signal.SIGKILL)
+            returncode = child.finish()
+        stderr = child.stderr
+        if _classify_attempt(returncode, child.stdout_lines) == "crash":
             break
-        assert child.returncode == 0 and stdout.endswith("DONE\n"), (child.returncode, stderr)
     else:
         pytest.fail(f"timed kill never landed before DONE (D={span:.3f}s, CRASH_SEED={SEED})")
 
     label = f"timed {kind} case {case}, CRASH_SEED={SEED}, D={span:.3f}s, delay={delay:.3f}s"
+    print(f"reproduce: {label}")
     assert "Traceback" not in stderr, f"{label}: {stderr}"
     workdir = root / "work"
     published = read_side_log(workdir / "published.log")
@@ -441,3 +524,73 @@ async def test_timed_kill_recovers(
         torn_tails={0, 1} if kind == "jsonl" else {0},
         killed=set(),
     )
+
+
+# ── Timed-kill driver ──────────────────────────────────────────────────────
+
+
+def _script_child(code: str) -> _TimedChild:
+    popen = subprocess.Popen(
+        [sys.executable, "-c", code],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return _TimedChild(popen)
+
+
+_READY_THEN_IDLE = 'import time; print("READY", flush=True); time.sleep(60)'
+_READY_DONE_THEN_IDLE = 'import time; print("READY"); print("DONE", flush=True); time.sleep(60)'
+
+
+def test_attempt_killed_before_done_is_a_crash() -> None:
+    with _script_child(_READY_THEN_IDLE) as child:
+        _await_ready(child)
+        child.popen.send_signal(signal.SIGKILL)
+        returncode = child.finish()
+    assert _classify_attempt(returncode, child.stdout_lines) == "crash"
+
+
+def test_attempt_killed_after_done_is_retried() -> None:
+    # The child is still alive (as in interpreter teardown) when the kill lands, so it exits -9.
+    with _script_child(_READY_DONE_THEN_IDLE) as child:
+        _await_ready(child)
+        assert child.next_line(PROTOCOL_TIMEOUT) == "DONE\n"
+        child.popen.send_signal(signal.SIGKILL)
+        returncode = child.finish()
+    assert returncode == -signal.SIGKILL
+    assert _classify_attempt(returncode, child.stdout_lines) == "retry"
+    assert _classify_attempt(0, ["READY\n", "DONE\n"]) == "retry"
+
+
+def test_attempt_with_other_exit_fails() -> None:
+    with pytest.raises(AssertionError):
+        _classify_attempt(1, ["READY\n"])
+
+
+@pytest.mark.parametrize(
+    "code", ["import time; time.sleep(60)", _READY_THEN_IDLE], ids=["no-ready", "no-done"]
+)
+def test_silent_child_fails_promptly_and_is_reaped(
+    code: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started: list[_TimedChild] = []
+
+    def start(kind: str, path: Path, workdir: Path) -> _TimedChild:
+        started.append(_script_child(code))
+        return started[-1]
+
+    monkeypatch.setattr(sys.modules[__name__], "_start_timed_child", start)
+    monkeypatch.setattr(sys.modules[__name__], "PROTOCOL_TIMEOUT", 0.5)
+    began = time.monotonic()
+    with pytest.raises(pytest.fail.Exception, match="no protocol line"):
+        _calibrate("jsonl", tmp_path)
+    assert time.monotonic() - began < 10
+    assert started[0].popen.poll() is not None
+
+
+def test_interrupted_attempt_reaps_the_child() -> None:
+    with pytest.raises(KeyboardInterrupt), _script_child(_READY_THEN_IDLE) as child:
+        _await_ready(child)
+        raise KeyboardInterrupt
+    assert child.popen.poll() is not None
