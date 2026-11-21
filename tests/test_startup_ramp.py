@@ -187,7 +187,9 @@ async def test_default_clock_is_looked_up_at_call_time(monkeypatch: pytest.Monke
     clock = _FrozenClock(gate._started)
     monkeypatch.setattr(capacity_module, "time", SimpleNamespace(perf_counter=clock))
     await gate.acquire()
-    clock.now += 60.0
+    # Step clearly past the boundary: from a real perf_counter() start, start + 60.0 - start
+    # can round to 59.999..., which completes no interval and the frozen clock never moves.
+    clock.now += 61.0
     await asyncio.wait_for(gate.acquire(), timeout=1.0)
     assert gate._active == 2
 
