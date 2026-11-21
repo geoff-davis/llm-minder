@@ -1,0 +1,3709 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Provider-neutral asyncio toolkit for concurrent LLM calls with retries, coordinated rate limits, bounded streaming, resumable checkpoints, and deadlines.">
+      
+      
+      
+        <link rel="canonical" href="https://geoff-davis.github.io/llm-minder/choosing-your-limits/">
+      
+      
+        <link rel="prev" href="../comparison/">
+      
+      
+        <link rel="next" href="../token-aware-admission/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>Choosing Your Limits - llm-minder</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#choosing-your-limits" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="llm-minder" class="md-header__button md-logo" aria-label="llm-minder" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            llm-minder
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Choosing Your Limits
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/geoff-davis/llm-minder" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    geoff-davis/llm-minder
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../comparison/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Compare Alternatives
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Choosing Your Limits
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../token-aware-admission/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Token-Aware Admission
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../production-checklist/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Production Checklist
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting and FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../logging/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Logging
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../results-and-artifacts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Results, Artifacts, and Resume
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../large-runs/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Large Runs (100k–1M)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../guardrails/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Deadlines, Budgets and Fail-Fast Guardrails
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../prompt-caching/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Prompt Caching: Getting and Keeping Hits
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../structured-prompts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Structured Message Prompts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../bounded-work/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Bounded Work and Backpressure
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cleanup-lifecycle-contract/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cleanup and Shutdown Contract
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../callable-integration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Use Your Existing Async Client
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../testing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Testing
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../benchmarks/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Benchmarks
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../evidence/sqlite-maintenance-evidence/" class="md-tabs__link">
+          
+  
+  
+  Design notes
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../openai-high-throughput/" class="md-tabs__link">
+          
+  
+  
+  Provider Integrations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/basic/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Release Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../stability/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Stability
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../migration/" class="md-tabs__link">
+          
+  
+  
+  Migration Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/entrypoints/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="llm-minder" class="md-nav__button md-logo" aria-label="llm-minder" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    llm-minder
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/geoff-davis/llm-minder" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    geoff-davis/llm-minder
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compare Alternatives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing Your Limits
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing Your Limits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-short-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The short version
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-what-you-got" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check what you got
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-you-dont-know-your-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When you don't know your limits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="When you don&#39;t know your limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-configure-a-probing-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: configure a probing run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-run-it-and-record-the-first-rate-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: run it and record the first rate limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: read the result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-pin-per-minute-limits-below-what-you-saw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: pin per-minute limits below what you saw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The decision tree
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The decision tree">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-concurrency-concurrencyn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Concurrency — concurrency=N
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-connection-pool-max_connections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Connection pool — max_connections
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-provider-concurrency-max_provider_concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Provider concurrency — max_provider_concurrency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-quota-scope-strategyquota_scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Quota scope — strategy.quota_scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-requests-per-minute-max_requests_per_minute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Requests per minute — max_requests_per_minute
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-tokens-per-minute-max_tokens_per_minute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Tokens per minute — max_tokens_per_minute
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-startup-ramp-startup_ramp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Startup ramp — startup_ramp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-cooldown-ratelimitconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Cooldown — RateLimitConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-retries-and-backoff-retryconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Retries and backoff — RetryConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-attempt-item-and-batch-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Attempt, item, and batch timeouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-spend-caps-max_total_tokens-max_total_cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Spend caps — max_total_tokens / max_total_cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-10k-items-against-a-rate-limited-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example: 10k items against a rate-limited provider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#if-memory-is-the-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        If memory is the constraint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#numeric-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Numeric configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../token-aware-admission/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Token-Aware Admission
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../production-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting and FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../results-and-artifacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results, Artifacts, and Resume
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../large-runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Large Runs (100k–1M)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guardrails/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deadlines, Budgets and Fail-Fast Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prompt-caching/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompt Caching: Getting and Keeping Hits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../structured-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Structured Message Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bounded-work/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bounded Work and Backpressure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cleanup-lifecycle-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleanup and Shutdown Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../callable-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Your Existing Async Client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_19" >
+        
+          
+          <label class="md-nav__link" for="__nav_19" id="__nav_19_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_19_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_19">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evidence/sqlite-maintenance-evidence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQLite Maintenance Evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evidence/v0.22-scale-evidence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.22 Scale Evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        
+          
+          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Provider Integrations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_20">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Provider Integrations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../openai-high-throughput/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAI-Compatible High Throughput
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEMINI_INTEGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gemini
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPENAI_INTEGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ANTHROPIC_INTEGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anthropic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPENROUTER_INTEGRATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenRouter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        
+          
+          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_21">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/basic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/custom-strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/benchmark-walkthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmark Walkthrough
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Stability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_24" >
+        
+          
+          <label class="md-nav__link" for="__nav_24" id="__nav_24_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_24_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_24">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Which Guide to Read
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1.0 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.28/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.28 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.27/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.27 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.26/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.26 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.25/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.25 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.24/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.24 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.22/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.22 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.20 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.10/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.10 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.4 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/v0.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v0.1 Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_25" >
+        
+          
+          <label class="md-nav__link" for="__nav_25" id="__nav_25_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_25">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/entrypoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Entry Points and Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/artifacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artifacts and Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/single-call-pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Call & Shared Call Pool
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Errors and Classification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/observers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-short-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The short version
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-what-you-got" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check what you got
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-you-dont-know-your-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When you don't know your limits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="When you don&#39;t know your limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-configure-a-probing-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: configure a probing run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-run-it-and-record-the-first-rate-limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: run it and record the first rate limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-read-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: read the result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-pin-per-minute-limits-below-what-you-saw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: pin per-minute limits below what you saw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worked-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caveats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-decision-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The decision tree
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The decision tree">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-concurrency-concurrencyn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Concurrency — concurrency=N
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-connection-pool-max_connections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Connection pool — max_connections
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-provider-concurrency-max_provider_concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Provider concurrency — max_provider_concurrency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-quota-scope-strategyquota_scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Quota scope — strategy.quota_scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-requests-per-minute-max_requests_per_minute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Requests per minute — max_requests_per_minute
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-tokens-per-minute-max_tokens_per_minute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Tokens per minute — max_tokens_per_minute
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-startup-ramp-startup_ramp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Startup ramp — startup_ramp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-cooldown-ratelimitconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Cooldown — RateLimitConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-retries-and-backoff-retryconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Retries and backoff — RetryConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-attempt-item-and-batch-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Attempt, item, and batch timeouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11-spend-caps-max_total_tokens-max_total_cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Spend caps — max_total_tokens / max_total_cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-example-10k-items-against-a-rate-limited-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked example: 10k items against a rate-limited provider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#if-memory-is-the-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        If memory is the constraint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#numeric-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Numeric configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="choosing-your-limits">Choosing Your Limits</h1>
+<p>One page, one pass through every limit that matters, in the order you should
+decide them. Each section says what the knob bounds, how to pick a value, and
+when to leave it alone. The deep dives — the
+<a href="../production-checklist/">production checklist</a>,
+<a href="../openai-high-throughput/">high-throughput guide</a>,
+<a href="../guardrails/">guardrails</a>, and
+<a href="../bounded-work/">bounded work</a> — expand on each step; you should be able to
+size a real run without leaving this page.</p>
+<h2 id="the-short-version">The short version</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="n">JsonlArtifactStore</span><span class="p">,</span> <span class="n">ResumePolicy</span><span class="p">,</span> <span class="n">llm</span><span class="p">,</span> <span class="n">process_prompts</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">strategy</span> <span class="o">=</span> <span class="n">llm</span><span class="p">(</span><span class="s2">&quot;deepseek:deepseek-v4-flash&quot;</span><span class="p">,</span> <span class="n">thinking</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">batch</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_prompts</span><span class="p">(</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">strategy</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">prompts</span><span class="p">,</span>                       <span class="c1"># 10,000 items</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">concurrency</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>                <span class="c1"># step 1 — sizes everything aligned below</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">artifact_store</span><span class="o">=</span><span class="n">JsonlArtifactStore</span><span class="p">(</span><span class="s2">&quot;runs/tagging.jsonl&quot;</span><span class="p">),</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">resume</span><span class="o">=</span><span class="n">ResumePolicy</span><span class="o">.</span><span class="n">REUSE_SUCCESSES</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span>
+</code></pre></div>
+<p><code>concurrency=N</code> (v0.20) coherently sizes the worker pool, provider-capacity
+admission, and — for built-in OpenAI-compatible models (OpenAI, OpenRouter,
+DeepSeek, <code>openai-compatible</code>) created via <code>llm()</code> or <code>from_api_key()</code> without
+an explicit <code>max_connections</code> — the httpx connection pool. If you set
+nothing else, the rest of this page is the explanation of what you just got
+and when to override it.</p>
+<h2 id="check-what-you-got">Check what you got</h2>
+<p><code>describe_limits()</code> lists every limit with its value and where the value came
+from (explicit, derived from <code>concurrency</code>, a default, or advertised by the
+strategy), plus the provider capacity and the number of attempts that can run at
+once for each strategy. The processor logs the same table at INFO when it first
+configures a strategy, and <code>LLMCallPool</code> logs it when created.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessorConfig</span><span class="p">,</span> <span class="n">describe_limits</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">ProcessorConfig</span><span class="p">(</span><span class="n">concurrency</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">max_requests_per_minute</span><span class="o">=</span><span class="mi">3_000</span><span class="p">)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">describe_limits</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">strategy</span><span class="p">))</span>   <span class="c1"># works for call() configs too</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># processor.describe_limits() and pool.describe_limits() fill in their own config</span>
+</code></pre></div>
+<p>After a run, <code>batch.gate_waits()</code> adds up where attempts waited: provider
+capacity, quota (RPM and TPM together), rate-limit cooldown, the startup ramp,
+and retry backoff, largest first. For results from <code>call_result()</code> or
+<code>LLMCallPool</code>, pass them to <code>summarize_gate_waits()</code>. Time an item spends queued
+before a worker picks it up isn't recorded, so the worker pool is not a row.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">batch</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_prompts</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">prompts</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">gate_waits</span><span class="p">())</span>
+</code></pre></div>
+<p>Both are provisional (new in 1.1).</p>
+<h2 id="when-you-dont-know-your-limits">When you don't know your limits</h2>
+<p>Everything below assumes you know your provider's quota. Often you don't: a new
+Gemini project, a tier that changed, or a key shared with other applications.
+Setting concurrency very low is safe but leaves throughput unused. This section
+shows how to find the limit with one short probing run.</p>
+<p><strong>Look the numbers up first if you can.</strong> It's faster than probing.</p>
+<ul>
+<li>Gemini lists RPM, TPM and requests-per-day for each model and tier in
+  <a href="https://aistudio.google.com/">AI Studio</a> (the project's rate-limit page) and in
+  the published <a href="https://ai.google.dev/gemini-api/docs/rate-limits">rate-limit table</a>.</li>
+<li>OpenAI shows your organization's limits in the platform settings, and responses
+  can include them in the <code>x-ratelimit-limit-requests</code> and
+  <code>x-ratelimit-limit-tokens</code> headers.</li>
+</ul>
+<p>Probe when the console isn't available to you, or when the published numbers
+don't match what you see.</p>
+<h3 id="step-1-configure-a-probing-run">Step 1: configure a probing run</h3>
+<p>Set <code>concurrency</code> to the ceiling you hope for, and let a startup ramp climb to it
+slowly. The load then rises gradually instead of arriving in one burst, so the
+requests in the minute before the first rate limit are close to what the provider
+allows. Shorten the cooldown so touching the limit costs seconds rather than the
+default five minutes.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">ProcessorConfig</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">RateLimitConfig</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">StartupRampConfig</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">describe_limits</span><span class="p">,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">probe_config</span> <span class="o">=</span> <span class="n">ProcessorConfig</span><span class="p">(</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">concurrency</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>  <span class="c1"># the ceiling you hope for</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">startup_ramp</span><span class="o">=</span><span class="n">StartupRampConfig</span><span class="p">(</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="n">initial_concurrency</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        <span class="n">concurrency_step</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        <span class="n">ramp_interval_seconds</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="p">),</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="n">rate_limit</span><span class="o">=</span><span class="n">RateLimitConfig</span><span class="p">(</span><span class="n">cooldown_seconds</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">max_cooldown_seconds</span><span class="o">=</span><span class="mi">120</span><span class="p">),</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="p">)</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="nb">print</span><span class="p">(</span><span class="n">describe_limits</span><span class="p">(</span><span class="n">probe_config</span><span class="p">,</span> <span class="n">strategy</span><span class="p">))</span>
+</code></pre></div>
+<p>With this ramp, <code>t</code> seconds after the strategy's first attempt is admitted, at most
+<code>min(32, 2 + 2 × floor(t / 15))</code> attempts run at once. It reaches 32 after 225
+seconds, so give the probe enough prompts to keep it busy for longer than that:
+at about two seconds per call, a few thousand short prompts. Use prompts like the
+real ones, since token counts and latency both change where the limit is
+reached. The ramp clock keeps running through cooldowns; after a cooldown, the
+slow-start ramp from <code>RateLimitConfig</code> paces the restart instead.</p>
+<p>Check the <code>describe_limits()</code> table before spending quota. It should show
+<code>concurrency</code> 32 (explicit), <code>startup_ramp.max_concurrency</code> 32 (from
+<code>max_workers</code>), no RPM or TPM limit, and a provider capacity of 32 for the
+strategy. A strategy that advertises a smaller <code>max_concurrency</code> shows that as
+its provider capacity instead, and the probe can't go wider than it. If the table
+was printed before the batch started, a header may say it is not yet in effect:
+a built-in OpenAI-compatible model's connection pool is resized to <code>concurrency</code>
+when the batch starts.</p>
+<p><strong>The cooldown trade-off.</strong> A short cooldown makes each rate limit cheap, which
+is what a probe needs: traffic resumes quickly and the run keeps measuring.
+Against a provider that counts per minute, a short cooldown in production instead
+sends traffic back into a window that is still full, so it trips again. Repeated
+cooldowns grow by <code>backoff_multiplier</code> (1.5) up to <code>max_cooldown_seconds</code>. A
+retry delay the server sends (Gemini's <code>retryDelay</code>, an OpenAI-compatible
+<code>Retry-After</code>) can only lengthen a cooldown, never shorten it, and is itself
+capped at <code>max_cooldown_seconds</code>.</p>
+<h3 id="step-2-run-it-and-record-the-first-rate-limit">Step 2: run it and record the first rate limit</h3>
+<p><code>get_stats()</code> counts rate limits but doesn't say when the first one happened, or
+how many requests went out in the minute before it. A small observer records
+both: <code>ITEM_ADMITTED</code> fires for every attempt just before it calls the provider.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">BaseObserver</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">LLMWorkItem</span><span class="p">,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">ParallelBatchProcessor</span><span class="p">,</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">ProcessingEvent</span><span class="p">,</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">class</span><span class="w"> </span><span class="nc">FirstRateLimit</span><span class="p">(</span><span class="n">BaseObserver</span><span class="p">):</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Record when each attempt started and when the first rate limit hit.&quot;&quot;&quot;</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">attempt_starts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">first_rate_limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>        <span class="k">if</span> <span class="n">event</span> <span class="ow">is</span> <span class="n">ProcessingEvent</span><span class="o">.</span><span class="n">ITEM_ADMITTED</span><span class="p">:</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">attempt_starts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">now</span><span class="p">)</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>        <span class="k">elif</span> <span class="n">event</span> <span class="ow">is</span> <span class="n">ProcessingEvent</span><span class="o">.</span><span class="n">RATE_LIMIT_HIT</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_rate_limit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">first_rate_limit</span> <span class="o">=</span> <span class="n">now</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="n">probe</span> <span class="o">=</span> <span class="n">FirstRateLimit</span><span class="p">()</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="k">async</span> <span class="k">with</span> <span class="n">ParallelBatchProcessor</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">probe_config</span><span class="p">,</span> <span class="n">observers</span><span class="o">=</span><span class="p">[</span><span class="n">probe</span><span class="p">])</span> <span class="k">as</span> <span class="n">processor</span><span class="p">:</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">prompt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sample_prompts</span><span class="p">):</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>        <span class="k">await</span> <span class="n">processor</span><span class="o">.</span><span class="n">add_work</span><span class="p">(</span><span class="n">LLMWorkItem</span><span class="p">(</span><span class="n">item_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;probe-</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span> <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">))</span>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    <span class="n">batch</span> <span class="o">=</span> <span class="k">await</span> <span class="n">processor</span><span class="o">.</span><span class="n">process_all</span><span class="p">()</span>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    <span class="n">stats</span> <span class="o">=</span> <span class="k">await</span> <span class="n">processor</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="step-3-read-the-result">Step 3: read the result</h3>
+<p>Start with where attempts waited:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">gate_waits</span><span class="p">())</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;rate limits:&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;rate_limit_count&quot;</span><span class="p">])</span>
+</code></pre></div>
+<ul>
+<li><strong>A large rate-limit cooldown share</strong> means the provider pushed back. Read on
+  to find where.</li>
+<li><strong>A large startup-ramp share and no cooldown</strong> means the run never reached the
+  limit. Either the limit is above your ceiling, or the probe ended before the
+  ramp finished. Repeat with a higher <code>concurrency</code> or more prompts.</li>
+<li><strong>Items failing with <code>quota_exhausted</code></strong> mean a per-day quota ran out. That
+  isn't a per-minute limit and waiting won't fix it; see the caveats below.</li>
+</ul>
+<p>The waits of items running at the same time add up, so the totals can exceed the
+run's wall time; compare the shares, not the totals with wall time. Time an item
+spends queued for a worker isn't counted. The ramp's wait happens at the
+provider-capacity gate, so in a probe those two rows are often nearly the same
+number.</p>
+<p>Then count requests per minute. If the provider pushed back, count the minute
+before the first rate limit. If it never did, the busiest minute is the highest
+throughput you observed. Provided those requests succeeded, it's a rate the
+provider accepted, so the limit is at least that high:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">bisect</span><span class="w"> </span><span class="kn">import</span> <span class="n">bisect_left</span><span class="p">,</span> <span class="n">bisect_right</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">starts</span> <span class="o">=</span> <span class="n">probe</span><span class="o">.</span><span class="n">attempt_starts</span>  <span class="c1"># in time order</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">requests_in_minute_ending</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="k">return</span> <span class="n">bisect_right</span><span class="p">(</span><span class="n">starts</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="o">-</span> <span class="n">bisect_left</span><span class="p">(</span><span class="n">starts</span><span class="p">,</span> <span class="n">t</span> <span class="o">-</span> <span class="mi">60</span><span class="p">)</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="k">if</span> <span class="n">probe</span><span class="o">.</span><span class="n">first_rate_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="c1"># Roughly the rate at which the provider said no.</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    <span class="n">requests_per_minute</span> <span class="o">=</span> <span class="n">requests_in_minute_ending</span><span class="p">(</span><span class="n">probe</span><span class="o">.</span><span class="n">first_rate_limit</span><span class="p">)</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    <span class="c1"># No rate limit: the limit is above this. Repeat wider to find it.</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    <span class="n">requests_per_minute</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">requests_in_minute_ending</span><span class="p">,</span> <span class="n">starts</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="n">latencies</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    <span class="n">attempt</span><span class="o">.</span><span class="n">execution_seconds</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">results</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">timing</span><span class="o">.</span><span class="n">attempts</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    <span class="k">if</span> <span class="n">attempt</span><span class="o">.</span><span class="n">success</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="p">]</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="k">if</span> <span class="n">latencies</span><span class="p">:</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>    <span class="n">latency</span> <span class="o">=</span> <span class="n">statistics</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">latencies</span><span class="p">)</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    <span class="n">tokens_per_request</span> <span class="o">=</span> <span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">total_input_tokens</span> <span class="o">+</span> <span class="n">batch</span><span class="o">.</span><span class="n">total_output_tokens</span><span class="p">)</span> <span class="o">/</span> <span class="n">batch</span><span class="o">.</span><span class="n">total_items</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    <span class="n">tokens_per_minute</span> <span class="o">=</span> <span class="n">requests_per_minute</span> <span class="o">*</span> <span class="n">tokens_per_request</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No attempt succeeded; read the failures before probing again:&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</code></pre></div>
+<p>Count the requests rather than working the rate out from the ramp's width at the
+time of the first 429. A provider that counts per minute trips on the requests
+of the whole past minute. While the ramp climbs, the rate at the moment it trips
+is higher than that minute's average, so an estimate from the width overshoots.</p>
+<p>The count is an estimate too, and it tends to come out a little high. The
+observer timestamps attempts when this process admits them and the rate limit
+when its response arrives, not when the provider decided. The count includes the
+rejected attempt itself, and any attempts admitted while its response was on the
+way. With high concurrency and slow responses, that can be many requests the
+provider never accepted. Retries made inside a provider SDK are requests the
+observer never sees. In a simulated provider with a sliding 700-request minute,
+the count came to 714 and the estimate from the width to about 890.</p>
+<p>Check which tokens your provider counts towards its TPM limit (input only, or
+input and output) and use those in <code>tokens_per_request</code>. For per-attempt
+detail, each <code>AttemptTiming</code> has <code>cooldown_wait_seconds</code>, <code>quota_wait_seconds</code>
+and <code>startup_ramp_wait_seconds</code>.</p>
+<h3 id="step-4-pin-per-minute-limits-below-what-you-saw">Step 4: pin per-minute limits below what you saw</h3>
+<p>Set <code>max_requests_per_minute</code>, and <code>max_tokens_per_minute</code> if tokens were the
+binding limit, about 20% below the counted rate, with <code>quota_burst_seconds=5</code>
+so the first minute doesn't admit a double helping (see step 5 of the decision
+tree below). Restore a normal cooldown, and size <code>concurrency</code> with the formula
+from step 1 of the decision tree.</p>
+<p>The margin is a starting point, not a guarantee: the count is approximate, other
+applications may share the quota, and providers change limits. Watch
+<code>get_stats()["rate_limit_count"]</code> in the first real runs and lower the limits if
+cooldowns appear. If the probe never hit a limit and its requests succeeded,
+pinning below the busiest minute keeps you under a rate the provider accepted,
+but may leave throughput unused. A provider SDK that retries 429s internally can
+hide throttling from the probe. The built-in OpenAI-compatible models already
+pass <code>max_retries=0</code> when they build the client; for a client you build yourself,
+turn SDK retries off for the probe.</p>
+<p>Pin the per-minute limits rather than the concurrency at which the probe tripped.
+The provider counts requests and tokens per minute, not connections, so when
+latency changes, the width that reaches the limit changes with it, while the
+per-minute numbers stay put.</p>
+<h3 id="worked-example">Worked example</h3>
+<p>Measured on 2026-11-15 with <code>gemini-3.5-flash-lite</code> through an AI Studio API
+key. The 30,000 prompts were one sentence each ("In one short sentence, name a
+fact about the number 17."). The probe used a wider version of the step 1
+config, <code>concurrency=128</code> and <code>StartupRampConfig(initial_concurrency=8,
+concurrency_step=8, ramp_interval_seconds=15)</code>, which reaches 128 after 225
+seconds.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Gate waits across 30000 item(s), 36126.04s of item time
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>  provider capacity             14341.82s   39.7%  20269 attempt(s)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  startup ramp and slow start   14302.46s   39.6%  20162 attempt(s)
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  rate-limit cooldown              16.24s    0.0%  1623 attempt(s)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  quota (RPM/TPM)                   0.00s    0.0%  0 attempt(s)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>  retry backoff                     0.00s    0.0%  0 attempt(s)
+</code></pre></div>
+<p>All 30,000 succeeded in 283 seconds with no rate limit. The busiest minute held
+10,340 requests, the median call took 0.68 seconds, and requests averaged 50
+tokens. The ramp and capacity rows are the same wait. The 16 seconds on the
+cooldown row were the cost of checking for a cooldown. This run predates the fix
+for issue #365; llm-minder now counts only real cooldowns. So the
+run never reached the
+limit. For this key and model the limit is above about 10,000 requests per minute,
+and finding it would take a wider probe.</p>
+<p>A wider probe the same day (<code>concurrency=512</code>, ramp 32/32/15) peaked at 18,179
+requests in a minute, still without a rate limit, before a 900-second batch
+timeout ended it. At that width the probing process became the bottleneck: the
+median call rose to 0.99 seconds and only about 300 requests were in flight on
+average. One process can show that a limit is at least this high, not where it
+is.</p>
+<p>A rate the provider accepted is still a usable setting:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessorConfig</span><span class="p">,</span> <span class="n">RateLimitConfig</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">ProcessorConfig</span><span class="p">(</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">concurrency</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>                  <span class="c1"># 8,000 / 60 × 0.68 ≈ 90</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">max_requests_per_minute</span><span class="o">=</span><span class="mi">8_000</span><span class="p">,</span>   <span class="c1"># about 20% below the 10,340 accepted</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">quota_burst_seconds</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">rate_limit</span><span class="o">=</span><span class="n">RateLimitConfig</span><span class="p">(</span><span class="n">cooldown_seconds</span><span class="o">=</span><span class="mf">60.0</span><span class="p">),</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="p">)</span>
+</code></pre></div>
+<p>The probe's prompts were tiny, so it says nothing about the TPM limit. Real
+prompts of 1,000 tokens at 8,000 requests per minute come to 8 million tokens per
+minute; check that against the published table, and set <code>max_tokens_per_minute</code>
+with a token estimator if it's the tighter limit.</p>
+<h3 id="caveats">Caveats</h3>
+<ul>
+<li><strong>Per-day quotas are terminal.</strong> Gemini reports an exhausted daily quota as a
+  429 too, but the classifier marks it <code>quota_exhausted</code> and doesn't retry it.
+  No per-minute setting helps; the run has to wait for the quota to reset.</li>
+<li><strong>Limits are per model and per project.</strong> A probe against Flash-Lite says
+  nothing about Pro, and two keys in one project share a budget. Probe each model
+  you use, and leave room for other applications on the same project.</li>
+<li><strong>The probe spends real quota.</strong> Keep the sample small and run it at a quiet
+  time, or it competes with production traffic and measures less than you have.</li>
+</ul>
+<h2 id="the-decision-tree">The decision tree</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>1. concurrency      how many requests in flight at once?
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>2. connection pool  can the HTTP client actually carry that many?
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>3. provider concurrency  how many calls may hold provider capacity?
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>4. quota scope      which strategies spend the same upstream budget?
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>5. RPM              how many physical attempts may start per minute?
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>6. TPM + estimator  how much estimated token load may start per minute?
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>7. startup ramp     should full concurrency arrive gradually?
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>8. cooldown         what happens when the provider says 429?
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>9. retries          how often, and how far apart, are failed attempts retried?
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>10. timeouts        how long may an attempt, item, and batch take?
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>11. spend caps      how many tokens or how much cost may the run use?
+</code></pre></div>
+<h3 id="1-concurrency-concurrencyn">1. Concurrency — <code>concurrency=N</code></h3>
+<p>Pick the number of simultaneous provider requests. This is a property of the
+<strong>provider</strong>, not your CPU — LLM calls are I/O-bound, so never use
+<code>cpu_count()</code>.</p>
+<ul>
+<li>Rate-limited endpoints (OpenAI/Gemini tiers): start at <strong>5–10</strong>.</li>
+<li>High-concurrency providers (DeepSeek, self-hosted vLLM): <strong>50–200</strong>.</li>
+<li>If the provider publishes an RPM limit, a serviceable estimate is
+  <code>concurrency ≈ RPM / 60 × typical_latency_seconds</code>, rounded down.</li>
+</ul>
+<p>Prefer the single knob over setting <code>max_workers</code>,
+<code>max_provider_concurrency</code>, and <code>max_connections</code> separately — misalignment
+between those three is the most common performance bug in this package.
+Explicit values for any individual knob still win when you set them.</p>
+<h3 id="2-connection-pool-max_connections">2. Connection pool — <code>max_connections</code></h3>
+<p>The openai SDK's default httpx pool allows <strong>1000 connections but keeps only
+100 alive</strong> between requests. Above 100 concurrent requests, the extra
+connections are opened and torn down for each request, so you pay a fresh
+TCP/TLS handshake per call. Above 1000, extra workers wait inside httpx for a
+connection; that wait counts against <code>attempt_timeout</code> but isn't reported as a
+capacity wait, so it caps throughput without showing up in admission timing.
+High-concurrency
+providers such as DeepSeek accept hundreds of concurrent requests, so they are
+where an unsized pool shows up first.</p>
+<ul>
+<li>With <code>concurrency=N</code> and a factory-built OpenAI-compatible model
+  (<code>llm("...")</code> or <code>from_api_key()</code> without <code>max_connections</code>), the pool is
+  resized to <code>N</code> connections, all kept alive, before the first request —
+  nothing to do. Gemini models have no pool resize.</li>
+<li>If you build your own <code>AsyncOpenAI</code>/httpx client, size its
+  <code>httpx.Limits(max_connections=..., max_keepalive_connections=...)</code> to at
+  least your concurrency yourself; the framework cannot introspect or resize
+  a caller-supplied client.</li>
+<li>An explicit <code>max_connections</code> smaller than <code>concurrency</code> is treated as a
+  real contradiction and warns.</li>
+</ul>
+<p>Details: <a href="../openai-high-throughput/">high-throughput guide</a>.</p>
+<h3 id="3-provider-concurrency-max_provider_concurrency">3. Provider concurrency — <code>max_provider_concurrency</code></h3>
+<p>Admission caps how many attempts may hold a provider "slot" at once, and the
+wait happens <strong>before</strong> <code>attempt_timeout</code> starts — so a queued attempt can't
+burn its execution timeout waiting for capacity. With <code>concurrency=N</code> this is
+already <code>N</code>; set it explicitly only to run the framework wider than the
+provider (e.g. many cheap local workers feeding a narrow paid API), or when a
+strategy advertises its own <code>max_concurrency</code> (the lower limit applies).</p>
+<h3 id="4-quota-scope-strategyquota_scope">4. Quota scope — <code>strategy.quota_scope</code></h3>
+<p>Identify which strategies spend the same provider/account RPM and TPM budget.
+The default follows <code>concurrency_scope</code>. Share one stable object when multiple
+models use one account quota; use distinct objects only for genuinely
+independent budgets. Quota scope also owns coordinated cooldown, while
+concurrency scope owns provider/client capacity. See
+<a href="../token-aware-admission/#quota-scopes">Token-Aware Admission</a>.</p>
+<h3 id="5-requests-per-minute-max_requests_per_minute">5. Requests per minute — <code>max_requests_per_minute</code></h3>
+<p>Set the provider/account's physical-attempt budget, with safety margin for
+other applications using the same account. Admission is FIFO within each quota
+scope. Every retry is another physical request and gets a fresh reservation. A
+429 still triggers reactive coordinated cooldown; RPM smoothing cannot
+reproduce every provider window exactly.</p>
+<p>The default <code>quota_burst_seconds=None</code> starts with a full minute of quota and
+refills continuously: a busy scope can admit about <strong>twice the configured limit</strong>
+in its first minute. Set <code>quota_burst_seconds=5</code> to start with five seconds of
+quota. For RPM limit <code>L</code>, capacity is <code>C=max(1, L*5/60)</code>, and a rolling minute
+admits at most <code>C+L</code> requests. When the one-request floor does not apply this is
+<code>L*65/60</code>. It is a token bucket, not a strict provider rolling-window limiter.</p>
+<p>Limits apply independently to each quota scope within each processor/pool.
+Separate strategy instances can create separate budgets. The processor warns
+once when distinct scopes exceed <code>max_workers</code> with RPM or TPM enabled; reuse a
+strategy/model or return one stable shared <code>quota_scope</code> to share limits.</p>
+<h3 id="6-tokens-per-minute-max_tokens_per_minute">6. Tokens per minute — <code>max_tokens_per_minute</code></h3>
+<p>TPM requires an estimator. Reserve estimated input plus expected output, not
+only prompt tokens:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="n">CharacterTokenEstimator</span><span class="p">,</span> <span class="n">ProcessorConfig</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">ProcessorConfig</span><span class="p">(</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">concurrency</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">max_requests_per_minute</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">max_tokens_per_minute</span><span class="o">=</span><span class="mi">200_000</span><span class="p">,</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">token_estimator</span><span class="o">=</span><span class="n">CharacterTokenEstimator</span><span class="p">(</span><span class="n">expected_output_tokens</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="p">)</span>
+</code></pre></div>
+<p>Prefer a provider tokenizer over the character heuristic. Review actual
+refunds, underestimation debt, and unknown-usage attempts, then tune the output
+allowance. One estimate must fit inside the configured per-minute token limit. A request
+larger than the burst bucket may borrow future refill when that bucket is full. Increasing
+workers cannot overcome RPM/TPM and can increase task and queue pressure while
+work waits.</p>
+<h3 id="7-startup-ramp-startup_ramp">7. Startup ramp — <code>startup_ramp</code></h3>
+<p>Opening at full concurrency against a cold endpoint can trip instant 429s.
+<code>StartupRampConfig(initial_concurrency=4, concurrency_step=4,
+ramp_interval_seconds=2.0)</code> walks up to full width instead. Skip it for small
+runs or generous providers; reach for it when the first minute of a large run
+keeps tripping cooldowns.</p>
+<h3 id="8-cooldown-ratelimitconfig">8. Cooldown — <code>RateLimitConfig</code></h3>
+<p>What happens on 429: one worker triggers a shared cooldown, everyone pauses,
+then traffic resumes through a slow-start ramp. Defaults are conservative
+(300s cooldown). For providers with short quota windows, start with
+<code>RateLimitConfig(cooldown_seconds=30.0, max_cooldown_seconds=300.0)</code> — the
+classifier honors a server-sent <code>Retry-After</code> as a floor regardless. If you
+see repeated consecutive cooldowns, your <code>concurrency</code> (step 1) is too high;
+fix the cause, not the cooldown. Cooldown precedes estimation and reservation,
+so paused work does not consume live quota state early.</p>
+<h3 id="9-retries-and-backoff-retryconfig">9. Retries and backoff — <code>RetryConfig</code></h3>
+<p><code>RetryConfig</code> governs failures that are worth retrying but aren't rate limits:
+timeouts, connection errors, 5xx responses, and invalid output. The defaults are
+<code>max_attempts=3</code>, <code>initial_wait=1.0</code>, <code>max_wait=60.0</code>, <code>exponential_base=2.0</code>,
+and <code>jitter=True</code>. Before attempt <em>n + 1</em> the item waits</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>min(initial_wait × exponential_base^(n − 1), max_wait)
+</code></pre></div>
+<p>so 1s, 2s, 4s, and so on, capped at 60s. With <code>jitter=True</code> each wait is scaled
+to a random 50–100% of that value, which spreads simultaneous retries apart
+("equal jitter"; <code>jitter="equal"</code> is the same). <code>jitter="full"</code> scales it to a
+random 0–100% instead. That spreads retries further, which helps against a
+flaky gateway that many items hit at once, but some retries go out almost
+immediately. <code>jitter=False</code> waits the exact value. Validation failures (<code>validation_error</code>,
+<code>structured_output_validation_error</code>) retry immediately, with no wait.</p>
+<p>Rate limits work differently. They don't use this backoff: one rate-limited
+call starts the shared cooldown from step 8, and the item retries when it ends.
+They also don't consume <code>max_attempts</code>; they have their own budget,
+<code>max_rate_limit_retries</code> (default 20). Errors the classifier marks
+non-retryable, such as authentication failures, fail on the first attempt.</p>
+<p>Retries and backoff waits count against <code>GuardrailConfig.total_timeout_per_item</code>.
+If the next wait wouldn't fit in the time left, the item fails immediately with
+<code>ItemDeadlineExceeded</code>, whose message and cause keep the last provider error,
+instead of sleeping past its deadline (see
+<a href="../guardrails/#retry-delay-cannot-fit">guardrails</a>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessorConfig</span><span class="p">,</span> <span class="n">RetryConfig</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">ProcessorConfig</span><span class="p">(</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">concurrency</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">retry</span><span class="o">=</span><span class="n">RetryConfig</span><span class="p">(</span><span class="n">max_attempts</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">initial_wait</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">max_wait</span><span class="o">=</span><span class="mf">20.0</span><span class="p">),</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="10-attempt-item-and-batch-timeouts">10. Attempt, item, and batch timeouts</h3>
+<p><code>attempt_timeout</code> bounds one <code>execute()</code> call (default 120s), not its quota or
+provider-capacity wait. Size it for one slow response: p99 provider latency
+plus margin. Long-output or reasoning models may need more than the common 30s
+starting point.</p>
+<p><code>GuardrailConfig.total_timeout_per_item</code> bounds one logical item end to end:
+cooldown, estimation, RPM/TPM wait, provider admission, every call, and retry
+backoff. <code>GuardrailConfig.batch_timeout</code> bounds the whole run. On expiry,
+accepted items receive terminal results and checkpoints clean up according to
+the configured abort mode. Size the batch deadline below the job scheduler's
+hard kill and pair it with fail-fast categories such as authentication and
+insufficient balance. Details: <a href="../guardrails/">guardrails</a>.</p>
+<h3 id="11-spend-caps-max_total_tokens-max_total_cost">11. Spend caps — <code>max_total_tokens</code> / <code>max_total_cost</code></h3>
+<p><code>GuardrailConfig.max_total_tokens</code> and <code>max_total_cost</code> (with a
+<code>cost_function</code>) are opt-in soft caps on provider usage for one processor run.
+Reaching a cap stops new provider calls; calls already running can overshoot
+it, by at most the usage of up to <code>max_workers</code> in-flight attempts. Pair a cap
+with a per-call <code>max_tokens</code> so the overshoot has a numeric bound. The
+budget API is provisional and may change in a minor release (see
+<a href="../stability/#provisional-in-10">API stability</a>). Details:
+<a href="../guardrails/#token-and-cost-budgets">token and cost budgets</a>.</p>
+<p>When a run must not exceed a number of provider calls, for example a paid run
+approved for "at most 500 calls", use <code>GuardrailConfig.max_provider_calls</code>
+instead. It is a hard cap on the attempts the library makes: every attempt,
+retries included, takes a call from it before starting, so concurrent workers
+can't overshoot. Retries inside an SDK client or upstream gateway you supply
+aren't counted, so disable them for a strict ceiling on provider requests.
+Details: <a href="../guardrails/#provider-call-cap">provider call cap</a>.</p>
+<h2 id="worked-example-10k-items-against-a-rate-limited-provider">Worked example: 10k items against a rate-limited provider</h2>
+<p>Target: 10,000 classification prompts against an OpenAI-tier endpoint
+(~500 RPM), ~2s per call, overnight job, must survive restarts.</p>
+<ul>
+<li><strong>Step 1:</strong> <code>500 / 60 × 2 ≈ 16</code> → <code>concurrency=16</code>.</li>
+<li><strong>Steps 2–3:</strong> covered by the knob (factory pool and admission both become 16).</li>
+<li><strong>Step 4:</strong> this strategy owns one account quota, so its default scope is sufficient.</li>
+<li><strong>Step 5:</strong> reserve 450 RPM with <code>quota_burst_seconds=5</code>. This permits at most
+  487 requests per rolling minute, leaving headroom below 500. The default full
+  bucket could instead permit about 900 in the first minute.</li>
+<li><strong>Step 6:</strong> reserve measured prompt tokens plus 300 expected output tokens.</li>
+<li><strong>Step 7:</strong> skip the ramp at this width.</li>
+<li><strong>Step 8:</strong> <code>cooldown_seconds=60.0</code> for reactive 429 recovery.</li>
+<li><strong>Step 10:</strong> one-call p99 ≈ 10s gives <code>attempt_timeout=30.0</code>; allow the
+  complete retry/cooldown chain 180s and stop the batch at 1h50m.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">llm_minder</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="n">CharacterTokenEstimator</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">ErrorCategory</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">GuardrailConfig</span><span class="p">,</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">JsonlArtifactStore</span><span class="p">,</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">ProcessorConfig</span><span class="p">,</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">RateLimitConfig</span><span class="p">,</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">ResumePolicy</span><span class="p">,</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="n">llm</span><span class="p">,</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>    <span class="n">process_prompts</span><span class="p">,</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="p">)</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">config</span> <span class="o">=</span> <span class="n">ProcessorConfig</span><span class="p">(</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    <span class="n">concurrency</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>    <span class="n">attempt_timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    <span class="n">max_requests_per_minute</span><span class="o">=</span><span class="mi">450</span><span class="p">,</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>    <span class="n">quota_burst_seconds</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    <span class="n">max_tokens_per_minute</span><span class="o">=</span><span class="mi">200_000</span><span class="p">,</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>    <span class="n">token_estimator</span><span class="o">=</span><span class="n">CharacterTokenEstimator</span><span class="p">(</span><span class="n">expected_output_tokens</span><span class="o">=</span><span class="mi">300</span><span class="p">),</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a>    <span class="n">rate_limit</span><span class="o">=</span><span class="n">RateLimitConfig</span><span class="p">(</span><span class="n">cooldown_seconds</span><span class="o">=</span><span class="mf">60.0</span><span class="p">),</span>
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a>    <span class="n">guardrails</span><span class="o">=</span><span class="n">GuardrailConfig</span><span class="p">(</span>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a>        <span class="n">total_timeout_per_item</span><span class="o">=</span><span class="mf">180.0</span><span class="p">,</span>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a>        <span class="n">batch_timeout</span><span class="o">=</span><span class="mf">6600.0</span><span class="p">,</span>
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a>        <span class="n">abort_on_error_categories</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">(</span>
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a>            <span class="p">{</span><span class="n">ErrorCategory</span><span class="o">.</span><span class="n">AUTHENTICATION</span><span class="p">,</span> <span class="n">ErrorCategory</span><span class="o">.</span><span class="n">INSUFFICIENT_BALANCE</span><span class="p">}</span>
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a>        <span class="p">),</span>
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a>    <span class="p">),</span>
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a><span class="p">)</span>
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a>
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a><span class="n">batch</span> <span class="o">=</span> <span class="k">await</span> <span class="n">process_prompts</span><span class="p">(</span>
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a>    <span class="n">llm</span><span class="p">(</span><span class="s2">&quot;openai:gpt-6-luna&quot;</span><span class="p">),</span>
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a>    <span class="n">prompts</span><span class="p">,</span>
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a>    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a>    <span class="n">progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a>    <span class="n">artifact_store</span><span class="o">=</span><span class="n">JsonlArtifactStore</span><span class="p">(</span><span class="s2">&quot;runs/overnight.jsonl&quot;</span><span class="p">),</span>
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a>    <span class="n">resume</span><span class="o">=</span><span class="n">ResumePolicy</span><span class="o">.</span><span class="n">REUSE_SUCCESSES</span><span class="p">,</span>
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a><span class="p">)</span>
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a><span class="nb">print</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</code></pre></div>
+<p>Rerunning the same command after a crash replays completed successes from the
+artifact and executes only the remainder.</p>
+<h2 id="if-memory-is-the-constraint">If memory is the constraint</h2>
+<p>For very large or unbounded inputs, add <code>max_queue_size</code> (bounded input
+buffering) and switch to <code>process_stream()</code> so results don't accumulate.
+That's a memory decision, not a throughput one — see
+<a href="../bounded-work/">bounded work and backpressure</a>.</p>
+<h2 id="numeric-configuration">Numeric configuration</h2>
+<p>Retry, rate-limit, startup-ramp, guardrail and processor numeric fields require finite</p>
+<p>numbers. Counts and concurrency limits require Python integers, excluding booleans
+and floats (including integral floats). Delays and timeouts reject NaN, infinity
+and booleans. Use the documented <code>None</code> options to disable optional limits.
+Configuration is validated at construction; use a fresh config or
+<code>dataclasses.replace</code> when changing values, rather than mutating it afterward.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.tabs", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
