@@ -51,7 +51,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
@@ -79,7 +79,7 @@ jobs:
         uv run pytest tests/ -v --tb=short
 
     - name: Coverage comment
-      uses: py-cov-action/python-coverage-comment-action@v4.6
+      uses: py-cov-action/python-coverage-comment-action@v4.7
       if: matrix.python-version == '3.12'
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -112,7 +112,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
@@ -155,7 +155,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
@@ -343,7 +343,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
@@ -406,7 +406,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
@@ -455,7 +455,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
@@ -495,7 +495,7 @@ jobs:
         GIT_HTTP_LOW_SPEED_TIME: "60"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.3.3
+      uses: astral-sh/setup-uv@v10.4.0
       with:
         enable-cache: true
 
